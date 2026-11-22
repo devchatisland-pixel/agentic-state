@@ -1,0 +1,5 @@
+# Fair-use limits: set BELOW each provider's published free-tier limit.
+# Check the console limits page before large runs; spread runs over days to fit daily quotas.
+ollama:  {max_connections: 1}                 # local GPU, one at a time
+groq:    {max_connections: 1, rpm: 20, rpd: 800}   # console shows ~30 rpm / 1000 rpd per model
+google:  {max_connections: 1, rpm: 8,  rpd: 200}   # check AI Studio rate-limit page

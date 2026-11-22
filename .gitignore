@@ -1,0 +1,15 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Large / regenerable outputs
+logs/
+.inspect_cache/
+analysis/figures/*.png
