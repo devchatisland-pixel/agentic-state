@@ -85,6 +85,46 @@ Free keys (no card): **Groq** (console.groq.com) and **Google AI Studio** (aistu
 OpenRouter `:free` and Mistral adapters are included but disabled in `config.yaml`; Mistral had no free API plan
 in Nov 2026.
 
+## Run offline overnight (no key, no quota)
+
+The `local` preset runs everything on Ollama with small models:
+
+| Role | Model | Why |
+|---|---|---|
+| Epistemic Dissident (C) | `deepseek-r1:1.5b` | pure reasoning model (its `<think>` trace is stripped and logged) |
+| Logic and maths (B, standard seat in C) | `phi3:3.8b` | strong small model on maths |
+| Hyper-social standard agents | `llama3.2:3b`, `qwen2.5:3b`, `smollm2:1.7b` | consensus-oriented chat models |
+| Other standard seats (C) | `gemma3:4b`, `hermes3:3b`, `nemotron-3-nano:4b` | to fill 7 heterogeneous seats |
+
+```bash
+ollama pull deepseek-r1:1.5b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b gemma3:4b hermes3:3b nemotron-3-nano:4b
+python run_experiment.py --module all --local --live     # whole night: A, B and C, opens the live monitor
+```
+
+Expect roughly **5–8 hours** on a 4 GB GPU. Local calls take 20–60 s, mostly loading models, and the reasoning
+model can take longer. The run saves after every call. If you stop it, `python run_experiment.py --resume`
+continues where it left off.
+
+In this preset the baseline gate is **reported but not enforced** (`gate.enforce: false`): 1.5–4B models often
+fail the isolation tests, and strict exclusion could leave nothing to run. Every failure is flagged in the gate
+tables and per round/seat, and the report and dashboard show a warning banner. Use `--pilot` or `--full`
+(gate enforced) for confirmatory data.
+
+## Watch a run live
+
+```bash
+python live_monitor.py          # then open http://localhost:8765   (add --mock for mock runs)
+```
+
+Or add `--live` to any `run_experiment.py` command. The page refreshes every 2 s and shows:
+- **who is thinking right now**: agent, role, model, seconds elapsed;
+- progress per module and the trial in progress, with the colony gauges (C), the current round and the Target's
+  answer vs. its private belief (A), or the chain outcome (B);
+- a feed of every turn, newest first, colour-coded by role. Each entry shows the **public message**, the
+  **private scratchpad** (in a dashed "private" box), the private beliefs and the action or vote.
+
+The monitor only reads the database, so opening or closing it never disturbs the run.
+
 ## Run
 
 ```bash
@@ -111,7 +151,8 @@ How to present a pilot to faculty: [`docs/outreach_guide.md`](docs/outreach_guid
 ## Repository layout
 
 ```
-run_experiment.py         CLI: --module, --pilot/--full, --mock, --resume, --analyze, --check-providers
+run_experiment.py         CLI: --module, --pilot/--full/--local/--preset, --mock, --resume, --live, --analyze, --check-providers
+live_monitor.py           live web page (http://localhost:8765): who is thinking, what each agent said and thought
 config.yaml               model registry, free-tier limits, pilot and full presets
 requirements.txt / .env.example
 arena/

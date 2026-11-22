@@ -398,12 +398,27 @@ def _img(path: Path) -> str:
     return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
 
 
+def gate_enforced(run: dict) -> bool:
+    try:
+        return bool(json.loads(run["config_json"])["presets"][run["preset"]]["gate"].get("enforce", True))
+    except (KeyError, TypeError, ValueError):
+        return True
+
+
+GATE_WARNING = ("Baseline gate NOT enforced for this preset: items, variants or models that failed the isolation "
+                "test were kept and are flagged (see gate tables, `item_gate_passed` in module_a_rounds.csv, "
+                "`gate_failed_models` in module_b_trials.csv, setup `gate_passed` per seat in Module C). Group errors "
+                "may partly reflect model ignorance.")
+
+
 def build_report(run: dict, res: dict, out_dir: Path) -> Path:
     lines = [f"# Epistemic Arena: run report `{run['run_id']}`", "",
              f"- Preset: **{run['preset']}** · modules: {run['modules']} · created {run['created_at']} · "
              f"commit `{run.get('git_commit')}` · config hash `{run['config_hash']}`"]
     if run["mock"]:
         lines += ["", "> **MOCK DATA.** Simulated replies for pipeline testing. These numbers mean nothing."]
+    if not gate_enforced(run):
+        lines += ["", f"> **{GATE_WARNING}**"]
     lines += ["", "> Pilot-scale numbers are exploratory: they estimate effect sizes and test the protocol, "
               "they are not confirmatory evidence.", ""]
     if res.get("gates"):
@@ -476,6 +491,8 @@ def build_dashboard(run: dict, res: dict, path: Path) -> Path:
         sections.append(f"<section><h2>{title}</h2>{figs}</section>")
     mock_banner = ('<p class="banner mock">MOCK DATA: simulated replies used to test the pipeline. These numbers mean nothing.</p>'
                    if run["mock"] else "")
+    if not gate_enforced(run):
+        mock_banner += f'<p class="banner">{html.escape(GATE_WARNING)}</p>'
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Epistemic Arena Results</title>

@@ -207,10 +207,11 @@ class GeminiAdapter:
 
 class LLMClient:
     def __init__(self, cfg: dict, usage: UsageStore | None = None, mock: bool = False,
-                 sleep: Callable[[float], None] = time.sleep, timeout: float = 180.0):
+                 sleep: Callable[[float], None] = time.sleep, timeout: float = 180.0, mock_delay: float = 0.0):
         self.cfg = cfg
         self.usage = usage
         self.mock = mock
+        self.mock_delay = mock_delay
         self.sleep = sleep
         self.limiters: dict[str, RateLimiter] = {}
         self.mocker = MockResponder()
@@ -243,6 +244,8 @@ class LLMClient:
         if self.mock:
             t0 = time.perf_counter()
             text = self.mocker.respond(meta or {}, messages, seed)
+            if self.mock_delay:
+                time.sleep(self.mock_delay)
             return ChatResult(text, None, model_id, pname, m["model"], estimate_tokens(messages),
                               len(text) // 4, time.perf_counter() - t0, "stop", mock=True)
         if not m.get("enabled", True):

@@ -203,6 +203,7 @@ def run_trial(ctx: TrialContext, spec: dict, preset: dict, cfg: dict, pool: list
         finals[target] = fin
         ctx.event(f"r{r:02d}:result", "round", {
             "round": r, "item_id": item["item_id"], "template": item["template"], "correct": item["correct"],
+            "item_gate_passed": item.get("gate_passed", True),
             "designated": item["designated"], "order": order, "target_position": order.index(target) + 1,
             "confederates_before_target": order.index(target),
             "initial_status": initial.status if initial else None,

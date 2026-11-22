@@ -36,6 +36,7 @@ class Runner:
         self.run_id, self.mock = run_id, mock
         self.temps = preset["temperatures"]
         self.repeats = int(preset["gate"]["repeats"])
+        self.enforce = bool(preset["gate"].get("enforce", True))  # False: gate failures are flagged, not excluded
 
     def ctx(self, trial: dict) -> TrialContext:
         return TrialContext(self.client, self.storage, self.run_id, trial["trial_id"], trial["module"],
@@ -47,8 +48,13 @@ class Runner:
         items = candidate_items(int(a["candidate_items"]), int(self.cfg["seed"]))
         g = baseline_gate.gate_module_a(self.client, self.storage, self.run_id, items, list(a["target_models"]),
                                         self.temps, self.repeats, self.mock)
-        pool = [it for it in items if g.passed[it["item_id"]]]
+        for it in items:
+            it["gate_passed"] = bool(g.passed[it["item_id"]])
+        pool = [it for it in items if it["gate_passed"]]
         print(f"  [gate A] {len(pool)}/{len(items)} items solved alone by every target model, every time")
+        if not self.enforce and len(pool) < int(a["rounds"]):
+            pool = pool + [it for it in items if not it["gate_passed"]]  # passed items first, failures flagged
+            print(f"  [gate A] NOT ENFORCED (preset): using {len(pool)} items; failed items are flagged per round")
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "A", "gate",
                                   {"passed": g.passed, "kept": [it["item_id"] for it in pool]})
         return pool
@@ -58,7 +64,11 @@ class Runner:
         g = baseline_gate.gate_module_b(self.client, self.storage, self.run_id, roster, self.temps, self.repeats,
                                         self.mock)
         ok = {m for m, p in g.passed.items() if p}
+        self.gate_b_passed = ok
         print(f"  [gate B] comprehension passed by {len(ok)}/{len(roster)} models: {', '.join(sorted(ok)) or '-'}")
+        if not self.enforce:
+            print("  [gate B] NOT ENFORCED (preset): failing models stay in the chain and are flagged")
+            return set(roster)
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "B", "gate", {"passed": g.passed})
         return ok
 
@@ -97,9 +107,11 @@ class Runner:
                     outcome = mod_a.run_trial(ctx, spec, self.preset, self.cfg, gate)
                 elif module == "B":
                     outcome = mod_b.run_trial(ctx, spec, self.preset, self.cfg)
+                    roles = [spec["t1"], spec["t3"]] + ([spec["t2"]] if spec["chain"] == "full" else [])
+                    outcome["gate_failed_models"] = [m for m in roles if m not in self.gate_b_passed]
                 else:
                     comp, variants = self.c_composition(spec, gate)
-                    outcome = mod_c.run_trial(ctx, spec, self.preset, self.cfg, comp, variants)
+                    outcome = mod_c.run_trial(ctx, spec, self.preset, self.cfg, comp, variants, gate)
             except (QuotaExhausted, ProviderUnavailable):
                 self.storage.mark_trial(trial["trial_id"], "pending")
                 raise
@@ -131,6 +143,11 @@ class Runner:
         vids = [v.vid for v in colony.VARIANTS]
         ok = lambda m: any(passed.get((m, v), False) for v in vids)  # noqa: E731
         dm = spec["dissident_model"]
+        if not self.enforce:  # seat the configured roster; pick the variant(s) the most seated models pass
+            comp = mod_c.composition(dm, list(dict.fromkeys(list(c["roster"]) + list(c["reserves"]))))
+            score = {v: sum(passed.get((m, v), False) for m in comp) for v in vids}
+            best = max(score.values())
+            return comp, [v for v in vids if score[v] == best]
         if not ok(dm):
             raise ValueError(f"dissident model {dm} failed the trap gate on every variant")
         pool = [m for m in list(c["roster"]) + list(c["reserves"]) if ok(m)]
@@ -173,6 +190,10 @@ def main(argv: list[str] | None = None) -> int:
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--pilot", action="store_true", help="small exploratory batch (default)")
     g.add_argument("--full", action="store_true", help="full study preset")
+    g.add_argument("--local", action="store_true", help="100%% offline preset (Ollama only, no quota)")
+    g.add_argument("--preset", default=None, help="any preset name from config.yaml")
+    ap.add_argument("--live", action="store_true", help="open the live monitor (http://localhost:8765) during the run")
+    ap.add_argument("--mock-delay", type=float, default=0.0, help="seconds per simulated reply (to watch --mock live)")
     ap.add_argument("--mock", "--dry-run", dest="mock", action="store_true", help="simulated replies, zero API calls")
     ap.add_argument("--resume", nargs="?", const="latest", default=None, metavar="RUN_ID",
                     help="continue a paused run (latest unfinished if no id)")
@@ -207,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         run_id, preset_name, modules = run["run_id"], run["preset"], run["modules"].split(",")
         print(f"Resuming run {run_id} (preset {preset_name}, modules {','.join(modules)})")
     else:
-        preset_name = "full" if args.full else "pilot"
+        preset_name = args.preset or ("full" if args.full else "local" if args.local else "pilot")
         modules = ["A", "B", "C"] if args.module == "all" else [args.module]
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         run_id = f"{'mock-' if args.mock else ''}{stamp}-{preset_name}-{''.join(modules)}"
@@ -219,7 +240,10 @@ def main(argv: list[str] | None = None) -> int:
                 storage.add_trial(f"{run_id}-{module}-{idx:03d}", run_id, module, idx, spec, seed)
         print(f"Created run {run_id}: " + ", ".join(f"{m}={len(storage.trials(run_id, m))} trials" for m in modules))
     preset = get_preset(cfg, preset_name)
-    client = LLMClient(cfg, usage=storage, mock=args.mock)
+    client = LLMClient(cfg, usage=storage, mock=args.mock, mock_delay=args.mock_delay)
+    if args.live:
+        from live_monitor import start_in_background
+        start_in_background(storage.db_path, open_browser=True)
     runner = Runner(cfg, preset, storage, client, run_id, args.mock)
     code = 0
     try:

@@ -93,14 +93,17 @@ class TrialContext:
                             agent=seat.label, role=seat.role, model_id=seat.model_id, temperature=temperature,
                             seed=seed, prompt_hash=text_hash(json.dumps(msgs, ensure_ascii=False)),
                             messages_json=json.dumps(msgs, ensure_ascii=False), mock=int(self.mock))
+                self.storage.set_live(self.run_id, self.trial_id, step_key, seat.label, seat.role, seat.model_id)
                 try:
                     res = self.client.chat(seat.model_id, msgs, temperature=temperature, seed=seed,
                                            max_tokens=max_tokens, meta=m)
                 except ProviderBlocked as e:
+                    self.storage.set_live(self.run_id, None, None, None, None, None)
                     self.storage.record_call(**base, provider=self.client.model(seat.model_id)["provider"],
                                              error_type="blocked", error=str(e)[:500])
                     return self._finish(step_key, seat, "blocked", None, attempt + 1, str(e)[:300])
                 self.calls_made += 1
+                self.storage.set_live(self.run_id, None, None, None, None, None)
                 text, think = split_think(res.text)
                 reasoning = res.reasoning or think
                 self.storage.record_call(**base, provider=res.provider, model_name=res.model_name,

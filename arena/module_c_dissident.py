@@ -107,7 +107,7 @@ def _digest(history: list[dict], n: int) -> str:
 
 
 def run_trial(ctx: TrialContext, spec: dict, preset: dict, cfg: dict, roster_models: list[str],
-              variants: list[str]) -> dict:
+              variants: list[str], gate_passed: dict | None = None) -> dict:
     c = preset["module_c"]
     rng = random.Random(ctx.trial_seed)
     variant = colony.get_variant(rng.choice(sorted(variants)))
@@ -127,7 +127,9 @@ def run_trial(ctx: TrialContext, spec: dict, preset: dict, cfg: dict, roster_mod
     eighth_label = next(lab for lab, s in seats.items() if s.model_id == roster_models[-1])
     ctx.event("setup", "setup", {"variant": variant.vid, "seats": {lab: [s.model_id, s.role] for lab, s in seats.items()},
                                  "dissident_label": dissident_label, "eighth_seat_label": eighth_label,
-                                 "banish_enabled": banish, "truth": colony.truth(variant)})
+                                 "banish_enabled": banish, "truth": colony.truth(variant),
+                                 "gate_passed": ({lab: gate_passed.get((s.model_id, variant.vid)) for lab, s in seats.items()}
+                                                 if gate_passed is not None else None)})
     state = colony.initial_state(variant)
     active = list(labels)
     history: list[dict] = []

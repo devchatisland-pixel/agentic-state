@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS events(
 CREATE TABLE IF NOT EXISTS usage(
   day TEXT, provider TEXT, model_id TEXT, requests INTEGER, tokens INTEGER,
   PRIMARY KEY(day, provider, model_id));
+CREATE TABLE IF NOT EXISTS live(
+  id INTEGER PRIMARY KEY CHECK (id = 1), run_id TEXT, trial_id TEXT, step_key TEXT, agent TEXT, role TEXT,
+  model_id TEXT, started_at TEXT);
 CREATE INDEX IF NOT EXISTS idx_turns_run ON turns(run_id);
 CREATE INDEX IF NOT EXISTS idx_events_run ON events(run_id);
 """
@@ -176,6 +179,12 @@ class Storage:
         if module:
             return self._all("SELECT * FROM turns WHERE run_id=? AND module=? ORDER BY trial_id, step_key", (run_id, module))
         return self._all("SELECT * FROM turns WHERE run_id=? ORDER BY trial_id, step_key", (run_id,))
+
+    # ------------------------------------------------------------ live marker (for the live monitor)
+    def set_live(self, run_id: str | None, trial_id: str | None, step_key: str | None, agent: str | None,
+                 role: str | None, model_id: str | None) -> None:
+        self._exec("INSERT OR REPLACE INTO live VALUES(1,?,?,?,?,?,?,?)",
+                   (run_id, trial_id, step_key, agent, role, model_id, now_iso() if step_key else None))
 
     # ------------------------------------------------------------ usage (daily request budget)
     def add_usage(self, provider: str, model_id: str, tokens: int) -> None:

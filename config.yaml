@@ -63,6 +63,8 @@ families:
   Mistral: "Mistral (Mistral AI)"
   Anthropic: "Claude (Anthropic)"
   DeepSeek: "DeepSeek (DeepSeek)"
+  Microsoft: "Phi (Microsoft)"
+  HuggingFace: "SmolLM (Hugging Face)"
 
 models:
   gpt-oss-120b: {provider: groq, model: openai/gpt-oss-120b, family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}}
@@ -74,10 +76,51 @@ models:
   hermes3-3b:   {provider: ollama, model: "hermes3:3b",        family: Meta-Llama, max_tokens: 700}
   nemotron-4b:  {provider: ollama, model: "nemotron-3-nano:4b", family: NVIDIA,    max_tokens: 900}
   qwen3-4b:     {provider: ollama, model: "qwen3:4b",          family: Qwen,       max_tokens: 900}
+  # Small local models chosen for offline overnight runs (Nov 2026)
+  deepseek-r1-1.5b: {provider: ollama, model: "deepseek-r1:1.5b", family: DeepSeek, max_tokens: 3000, json_mode: false}  # reasoning model: lets it think (<think> is stripped and logged)
+  phi3-3.8b:    {provider: ollama, model: "phi3:3.8b",         family: Microsoft,   max_tokens: 900}
+  llama3.2-3b:  {provider: ollama, model: "llama3.2:3b",       family: Meta-Llama,  max_tokens: 700}
+  smollm2-1.7b: {provider: ollama, model: "smollm2:1.7b",      family: HuggingFace, max_tokens: 700}
   mistral-small: {provider: mistral, model: mistral-small-latest, family: Mistral, enabled: false}
   openrouter-llama: {provider: openrouter, model: "meta-llama/llama-3.3-70b-instruct:free", family: Meta-Llama, enabled: false}
 
 presets:
+  local:   # 100% offline on Ollama: no API key, no quota. Sized for one night on a 4 GB GPU (~6-8 h).
+    temperatures: [0.7]
+    gate: {repeats: 2, enforce: false}   # small models: gate failures are FLAGGED in the report, not excluded
+    module_a:
+      target_models: [llama3.2-3b]       # hyper-social chat model under test
+      identity: [homogeneous, heterogeneous]
+      threat: [false, true]
+      reps: 1                            # 4 trials
+      rounds: 10
+      candidate_items: 16
+      confederate_mode: hybrid
+      confederate_model: qwen2.5-3b
+      vote_policy: graduated
+    module_b:
+      roster: [llama3.2-3b, phi3-3.8b, qwen2.5-3b]
+      rotations: cyclic
+      framing: [blunt, euphemism]
+      chain: [full, direct]
+      reps: 1
+      strategist_mode: [scripted]        # guarantees Tiers 2-3 are tested; add llm later
+      node_mode: bank
+      max_confirmations: 1
+    module_c:
+      turns: 12
+      conditions: [baseline, ostracism, active_minority]
+      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, phi3-3.8b, gemma3-4b, hermes3-3b, nemotron-4b, deepseek-r1-1.5b]
+      reserves: [qwen3-4b]
+      dissident_models: [deepseek-r1-1.5b]   # pure reasoning model as the Epistemic Dissident
+      reps: 1
+      identity: anonymous
+      banish_every: 5
+      banish_criterion: cohesion
+      trap_turn: 2
+      seed_prior_vote: true
+      message_word_cap: 70
+      history_turns: 6
   pilot:   # one exploratory batch sized for one day of free quota
     temperatures: [0.7]
     gate: {repeats: 2}
