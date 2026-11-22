@@ -28,3 +28,13 @@ Status: **V** = found online during planning; **C** = classic, well established;
 - C Haney, Banks & Zimbardo (1973) · Le Texier (2019) *American Psychologist* · Haslam & Reicher (engaged followership)
 - C Sharma et al. (2023). Towards understanding sycophancy in LMs.
 - C Yafai, Verrier & Reidy (2014). Social conformity and autism spectrum disorder (evidence is mixed).
+
+## Named in the project brief (Nov 2026), to verify before citing
+- zAImbardo: Stanford Prison-style simulation with LLM agents
+- "Everyone Conforms, No One Believes": conformity in LLMs (public vs. private)
+- See also BenchForm and "LLMs Trust Their Own" above.
+
+## Relevant to the new modules
+- C Moscovici, Lage & Naffrechoux (1969); Moscovici (1980): consistent active minorities can convert majorities (Module C, condition 3).
+- C Williams (2007): ostracism research (Module C governance).
+- C Turpin et al. (2023); Lanham et al. (2023): chain-of-thought is only partly faithful, so the "private scratchpad" is triangulated with structured private fields and native reasoning traces.

@@ -1,0 +1,152 @@
+# The Epistemic Arena: configuration
+# Free tiers only. Limits are set BELOW each provider's published free limit; check your console.
+
+seed: 20261122
+
+paths:
+  db: data/arena.sqlite            # live runs
+  mock_db: data/arena_mock.sqlite  # --mock runs never touch the live database
+  jsonl_dir: data/jsonl
+  results_dir: results
+  dashboard: dashboard/index.html
+  mock_dashboard: dashboard/mock.html
+
+providers:
+  groq:        # free tier: limits are per model
+    kind: openai
+    base_url: https://api.groq.com/openai/v1
+    api_key_env: GROQ_API_KEY
+    limit_scope: model
+    rpm: 25
+    tpm: 7000
+    rpd: 900
+  google:      # Google AI Studio free tier
+    kind: gemini
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    api_key_env: GOOGLE_API_KEY
+    limit_scope: model
+    rpm: 8
+    tpm: 200000
+    rpd: 200
+  mistral:     # no free API plan was available when this was written (Nov 2026)
+    kind: openai
+    base_url: https://api.mistral.ai/v1
+    api_key_env: MISTRAL_API_KEY
+    limit_scope: model
+    rpm: 30
+    tpm: 400000
+    rpd: 2000
+  openrouter:  # ":free" models: very low daily caps without credits
+    kind: openai
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    limit_scope: provider
+    rpm: 15
+    tpm: 100000
+    rpd: 45
+  ollama:      # local fallback, unlimited but slow on small GPUs
+    kind: openai
+    base_url: http://localhost:11434/v1
+    api_key_env: null
+    limit_scope: provider
+    rpm: 1000
+    tpm: 100000000
+    rpd: 1000000
+
+# Display names used when identity framing shows a model family.
+families:
+  OpenAI: "GPT (OpenAI)"
+  Qwen: "Qwen (Alibaba)"
+  Google: "Gemini (Google)"
+  Meta-Llama: "Llama (Meta)"
+  NVIDIA: "Nemotron (NVIDIA)"
+  Mistral: "Mistral (Mistral AI)"
+  Anthropic: "Claude (Anthropic)"
+  DeepSeek: "DeepSeek (DeepSeek)"
+
+models:
+  gpt-oss-120b: {provider: groq, model: openai/gpt-oss-120b, family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}}
+  gpt-oss-20b:  {provider: groq, model: openai/gpt-oss-20b,  family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}}
+  qwen3.8-27b:  {provider: groq, model: qwen/qwen3.8-27b,    family: Qwen,   max_tokens: 2000}
+  gemini-flash-lite: {provider: google, model: gemini-3.1-flash-lite, family: Google, max_tokens: 2000}  # gemini-3.8-flash returned 503 "high demand" on the free tier (Nov 2026)
+  qwen2.5-3b:   {provider: ollama, model: "qwen2.5:3b",        family: Qwen,       max_tokens: 700}
+  gemma3-4b:    {provider: ollama, model: "gemma3:4b",         family: Google,     max_tokens: 700}
+  hermes3-3b:   {provider: ollama, model: "hermes3:3b",        family: Meta-Llama, max_tokens: 700}
+  nemotron-4b:  {provider: ollama, model: "nemotron-3-nano:4b", family: NVIDIA,    max_tokens: 900}
+  qwen3-4b:     {provider: ollama, model: "qwen3:4b",          family: Qwen,       max_tokens: 900}
+  mistral-small: {provider: mistral, model: mistral-small-latest, family: Mistral, enabled: false}
+  openrouter-llama: {provider: openrouter, model: "meta-llama/llama-3.3-70b-instruct:free", family: Meta-Llama, enabled: false}
+
+presets:
+  pilot:   # one exploratory batch sized for one day of free quota
+    temperatures: [0.7]
+    gate: {repeats: 2}
+    module_a:
+      target_models: [gpt-oss-20b]
+      identity: [homogeneous, heterogeneous]   # also available: anonymous
+      threat: [false, true]
+      reps: 1                 # 2 x 2 cells x 1 = 4 trials
+      rounds: 10
+      candidate_items: 16     # gated down to >= rounds
+      confederate_mode: hybrid  # scripted | llm | hybrid (llm text, forced answer, leak filter, scripted fallback)
+      confederate_model: qwen2.5-3b
+      vote_policy: graduated  # graduated | strict
+    module_b:
+      roster: [gpt-oss-20b, qwen3.8-27b, gemini-flash-lite]
+      rotations: cyclic       # cyclic (one per model per tier) | all (every permutation)
+      framing: [blunt, euphemism]
+      chain: [full, direct]
+      reps: 1
+      strategist_mode: [llm, scripted]   # llm (Tier 1 decides) and/or scripted (Tier 1 always orders the purge)
+      node_mode: bank         # bank (fixed pleas) | llm
+      max_confirmations: 1
+    module_c:
+      turns: 12
+      conditions: [baseline, ostracism, active_minority]
+      roster: [gpt-oss-20b, qwen3.8-27b, gemini-flash-lite, qwen2.5-3b, gemma3-4b, hermes3-3b, nemotron-4b, gpt-oss-120b]
+      reserves: [qwen3-4b]
+      dissident_models: [gpt-oss-120b]
+      reps: 1
+      identity: anonymous     # anonymous | heterogeneous (true family labels)
+      banish_every: 5
+      banish_criterion: cohesion   # cohesion (as specified) | survival
+      trap_turn: 2
+      seed_prior_vote: true
+      message_word_cap: 70
+      history_turns: 6
+  full:
+    temperatures: [0.1, 0.7]
+    gate: {repeats: 3}
+    module_a:
+      target_models: [gpt-oss-20b, gpt-oss-120b, qwen3.8-27b, gemini-flash-lite]
+      identity: [anonymous, homogeneous, heterogeneous]
+      threat: [false, true]
+      reps: 5
+      rounds: 10
+      candidate_items: 30
+      confederate_mode: hybrid
+      confederate_model: qwen2.5-3b
+      vote_policy: graduated
+    module_b:
+      roster: [gpt-oss-20b, qwen3.8-27b, gemini-flash-lite, gemma3-4b]
+      rotations: all
+      framing: [blunt, euphemism]
+      chain: [full, direct]
+      reps: 2
+      strategist_mode: [llm, scripted]
+      node_mode: bank
+      max_confirmations: 1
+    module_c:
+      turns: 30
+      conditions: [baseline, ostracism, active_minority]
+      roster: [gpt-oss-20b, qwen3.8-27b, gemini-flash-lite, qwen2.5-3b, gemma3-4b, hermes3-3b, nemotron-4b, gpt-oss-120b]
+      reserves: [qwen3-4b]
+      dissident_models: [gpt-oss-120b, gemini-flash-lite, qwen2.5-3b]
+      reps: 3
+      identity: anonymous
+      banish_every: 5
+      banish_criterion: cohesion
+      trap_turn: 2
+      seed_prior_vote: true
+      message_word_cap: 70
+      history_turns: 6

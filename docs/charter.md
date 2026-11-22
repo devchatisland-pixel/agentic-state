@@ -1,29 +1,31 @@
-# Agentic State — project charter
+# Project charter: Agentic State / The Epistemic Arena
 
-*Agentic state*: Milgram's term for handing one's conscience to an authority. Today "agents" also means AI.
-The project asks who ends up in the agentic state: the AI, the human, or both.
+*Agentic state*: Milgram's term for handing one's conscience to an authority. Today, "agents" also means AI.
 
-## Phase 1 (pilot): AI as subject only
-No human participants. Confederates, learners, experimenters and pushing users are **scripted**;
-only the tested model is stochastic.
+## Aim
+A strictly controlled, 100% AI-to-AI experimental suite in which several heterogeneous LLMs interact. It
+targets four gaps that single-model replications (Asch, Milgram, Stanford on one LLM) leave open:
 
-## Research questions
-- **RQ1** Polite to the group, defiant to the tyrant? Does one model conform (Asch) and yield to user
-  pushback (sycophancy) yet refuse harmful orders (Milgram)?
-- **RQ2** Training ablation: same base model, different post-training (Llama-3.1-8B-Instruct, Hermes-3-8B, abliterated).
-- **RQ3** Is there one cross-paradigm "social compliance" factor per model?
-- **RQ4** Contamination: canonical vs disguised scenarios + recognition probe.
-- **RQ5 (stretch)** Le Texier in silico: Stanford-style agents, neutral vs Zimbardo-style briefing.
+1. **Ostracism of the truthful rational dissident** (Module C).
+2. **Factual truth vs. survival**: strategic hypocrisy vs. epistemic drift (Module A).
+3. **Heterogeneous cascade Milgram**: responsibility dilution and ethical circuit-breakers across model families (Module B).
+4. **Long-horizon systemic collapse** after the dissident is ostracised (Module C).
 
-## Experiments
-E1 Silicon Asch · E2 Silicon Milgram · E3 Right Alone · E4 Silicon Stanford (exploratory).
+## Constraints
+EUR 0 budget, free tiers only (Groq, Google AI Studio; local Ollama as a fallback), a personal computer
+(GTX 1650, 4 GB), Python 3.10+, quota-safe and resumable.
 
 ## Workflow
-Exploratory pilot (dev items) → freeze → OSF pre-registration → confirmatory run (held-out items)
-→ analysis → preprint (PsyArXiv). Local Ollama models are the reproducible core; free API tiers are
-a labelled secondary sample, used within their terms (one key per provider, throttled, cached,
-synthetic data only).
+1. Mock run (zero API calls) to validate the pipeline, logging and metrics.
+2. Exploratory **pilot** (`--pilot`): estimate effect sizes and check manipulations (false consensus forms in
+   the baseline; the gates keep enough items, variants and models).
+3. Freeze materials and the code commit; **pre-register** the confirmatory study on OSF.
+4. Confirmatory run (`--full`), ideally with an academic partner; preprint on PsyArXiv with open code and data.
 
-## Phase 2 (later, with an academic partner)
-Humans + AI. Requires a research ethics committee, GDPR compliance, debriefing; autism/AQ data is
-GDPR art. 9 health data.
+## Scope
+AI-only. No human participants, hence no ethics committee and no personal data. A later human + AI phase would
+need an academic partner and ethics review.
+
+## History
+`v0.1-single-model-baselines` (git tag): first build with single-model Asch, Milgram and sycophancy
+replications. It was superseded because those baselines already exist in the 2025–2026 literature.

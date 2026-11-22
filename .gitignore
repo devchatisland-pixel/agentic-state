@@ -9,7 +9,8 @@ __pycache__/
 .venv/
 .pytest_cache/
 
-# Large / regenerable outputs
+# Run data (regenerable, can be large)
+data/
+results/mock-*/
 logs/
-.inspect_cache/
-analysis/figures/*.png
+dashboard/mock.html
