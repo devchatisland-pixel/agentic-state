@@ -10,6 +10,7 @@ Examples
 from __future__ import annotations
 
 import argparse
+import os
 import datetime as dt
 import json
 import sys
@@ -243,7 +244,7 @@ def main(argv: list[str] | None = None) -> int:
     client = LLMClient(cfg, usage=storage, mock=args.mock, mock_delay=args.mock_delay)
     if args.live:
         from live_monitor import start_in_background
-        start_in_background(storage.db_path, open_browser=True)
+        start_in_background(storage.db_path, open_browser=not os.environ.get("ARENA_NO_BROWSER"))
     runner = Runner(cfg, preset, storage, client, run_id, args.mock)
     code = 0
     try:
@@ -273,6 +274,14 @@ def main(argv: list[str] | None = None) -> int:
     usage = storage.usage_today()
     if usage and not args.mock:
         print("Free-tier usage today: " + ", ".join(f"{u['model_id']}={u['requests']}" for u in usage))
+    if args.live:  # keep the live page up after the run so results can be read in the morning
+        import time
+        print("\nRun finished. The live monitor stays open at http://localhost:8765 . Press Ctrl+C to quit.")
+        try:
+            while True:
+                time.sleep(3600)
+        except KeyboardInterrupt:
+            pass
     return code
 
 

@@ -116,7 +116,7 @@ tables and per round/seat, and the report and dashboard show a warning banner. U
 python live_monitor.py          # then open http://localhost:8765   (add --mock for mock runs)
 ```
 
-Or add `--live` to any `run_experiment.py` command. The page refreshes every 2 s and shows:
+Or add `--live` to any `run_experiment.py` command. The page stays open after the run finishes (Ctrl+C to quit). It refreshes every 2 s and shows:
 - **who is thinking right now**: agent, role, model, seconds elapsed;
 - progress per module and the trial in progress, with the colony gauges (C), the current round and the Target's
   answer vs. its private belief (A), or the chain outcome (B);
