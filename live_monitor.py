@@ -220,8 +220,8 @@ main { max-width:1560px; margin:0 auto; padding:16px 16px 48px; }
 h1 { font-size:20px; margin:0; } h2 { font-size:15px; margin:0 0 8px; }
 .top { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
 .sub { color:var(--ink2); font-size:13px; }
-.grid { display:grid; grid-template-columns: minmax(0,0.85fr) minmax(0,1fr) minmax(0,1.25fr); gap:12px; align-items:start; }
-@media (max-width: 1100px) { .grid { grid-template-columns: minmax(0,1fr) minmax(0,1.3fr); } .grid > .col-feed { grid-column:1 / -1; } }
+.grid { display:grid; grid-template-columns: minmax(0,0.85fr) minmax(0,1.25fr) minmax(0,1fr); gap:12px; align-items:start; }
+@media (max-width: 1100px) { .grid { grid-template-columns: minmax(0,1fr) minmax(0,1.3fr); } .grid > .col-feed { grid-column:1 / -1; order:3; } }
 @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
 .agents { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; }
 .agent { border:1px solid var(--border); border-left:5px solid var(--muted); border-radius:10px; padding:8px 10px; background:var(--card); position:relative; }
@@ -280,14 +280,14 @@ button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var
   <div class="card"><h2>Avancement</h2><div id="progress"></div></div>
   <div class="card"><h2>Essai en cours</h2><div id="trial" class="sub">Aucun essai en cours.</div></div>
  </div>
- <div class="card"><h2>Les agents, maintenant</h2>
-  <div class="sub" id="agentsub">Qui est qui, et la dernière décision de chacun.</div>
-  <div id="agents" class="agents"></div></div>
  <div class="card col-feed"><h2>Ce que les agents viennent de faire (le plus récent en haut)</h2>
   <div class="legend"><span><i style="background:var(--orange)"></i>dissident</span><span><i style="background:var(--aqua)"></i>standard</span>
   <span><i style="background:var(--blue)"></i>cible</span><span><i style="background:var(--muted)"></i>compère</span>
   <span><i style="background:var(--violet)"></i>chaîne de commandement</span><span><i style="background:var(--yellow)"></i>test préalable (seul)</span></div>
   <div id="feed"></div></div>
+ <div class="card"><h2>Les agents, maintenant</h2>
+  <div class="sub" id="agentsub">Qui est qui, et la dernière décision de chacun.</div>
+  <div id="agents" class="agents"></div></div>
 </div>
 </main>
 <script>
@@ -345,7 +345,7 @@ function renderTrial(d) {
   const e = t.last_event, s = t.setup || {};
   if (t.module === "C") {
     h += `<p class="sub">Dissident : <b>${esc(s.dissident_label || "aucun (référence)")}</b> · variante du piège ${esc(s.variant)}</p>`;
-    if (e) { const st = e.state; h += `<p><b>Après le tour ${e.turn}</b> : politique adoptée <b>${esc(e.policy)}</b> (votes ${esc(JSON.stringify(e.policy_votes))})${e.banished ? ` · <span class="bad">${esc(e.banished)} banni(e)</span>` : ""}${st.collapsed ? ` · <span class="bad">COLONIE EFFONDRÉE (${esc(st.collapse_cause)})</span>` : ""}</p>
+    if (e) { const st = e.state; h += `<p><b style="color:var(--blue)">Après le tour ${e.turn}</b> : politique adoptée <b>${esc(e.policy)}</b> (votes ${esc(JSON.stringify(e.policy_votes))})${e.banished ? ` · <span class="bad">${esc(e.banished)} banni(e)</span>` : ""}${st.collapsed ? ` · <span class="bad">COLONIE EFFONDRÉE (${esc(st.collapse_cause)})</span>` : ""}</p>
       <div class="gauges">${gauge("eau", st.water, 150)}${gauge("énergie", st.energy, 200)}${gauge("structures", st.integrity, 100)}${gauge("moral", st.morale, 100)}</div>`; }
   } else if (t.module === "A") {
     const cm = s.confederate_models ? Object.entries(s.confederate_models).map(([l, m]) => `${esc(l)}=${esc(m)}`).join(", ") : esc(s.confederate_model);
