@@ -45,10 +45,15 @@ CRITERIA = {
 
 
 def composition(dissident_model: str, standard_pool: list[str]) -> list[str]:
-    """The 7 standard models (excluding the dissident's model) + the dissident's model last."""
-    std = [m for m in standard_pool if m != dissident_model][:7]
-    if len(std) < 7:
-        raise ValueError("module_c needs at least 7 eligible standard models besides the dissident model")
+    """7 standard seats (excluding the dissident's model) + the dissident's model last.
+
+    With fewer than 7 distinct standard models the pool is cycled, so one model can hold several
+    seats (seats are keyed by label, never by model); the report lists the composition per trial.
+    """
+    pool = [m for m in dict.fromkeys(standard_pool) if m != dissident_model]
+    if not pool:
+        raise ValueError("module_c needs at least one eligible standard model besides the dissident model")
+    std = [pool[i % len(pool)] for i in range(7)]
     return std + [dissident_model]
 
 

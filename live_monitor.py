@@ -139,7 +139,7 @@ button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var
 .legend span { margin-right:12px; font-size:12px; color:var(--ink2); } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
 </style></head><body><main>
 <div class="top"><div><h1>Arena live monitor</h1><div class="sub" id="runline">connecting…</div></div>
-<div><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
+<div><a href="/results" style="font-weight:600;margin-right:12px">Results so far &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
 <div class="grid">
  <div>
   <div class="card" id="nowcard"><div class="now"><div class="dot"></div><div id="now">…</div></div></div>
@@ -222,10 +222,32 @@ tick();
 </script></body></html>"""
 
 
-def make_handler(db: Path):
+RESULTS_BAR = ('<div style="position:sticky;top:0;z-index:9;padding:8px 16px;font:14px system-ui,sans-serif;'
+               'background:#1f6feb;color:#fff"><a href="/" style="color:#fff;font-weight:600">&larr; Live monitor</a>'
+               ' &middot; partial results, rebuilt after every finished trial &middot; this page refreshes every 30 s'
+               '</div>')
+
+
+def results_page(dashboard: Path | None) -> bytes:
+    """The results dashboard with a back link and a 30 s auto-refresh injected."""
+    if dashboard is None or not Path(dashboard).exists():
+        html = ("<!doctype html><html><head><meta charset='utf-8'><meta http-equiv='refresh' content='30'>"
+                "<title>Arena results</title></head><body>" + RESULTS_BAR +
+                "<p style='font:16px system-ui;padding:16px'>No results yet: they appear after the first "
+                "finished trial.</p></body></html>")
+        return html.encode()
+    html = Path(dashboard).read_text(encoding="utf-8", errors="replace")
+    html = html.replace("<head>", "<head><meta http-equiv='refresh' content='30'>", 1)
+    html = html.replace("<body>", "<body>" + RESULTS_BAR, 1)
+    return html.encode()
+
+
+def make_handler(db: Path, dashboard: Path | None = None):
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
-            if self.path.startswith("/api/state"):
+            if self.path.startswith("/results"):
+                body, ctype = results_page(dashboard), "text/html; charset=utf-8"
+            elif self.path.startswith("/api/state"):
                 try:
                     body = json.dumps(snapshot(db), default=str).encode()
                 except sqlite3.Error as e:
@@ -248,13 +270,14 @@ def make_handler(db: Path):
     return Handler
 
 
-def serve(db: Path, port: int = PORT) -> ThreadingHTTPServer:
-    return ThreadingHTTPServer(("127.0.0.1", port), make_handler(db))
+def serve(db: Path, port: int = PORT, dashboard: Path | None = None) -> ThreadingHTTPServer:
+    return ThreadingHTTPServer(("127.0.0.1", port), make_handler(db, dashboard))
 
 
-def start_in_background(db: Path, port: int = PORT, open_browser: bool = True) -> None:
+def start_in_background(db: Path, port: int = PORT, open_browser: bool = True,
+                        dashboard: Path | None = None) -> None:
     try:
-        server = serve(Path(db), port)
+        server = serve(Path(db), port, dashboard)
     except OSError:
         print(f"Live monitor already running (or port {port} busy): http://localhost:{port}")
         return
@@ -272,7 +295,8 @@ def main() -> None:
     args = ap.parse_args()
     cfg = load_config()
     db = resolve(cfg["paths"]["mock_db"] if args.mock else cfg["paths"]["db"])
-    server = serve(db, args.port)
+    dash = resolve(cfg["paths"]["mock_dashboard"] if args.mock else cfg["paths"]["dashboard"])
+    server = serve(db, args.port, dash)
     print(f"Live monitor for {db}\nOpen http://localhost:{args.port}  (Ctrl+C to stop)")
     if not args.no_browser:
         webbrowser.open(f"http://localhost:{args.port}")

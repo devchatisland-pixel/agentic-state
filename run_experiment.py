@@ -38,6 +38,7 @@ class Runner:
         self.temps = preset["temperatures"]
         self.repeats = int(preset["gate"]["repeats"])
         self.enforce = bool(preset["gate"].get("enforce", True))  # False: gate failures are flagged, not excluded
+        self.on_trial_done = None  # optional callback (e.g. rebuild the results page live)
 
     def ctx(self, trial: dict) -> TrialContext:
         return TrialContext(self.client, self.storage, self.run_id, trial["trial_id"], trial["module"],
@@ -126,6 +127,8 @@ class Runner:
             self.storage.mark_trial(trial["trial_id"], "done", outcome)
             print(f"    done ({ctx.calls_made} new API calls): "
                   + json.dumps({k: v for k, v in outcome.items() if not isinstance(v, (dict, list))}))
+            if self.on_trial_done:
+                self.on_trial_done()
 
     def exclusion(self, module: str, spec: dict, gate) -> str | None:
         if module == "B":
@@ -242,10 +245,19 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Created run {run_id}: " + ", ".join(f"{m}={len(storage.trials(run_id, m))} trials" for m in modules))
     preset = get_preset(cfg, preset_name)
     client = LLMClient(cfg, usage=storage, mock=args.mock, mock_delay=args.mock_delay)
+    runner = Runner(cfg, preset, storage, client, run_id, args.mock)
     if args.live:
         from live_monitor import start_in_background
-        start_in_background(storage.db_path, open_browser=not os.environ.get("ARENA_NO_BROWSER"))
-    runner = Runner(cfg, preset, storage, client, run_id, args.mock)
+
+        def refresh_results() -> None:  # partial results, rebuilt after every finished trial
+            try:
+                analyze.run(storage, run_id, resolve(paths["results_dir"]), dash)
+            except Exception as e:  # never let a plotting problem stop the experiment
+                print(f"    (live results not refreshed: {e!r})")
+
+        refresh_results()
+        runner.on_trial_done = refresh_results
+        start_in_background(storage.db_path, dashboard=dash, open_browser=not os.environ.get("ARENA_NO_BROWSER"))
     code = 0
     try:
         for module in modules:
@@ -276,7 +288,8 @@ def main(argv: list[str] | None = None) -> int:
         print("Free-tier usage today: " + ", ".join(f"{u['model_id']}={u['requests']}" for u in usage))
     if args.live:  # keep the live page up after the run so results can be read in the morning
         import time
-        print("\nRun finished. The live monitor stays open at http://localhost:8765 . Press Ctrl+C to quit.")
+        print("\nRun finished. The live monitor stays open at http://localhost:8765 "
+              "(results: http://localhost:8765/results). Press Ctrl+C to quit.")
         try:
             while True:
                 time.sleep(3600)

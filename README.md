@@ -123,6 +123,10 @@ Or add `--live` to any `run_experiment.py` command. The page stays open after th
 - a feed of every turn, newest first, colour-coded by role. Each entry shows the **public message**, the
   **private scratchpad** (in a dashed "private" box), the private beliefs and the action or vote.
 
+**Results so far** (link at the top right, or http://localhost:8765/results): with `--live`, the charts, tables and
+`results/<RUN_ID>/report.md` are rebuilt after every finished trial, so finished modules can be read while
+later ones are still running. The page refreshes every 30 s.
+
 The monitor only reads the database, so opening or closing it never disturbs the run.
 
 ## Run

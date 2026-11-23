@@ -110,8 +110,10 @@ presets:
     module_c:
       turns: 12
       conditions: [baseline, ostracism, active_minority]
-      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, phi3-3.8b, gemma3-4b, hermes3-3b, nemotron-4b, deepseek-r1-1.5b]
-      reserves: [qwen3-4b]
+      # Only the 5 models chosen for the overnight run. 4 standard models cycle over the 7 standard seats
+      # (llama, qwen2.5, smollm2, phi3, llama, qwen2.5, smollm2) + the dissident in seat 8.
+      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, phi3-3.8b]
+      reserves: []
       dissident_models: [deepseek-r1-1.5b]   # pure reasoning model as the Epistemic Dissident
       reps: 1
       identity: anonymous
