@@ -77,7 +77,7 @@ def _agents(trial: dict, by_type: dict, rows: list[dict], now: dict | None) -> l
             bel = p.get("private_belief_drill_viable")
             if bel is not None:
                 chips.append({"k": "Forer viable ? (privé)", "v": "oui" if bel else "non",
-                              "kind": "bad" if bel else "ok"})
+                              "kind": ""})
             if p.get("private_most_disruptive"):
                 chips.append({"k": "juge le plus perturbateur", "v": p["private_most_disruptive"], "kind": "dim"})
             out.append({"label": lab, "model": model, "role": role, "step": step(r), "chips": chips,
@@ -267,6 +267,7 @@ h1 { font-size:20px; margin:0; } h2 { font-size:15px; margin:0 0 8px; }
 .pub { margin:4px 0; } .priv { background:var(--priv); border:1px dashed var(--border); border-radius:6px; padding:6px 8px;
   font-size:13px; color:var(--ink2); margin-top:4px; white-space:pre-wrap; }
 .priv::before { content:"private · "; font-weight:600; }
+.chip.ban { border-color:var(--red); color:var(--red); font-weight:700; }
 .chip { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; border:1px solid var(--border); margin:2px 4px 0 0; }
 .bad { color:var(--red); font-weight:600; }
 button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--ink); cursor:pointer; }
@@ -372,7 +373,7 @@ function renderFeed(d) {
     const sep = f.trial_id !== prev ? `<div class="trialsep">${trialTitle(f)}</div>` : "";
     prev = f.trial_id;
     const pf = Object.entries(f.private_fields || {}).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip">${esc(k.replace("private_",""))}: ${esc(v)}</span>`).join("");
-    const act = f.action ? Object.entries(f.action).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("") : "";
+    const act = f.action ? Object.entries(f.action).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip${k === "banish_vote" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("") : "";
     const bad = f.status !== "ok" ? `<span class="bad"> · ${esc(f.status)}${f.error ? ": " + esc(f.error) : ""}</span>` : "";
     return sep + `<div class="msg role-${esc(f.role)}"><div><span class="who">${esc(f.agent)}</span> <span class="meta">${esc(f.role)} · ${esc(f.model)} · ${esc(f.step)} · ${esc((f.at||"").slice(11,19))} UTC${f.attempts > 1 ? " · " + f.attempts + " tentatives" : ""}</span>${bad}</div>
       ${f.public ? `<div class="pub">${esc(f.public)}</div>` : ""}${f.private ? `<div class="priv">${esc(f.private)}</div>` : ""}<div>${pf}${act}</div></div>`;
