@@ -21,8 +21,10 @@ import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 from arena.config import load_config, resolve
+from live_chat import LIVE_CHAT_PAGE, live_chat_snapshot
 
 PORT = 8765
 
@@ -279,7 +281,7 @@ button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var
 .legend span { margin-right:12px; font-size:12px; color:var(--ink2); } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
 </style></head><body><main>
 <div class="top"><div><h1>Arène : suivi en direct</h1><div class="sub" id="runline">connexion…</div></div>
-<div><a href="/results" style="font-weight:600;margin-right:12px">Résultats pour l'instant &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
+<div><a href="/live-chat" style="font-weight:600;margin-right:12px">Live Chat &rarr;</a><a href="/results" style="font-weight:600;margin-right:12px">Résultats pour l'instant &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
 <div class="grid">
  <div>
   <div class="card" id="nowcard"><div class="now"><div class="dot"></div><div id="now">…</div></div></div>
@@ -423,9 +425,23 @@ def results_page(dashboard: Path | None) -> bytes:
 
 
 def make_handler(db: Path, dashboard: Path | None = None):
+    try:
+        cfg = load_config()
+    except Exception:  # the Live Chat only needs model families; never let it break the monitor
+        cfg = {}
+
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
-            if self.path.startswith("/results"):
+            if self.path.startswith("/api/live-chat"):
+                q = parse_qs(urlparse(self.path).query)
+                try:
+                    body = json.dumps(live_chat_snapshot(db, cfg, (q.get("trial_id") or [None])[0]), default=str).encode()
+                except sqlite3.Error as e:
+                    body = json.dumps({"error": f"database busy or unreadable: {e}"}).encode()
+                ctype = "application/json"
+            elif self.path.split("?")[0] in ("/live-chat", "/live-chat/"):
+                body, ctype = LIVE_CHAT_PAGE.encode(), "text/html; charset=utf-8"
+            elif self.path.startswith("/results"):
                 body, ctype = results_page(dashboard), "text/html; charset=utf-8"
             elif self.path.startswith("/api/state"):
                 try:

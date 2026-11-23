@@ -334,6 +334,8 @@ terminée (Ctrl+C pour quitter). Elle est en français, se met à jour toutes le
 - **à droite** : le fil de tous les tours, du plus récent au plus ancien, avec une couleur par rôle. Chaque entrée montre
   le **message public**, le **bloc-notes privé** (dans un cadre en pointillés), les croyances privées et l'action.
 
+**Live Chat** (http://localhost:8765/live-chat) : une vue « plateau de jeu » de l'essai choisi. Les modèles sont assis autour de la table (module C), face à la question (module A) ou en chaîne (module B), avec leur message public en bulle bleue et leur pensée privée en bulle pointillée. Le curseur de tours permet de revoir un tour passé ; « Direct » suit l'action en cours. Page en lecture seule : elle ne lance ni n'arrête aucune expérience.
+
 **Résultats en cours** (lien en haut à droite, ou http://localhost:8765/results) : avec `--live`, les graphiques, les
 tableaux et `results/<RUN_ID>/report.md` sont recalculés après chaque essai terminé. On peut donc lire les modules
 finis pendant que les suivants tournent encore. Cette page se met à jour toutes les 30 s.

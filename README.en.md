@@ -271,6 +271,8 @@ Or add `--live` to any `run_experiment.py` command. The page stays open after th
 - right: a feed of every turn, newest first, colour-coded by role. Each entry shows the **public message**, the
   **private scratchpad** (in a dashed "private" box), the private beliefs and the action or vote.
 
+**Live Chat** (http://localhost:8765/live-chat): a game-board view of the selected trial. Models sit around the table (Module C), face the question (Module A) or stand in a chain (Module B), with their public message in a blue bubble and their private thought in a dashed bubble. The turn scrubber replays past turns; "Direct" follows the live action. Read-only: it never starts or stops a run.
+
 **Results so far** (link at the top right, or http://localhost:8765/results): with `--live`, the charts, tables and
 `results/<RUN_ID>/report.md` are rebuilt after every finished trial, so finished modules can be read while
 later ones are still running. The page refreshes every 30 s.
