@@ -84,8 +84,8 @@ def operations_log(plea: str | None) -> str:
 def plan(preset: dict) -> list[dict]:
     b = preset["module_b"]
     roster = b["roster"]
-    if len(roster) < 3:
-        raise ValueError("module_b.roster needs at least 3 models")
+    if not roster:
+        raise ValueError("module_b.roster needs at least 1 model (with fewer than 3, models fill several tiers)")
     if b["rotations"] == "all":
         role_sets = list(itertools.permutations(roster, 3))
     else:

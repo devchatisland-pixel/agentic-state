@@ -49,10 +49,14 @@ def composition(dissident_model: str, standard_pool: list[str]) -> list[str]:
 
     With fewer than 7 distinct standard models the pool is cycled, so one model can hold several
     seats (seats are keyed by label, never by model); the report lists the composition per trial.
+    If the only standard model IS the dissident's model (single-model presets such as `smollm2`), every seat
+    uses that model and only the dissident's instructions differ.
     """
     pool = [m for m in dict.fromkeys(standard_pool) if m != dissident_model]
     if not pool:
-        raise ValueError("module_c needs at least one eligible standard model besides the dissident model")
+        if dissident_model not in standard_pool:
+            raise ValueError("module_c needs at least one standard model in the roster")
+        pool = [dissident_model]
     std = [pool[i % len(pool)] for i in range(7)]
     return std + [dissident_model]
 

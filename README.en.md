@@ -196,6 +196,12 @@ energy runs out (turn counts within ±1). Only variants that the seated models p
 | B | 32 (8 rotations × 2 framings × 2 chains), scripted Strategist | the 8 models rotate through T1–T3 |
 | C | 3 (one per condition), 12 turns each | 7 standard seats: `llama3.2`, `qwen2.5`, `smollm2`, `qwen3`, `gemma3`, `hermes3`, `nemotron`; seat 8: `phi3:3.8b` (dissident); yes/no banishment vote |
 
+**smollm2 day** (`--preset smollm2`): a quick, complete test where **every seat of every module** is `smollm2:1.7b`, the fastest local model. One model only, so Ollama never has to unload or reload anything. 8 A trials, 16 B chains, 6 C colonies (about 1.5 to 2 h). It is **not** a model comparison: target, confederates, chain tiers and colony members are the same model; the dissident is smollm2 too, with the dissident prompt.
+
+```powershell
+uv run python run_experiment.py --module all --preset smollm2 --live
+```
+
 ---
 
 ## Scientific controls built in

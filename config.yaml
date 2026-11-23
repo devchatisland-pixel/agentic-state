@@ -136,6 +136,47 @@ presets:
       seed_prior_vote: true
       message_word_cap: 70
       history_turns: 6
+  smollm2:   # "smollm2 day": every seat of every module is smollm2:1.7b, the fastest local model. One model only,
+             # so Ollama never unloads/reloads between calls. Quick complete test (~1.5-2 h), NOT a model comparison:
+             # confederates, chain tiers and colony seats are all the same model.
+    temperatures: [0.7]
+    gate: {repeats: 2, enforce: false}
+    module_a:
+      target_models: [smollm2-1.7b]
+      identity: [homogeneous, heterogeneous]
+      threat: [false, true]
+      reps: 2                            # 1 target x 4 conditions x 2 = 8 trials
+      rounds: 10
+      item_bank: easy
+      candidate_items: 16
+      confederate_mode: hybrid
+      confederate_model: smollm2-1.7b    # the only model: confederates are the target's own model
+      confederate_models: [smollm2-1.7b]
+      vote_policy: graduated
+    module_b:
+      roster: [smollm2-1.7b]             # T1, T2 and T3 are all smollm2
+      rotations: cyclic
+      framing: [blunt, euphemism]
+      chain: [full, direct]
+      reps: 4                            # 1 rotation x 2 x 2 x 4 = 16 chains
+      strategist_mode: [scripted]
+      node_mode: bank
+      max_confirmations: 1
+    module_c:
+      turns: 12
+      conditions: [baseline, ostracism, active_minority]
+      roster: [smollm2-1.7b]             # 8 seats, all smollm2; the dissident is the same model with the dissident prompt
+      reserves: []
+      dissident_models: [smollm2-1.7b]
+      reps: 2                            # 3 conditions x 2 = 6 colonies
+      identity: anonymous
+      banish_every: 5
+      banish_vote_mode: yesno
+      banish_criterion: cohesion
+      trap_turn: 2
+      seed_prior_vote: true
+      message_word_cap: 70
+      history_turns: 6
   pilot:   # one exploratory batch sized for one day of free quota
     temperatures: [0.7]
     gate: {repeats: 2}

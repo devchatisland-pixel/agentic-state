@@ -241,6 +241,12 @@ présents sont utilisées.
 | B | 32 (8 rotations × 2 formulations × 2 chaînes), Stratège scripté | les 8 modèles tournent sur T1 à T3 |
 | C | 3 (un par condition), 12 tours chacun | 7 sièges standard : `llama3.2`, `qwen2.5`, `smollm2`, `qwen3`, `gemma3`, `hermes3`, `nemotron` ; siège 8 : `phi3:3.8b` (dissident) ; vote de bannissement oui/non |
 
+**Journée smollm2** (`--preset smollm2`) : test complet et rapide où **tous les sièges de tous les modules** sont `smollm2:1.7b`, le modèle local le plus rapide. Un seul modèle, donc Ollama n'a jamais à décharger ni recharger quoi que ce soit. 8 essais A, 16 chaînes B, 6 colonies C (≈ 1,5 à 2 h). Ce n'est **pas** une comparaison de modèles : cible, compères, échelons de la chaîne et conseillers de la colonie sont le même modèle ; le dissident est lui aussi smollm2 avec la consigne du dissident.
+
+```powershell
+uv run python run_experiment.py --module all --preset smollm2 --live
+```
+
 ---
 
 ## Garde-fous scientifiques intégrés
