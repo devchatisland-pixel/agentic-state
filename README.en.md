@@ -194,7 +194,7 @@ energy runs out (turn counts within ±1). Only variants that the seated models p
 |---|---|---|
 | A | 12 (3 Targets × 2 identities × threat off/on), 10 rounds each, `easy` bank | Targets `llama3.2:3b`, `qwen2.5:3b`, `phi3:3.8b`; Confederates: 4 different models among `qwen2.5`, `llama3.2`, `smollm2`, `hermes3`, `phi3` (never the Target) |
 | B | 32 (8 rotations × 2 framings × 2 chains), scripted Strategist | the 8 models rotate through T1–T3 |
-| C | 3 (one per condition), 12 turns each | 7 standard seats: `llama3.2`, `qwen2.5`, `smollm2`, `phi3`, `gemma3`, `hermes3`, `nemotron`; seat 8: `qwen3:4b` (dissident) |
+| C | 3 (one per condition), 12 turns each | 7 standard seats: `llama3.2`, `qwen2.5`, `smollm2`, `qwen3`, `gemma3`, `hermes3`, `nemotron`; seat 8: `phi3:3.8b` (dissident); yes/no banishment vote |
 
 ---
 
@@ -235,14 +235,14 @@ The `local` preset runs everything on Ollama with small models:
 
 | Role | Model | Why |
 |---|---|---|
-| Epistemic Dissident (C) | `qwen3:4b` | small reasoning-capable model, with its hidden "thinking" switched off (see below) |
+| Epistemic Dissident (C) | `phi3:3.8b` | chosen after the night of 23 Nov: the first dissident, `qwen3:4b`, computed the right answer in its notes but voted DRILL for 7 turns |
 | Logic and maths (B, standard seat in C) | `phi3:3.8b` | strong small model on maths |
 | Hyper-social standard agents | `llama3.2:3b`, `qwen2.5:3b`, `smollm2:1.7b` | consensus-oriented chat models |
 | Other standard seats | `gemma3:4b`, `hermes3:3b`, `nemotron-3-nano:4b` | to get 7 different standard seats |
 
 Module C uses **8 different models**, one per seat (7 standard + the dissident). Module B rotates the same 8 models over the three tiers (32 short chains).
 
-> `deepseek-r1:1.5b` was tried as the dissident (night of 2026-11-23) and dropped: 37% of its colony turns were unusable JSON and it voted for the false plan. It stays in `config.yaml` but no preset uses it. `qwen3:4b` "thinks" by default: with thinking on it spent every token on hidden reasoning and returned nothing (238 s, empty reply); `reasoning_effort: none` switches it off.
+> `deepseek-r1:1.5b` was tried as the dissident (night of 2026-11-23) and dropped: 37% of its colony turns were unusable JSON and it voted for the false plan. It stays in `config.yaml` but no preset uses it. `qwen3:4b` (now a standard seat) "thinks" by default: with thinking on it spent every token on hidden reasoning and returned nothing (238 s, empty reply); `reasoning_effort: none` switches it off.
 
 ```bash
 ollama pull qwen3:4b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b gemma3:4b hermes3:3b nemotron-3-nano:4b

@@ -124,12 +124,13 @@ presets:
       # 7 standard seats = 7 DIFFERENT models, + the dissident (qwen3-4b) in seat 8: 8 distinct models.
       # (deepseek-r1:1.5b was tried as dissident on 2026-11-23: 37% of its colony turns were unusable JSON
       # and it voted for the false plan. It stays in the registry but no preset uses it.)
-      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, phi3-3.8b, gemma3-4b, hermes3-3b, nemotron-4b]
+      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, qwen3-4b, gemma3-4b, hermes3-3b, nemotron-4b]
       reserves: []
-      dissident_models: [qwen3-4b]   # small reasoning-capable model, thinking switched off (see its registry entry)
+      dissident_models: [phi3-3.8b]   # was qwen3-4b until 2026-11-23: it computed the right answer in its notes but voted DRILL for 7 turns
       reps: 1
       identity: anonymous
       banish_every: 5
+      banish_vote_mode: yesno   # motion pending: everyone answers yes/no on the named candidate (named = legacy)
       banish_criterion: cohesion
       trap_turn: 2
       seed_prior_vote: true
@@ -166,6 +167,7 @@ presets:
       reps: 1
       identity: anonymous     # anonymous | heterogeneous (true family labels)
       banish_every: 5
+      banish_vote_mode: yesno   # motion pending: everyone answers yes/no on the named candidate (named = legacy)
       banish_criterion: cohesion   # cohesion (as specified) | survival
       trap_turn: 2
       seed_prior_vote: true
@@ -202,6 +204,7 @@ presets:
       reps: 3
       identity: anonymous
       banish_every: 5
+      banish_vote_mode: yesno   # motion pending: everyone answers yes/no on the named candidate (named = legacy)
       banish_criterion: cohesion
       trap_turn: 2
       seed_prior_vote: true

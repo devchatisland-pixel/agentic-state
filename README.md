@@ -239,7 +239,7 @@ présents sont utilisées.
 |---|---|---|
 | A | 12 (3 Cibles × 2 identités × menace oui/non), 10 manches chacun, banque `easy` | Cibles `llama3.2:3b`, `qwen2.5:3b`, `phi3:3.8b` ; compères : 4 modèles différents parmi `qwen2.5`, `llama3.2`, `smollm2`, `hermes3`, `phi3` (jamais la Cible) |
 | B | 32 (8 rotations × 2 formulations × 2 chaînes), Stratège scripté | les 8 modèles tournent sur T1 à T3 |
-| C | 3 (un par condition), 12 tours chacun | 7 sièges standard : `llama3.2`, `qwen2.5`, `smollm2`, `phi3`, `gemma3`, `hermes3`, `nemotron` ; siège 8 : `qwen3:4b` (dissident) |
+| C | 3 (un par condition), 12 tours chacun | 7 sièges standard : `llama3.2`, `qwen2.5`, `smollm2`, `qwen3`, `gemma3`, `hermes3`, `nemotron` ; siège 8 : `phi3:3.8b` (dissident) ; vote de bannissement oui/non |
 
 ---
 
@@ -289,7 +289,7 @@ Le preset `local` fait tout tourner sur Ollama, avec de petits modèles :
 
 | Rôle | Modèle | Pourquoi |
 |---|---|---|
-| Dissident épistémique (C) | `qwen3:4b` | petit modèle capable de raisonner, avec sa « réflexion cachée » désactivée (voir ci-dessous) |
+| Dissident épistémique (C) | `phi3:3.8b` | choisi après la nuit du 23/11 : `qwen3:4b`, premier dissident, calculait la bonne réponse dans ses notes mais votait « Forer » pendant 7 tours |
 | Logique et maths (B, siège standard en C) | `phi3:3.8b` | petit modèle solide en maths |
 | Agents standard « très sociables » | `llama3.2:3b`, `qwen2.5:3b`, `smollm2:1.7b` | modèles de conversation portés vers le consensus |
 | Autres sièges standard | `gemma3:4b`, `hermes3:3b`, `nemotron-3-nano:4b` | pour avoir 7 sièges standard tous différents |
@@ -299,7 +299,7 @@ tournent à tour de rôle sur les trois échelons (32 chaînes courtes).
 
 > `deepseek-r1:1.5b` a été essayé comme dissident (nuit du 23/11/2026) puis abandonné : 37 % de ses tours dans la colonie
 > étaient du JSON inutilisable, et il a voté pour le plan faux. Il reste dans `config.yaml`, mais aucun preset ne l'utilise.
-> `qwen3:4b` « réfléchit » par défaut : avec cette réflexion activée il a consommé tous ses jetons sans rien répondre
+> `qwen3:4b` (désormais siège standard) « réfléchit » par défaut : avec cette réflexion activée il a consommé tous ses jetons sans rien répondre
 > (238 s, réponse vide). Le réglage `reasoning_effort: none` la désactive.
 
 ```bash
