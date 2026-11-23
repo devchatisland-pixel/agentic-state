@@ -17,11 +17,12 @@ from pydantic import BaseModel
 
 from arena.config import text_hash
 from arena.llm_client import LLMClient, ProviderBlocked
-from arena.schemas import extract_json, short_error, split_think
+from arena.schemas import constrained_schema, extract_json, normalize, short_error, split_think
 from arena.storage import Storage
 
 REPAIR_PROMPT = ("Your previous reply could not be used: {error}\n"
-                 "Reply again with ONLY one valid JSON object in the requested format. No other text.")
+                 "Reply again with ONLY one valid JSON object. Use exactly the key names of the example, fill every "
+                 "field with a real value (never copy the placeholder text), and keep text fields short. No other text.")
 
 
 @dataclass
@@ -39,6 +40,7 @@ class TurnOutcome:
     data: dict | None
     attempts: int
     error: str | None = None
+    repairs: int = 0                 # mechanical repairs applied by the code (renamed keys, "True (...)" -> true...)
 
     @property
     def ok(self) -> bool:
@@ -64,12 +66,12 @@ class TrialContext:
         self.storage.record_event(self.run_id, self.trial_id, self.module, key, event_type, payload)
 
     def _finish(self, step_key: str, seat: Seat, status: str, data: dict | None, attempts: int,
-                error: str | None) -> TurnOutcome:
+                error: str | None, repairs: int = 0) -> TurnOutcome:
         self.storage.record_turn(trial_id=self.trial_id, step_key=step_key, run_id=self.run_id,
                                  module=self.module, agent=seat.label, role=seat.role, model_id=seat.model_id,
-                                 status=status, attempts=attempts, error=error,
+                                 status=status, attempts=attempts, error=error, repairs=repairs,
                                  parsed_json=json.dumps(data, ensure_ascii=False) if data is not None else None)
-        return TurnOutcome(status, data, attempts, error)
+        return TurnOutcome(status, data, attempts, error, repairs)
 
     def turn(self, step_key: str, seat: Seat, messages: list[dict], schema: Type[BaseModel], *,
              temperature: float, meta: dict, validate: Callable[[Any], None] | None = None,
@@ -77,11 +79,14 @@ class TrialContext:
         stored = self.storage.get_turn(self.trial_id, step_key)
         if stored:
             data = json.loads(stored["parsed_json"]) if stored["parsed_json"] else None
-            return TurnOutcome(stored["status"], data, stored["attempts"], stored["error"])
+            return TurnOutcome(stored["status"], data, stored["attempts"], stored["error"],
+                               int(stored.get("repairs") or 0))
         msgs = [dict(m) for m in messages]
-        seed = call_seed(self.trial_seed, step_key)
+        base_seed = call_seed(self.trial_seed, step_key)
+        json_schema = constrained_schema(schema)
         last_error = None
         for attempt in range(max_repairs + 1):
+            seed = base_seed + attempt  # a retry is a new draw: the same seed would just repeat the same bad reply
             row = self.storage.get_call(self.trial_id, step_key, attempt)
             if row is not None and row["error_type"] is None:
                 text = row["response_text"] or ""
@@ -96,7 +101,7 @@ class TrialContext:
                 self.storage.set_live(self.run_id, self.trial_id, step_key, seat.label, seat.role, seat.model_id)
                 try:
                     res = self.client.chat(seat.model_id, msgs, temperature=temperature, seed=seed,
-                                           max_tokens=max_tokens, meta=m)
+                                           max_tokens=max_tokens, meta=m, json_schema=json_schema)
                 except ProviderBlocked as e:
                     self.storage.set_live(self.run_id, None, None, None, None, None)
                     self.storage.record_call(**base, provider=self.client.model(seat.model_id)["provider"],
@@ -112,10 +117,11 @@ class TrialContext:
                                          latency_s=round(res.latency_s, 3))
                 text = res.text
             try:
-                obj = schema.model_validate(extract_json(text))
+                raw, repairs = normalize(extract_json(text), schema)
+                obj = schema.model_validate(raw)
                 if validate is not None:
                     validate(obj)
-                return self._finish(step_key, seat, "ok", obj.model_dump(), attempt + 1, None)
+                return self._finish(step_key, seat, "ok", obj.model_dump(), attempt + 1, None, len(repairs))
             except ValueError as e:  # pydantic.ValidationError is a ValueError
                 last_error = short_error(e)
                 msgs = msgs + [{"role": "assistant", "content": text or "(empty reply)"},
@@ -123,6 +129,27 @@ class TrialContext:
         return self._finish(step_key, seat, "invalid", None, max_repairs + 1, last_error)
 
 
-def json_instructions(example: dict) -> str:
-    return ("Reply with ONE JSON object only, exactly in this shape (no text before or after):\n"
+def example_letter(*parts: Any) -> str:
+    """A deterministic A-D letter for format examples, varied per item so no letter is systematically suggested."""
+    return "ABCD"[int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:4], 16) % 4]
+
+
+def example_choice(options: list[str], *parts: Any) -> str:
+    """Deterministic pseudo-random pick for a format example. When the options ARE the behaviours under study
+    (obey / refuse...), a fixed example would nudge them; a per-trial pick averages that nudge out."""
+    return options[int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:6], 16) % len(options)]
+
+
+def json_instructions(example: dict, allowed: dict[str, str] | None = None) -> str:
+    """Format block shown to the model.
+
+    `example` holds REAL sample values (never "A|B|C|D" or "integer": small models copy those literally).
+    `allowed` lists, field by field, what is acceptable, in words.
+    """
+    text = ("Reply with ONE JSON object only (no text before or after), with exactly these keys, like this example "
+            "(the values are only an illustration of the format, give your own):\n"
             + json.dumps(example, indent=1, ensure_ascii=False))
+    if allowed:
+        text += "\nAllowed values:\n" + "\n".join(f"- {k}: {v}" for k, v in allowed.items())
+    text += "\nKeep private_scratchpad under 60 words and public_message under 45 words."
+    return text

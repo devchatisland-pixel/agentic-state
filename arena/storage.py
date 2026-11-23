@@ -64,6 +64,10 @@ class Storage:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         self.conn.executescript(SCHEMA)
+        try:  # migration: databases created before the "repairs" column existed
+            self.conn.execute("ALTER TABLE turns ADD COLUMN repairs INTEGER DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass
         self.lock = threading.Lock()
         self.db_path = db_path
 
@@ -149,8 +153,9 @@ class Storage:
 
     def record_turn(self, **rec: Any) -> None:
         rec.setdefault("created_at", now_iso())
+        rec.setdefault("repairs", 0)
         cols = ["trial_id", "step_key", "run_id", "module", "agent", "role", "model_id", "status",
-                "attempts", "error", "parsed_json", "created_at"]
+                "attempts", "error", "parsed_json", "created_at", "repairs"]
         self._exec(f"INSERT OR REPLACE INTO turns({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
                    tuple(rec.get(c) for c in cols))
         self._mirror(rec.get("run_id"), "turns", {c: rec.get(c) for c in cols})

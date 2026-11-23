@@ -134,12 +134,16 @@ class OpenAICompatAdapter:
         self.api_key = api_key
 
     def request(self, model_name: str, messages: list[dict], temperature: float, seed: int | None,
-                max_tokens: int, json_mode: bool, params: dict) -> tuple[str, dict, dict]:
+                max_tokens: int, json_mode: bool, params: dict,
+                json_schema: dict | None = None) -> tuple[str, dict, dict]:
         payload: dict[str, Any] = {"model": model_name, "messages": messages,
                                    "temperature": temperature, "max_tokens": max_tokens}
         if seed is not None:
             payload["seed"] = seed
-        if json_mode:
+        if json_schema is not None:  # grammar-constrained decoding (Ollama): keys, types and enums are enforced
+            payload["response_format"] = {"type": "json_schema",
+                                          "json_schema": {"name": "turn", "strict": True, "schema": json_schema}}
+        elif json_mode:
             payload["response_format"] = {"type": "json_object"}
         payload.update(params or {})
         headers = {"Content-Type": "application/json"}
@@ -169,7 +173,8 @@ class GeminiAdapter:
         self.api_key = api_key
 
     def request(self, model_name: str, messages: list[dict], temperature: float, seed: int | None,
-                max_tokens: int, json_mode: bool, params: dict) -> tuple[str, dict, dict]:
+                max_tokens: int, json_mode: bool, params: dict,
+                json_schema: dict | None = None) -> tuple[str, dict, dict]:
         system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
         contents = [{"role": "model" if m["role"] == "assistant" else "user",
                      "parts": [{"text": m["content"]}]} for m in messages if m["role"] != "system"]
@@ -238,7 +243,8 @@ class LLMClient:
         return self.limiters[key]
 
     def chat(self, model_id: str, messages: list[dict], *, temperature: float, seed: int | None = None,
-             max_tokens: int | None = None, json_mode: bool = True, meta: dict | None = None) -> ChatResult:
+             max_tokens: int | None = None, json_mode: bool = True, meta: dict | None = None,
+             json_schema: dict | None = None) -> ChatResult:
         m = self.model(model_id)
         pname = m["provider"]
         if self.mock:
@@ -263,8 +269,17 @@ class LLMClient:
                 raise QuotaExhausted(f"{pname}/{model_id}: daily budget of {p['rpd']} requests used")
         adapter = (GeminiAdapter if p["kind"] == "gemini" else OpenAICompatAdapter)(p["base_url"], key)
         max_tokens = int(max_tokens or m.get("max_tokens", 900))
+        if m.get("system_suffix"):  # e.g. " /no_think" for Qwen3: appended to the system prompt, never logged as content
+            messages = [dict(x) for x in messages]
+            for x in messages:
+                if x["role"] == "system":
+                    x["content"] = x["content"] + m["system_suffix"]
+                    break
+        use_schema = json_schema if (json_schema is not None and p.get("structured", False)
+                                     and m.get("structured", True)) else None
         url, headers, payload = adapter.request(m["model"], messages, temperature, seed, max_tokens,
-                                                json_mode and m.get("json_mode", True), m.get("params", {}))
+                                                json_mode and m.get("json_mode", True), m.get("params", {}),
+                                                json_schema=use_schema)
         limiter = self._limiter(pname, model_id)
         est = estimate_tokens(messages) + max_tokens // 3
         attempt, max_retries = 0, int(p.get("max_retries", 6))

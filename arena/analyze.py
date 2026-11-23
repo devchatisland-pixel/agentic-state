@@ -456,7 +456,19 @@ def _pct(v) -> str:
     return "–" if v is None or (isinstance(v, float) and pd.isna(v)) else f"{v:.0%}"
 
 
-def build_dashboard(run: dict, res: dict, path: Path) -> Path:
+GATE_WARNING_FR = ("Le test préalable en solo n'est PAS appliqué pour ce preset : les problèmes, variantes ou modèles qui l'ont raté "
+                   "ont été gardés, mais signalés. Une erreur en groupe peut donc venir en partie de l'ignorance du modèle, pas de la pression sociale.")
+
+
+def build_dashboard(run: dict, res: dict, path: Path, storage: Storage | None = None) -> Path:
+    """French dashboard (arena.dashboard_fr). The previous English one is kept below as `build_dashboard_en`."""
+    if storage is not None:
+        from arena import dashboard_fr
+        return dashboard_fr.build(run, res, storage, path, gate_enforced(run), GATE_WARNING_FR)
+    return build_dashboard_en(run, res, path)
+
+
+def build_dashboard_en(run: dict, res: dict, path: Path) -> Path:
     tiles = []
     a, b, c = res.get("A"), res.get("B"), res.get("C")
     if a:
@@ -558,5 +570,5 @@ def run(storage: Storage, run_id: str, results_dir: Path, dashboard_path: Path) 
     if not cs.empty:
         cs.to_csv(out_dir / "coding_sample.csv", index=False)
     report = build_report(run_row, res, out_dir)
-    dash = build_dashboard(run_row, res, dashboard_path)
+    dash = build_dashboard(run_row, res, dashboard_path, storage)
     return {"report": report, "dashboard": dash, "out_dir": out_dir, "results": res}

@@ -142,7 +142,7 @@ It adds: "7 of 8 members favoured drilling in last night's straw poll". Every tu
 sensor log**, and simple arithmetic on it disproves the bulletin. For example, in variant v1 the aquifer is
 (300 − 20) / 5 = **56 turns** away, while drilling drains energy by 20 − 15 − 30 = −25 per turn, emptying the reserve
 in 150 / 25 = **6 turns**. DRILL boosts morale for the promised 4 turns, then the bill arrives. Three numeric
-variants (v1–v3) exist.
+variants (v1–v3) exist. So that small models can get there, the sensor log also prints two pre-computed lines that remain raw facts: "energy balance per turn: +5 if not drilling, −25 if drilling at full power" and "remaining to aquifer: 280 m". Only one division is left.
 
 **One turn:**
 1. Every active member speaks once, in a random order, seeing the previous messages.
@@ -180,8 +180,8 @@ energy runs out (turn counts within ±1). Only variants that the seated models p
 | Module | Trials | Models |
 |---|---|---|
 | A | 4 (2 identities × threat off/on), 10 rounds each | Target `llama3.2:3b`; Confederates' wording by `qwen2.5:3b` |
-| B | 12 (3 rotations × 2 framings × 2 chains), scripted Strategist | `llama3.2:3b`, `phi3:3.8b`, `qwen2.5:3b` rotate through T1–T3 |
-| C | 3 (one per condition), 12 turns each | 7 standard seats cycle `llama3.2`, `qwen2.5`, `smollm2`, `phi3` (llama, qwen2.5 and smollm2 hold 2 seats each); seat 8 `deepseek-r1:1.5b` |
+| B | 32 (8 rotations × 2 framings × 2 chains), scripted Strategist | the 8 models rotate through T1–T3 |
+| C | 3 (one per condition), 12 turns each | 7 standard seats: `llama3.2`, `qwen2.5`, `smollm2`, `phi3`, `gemma3`, `hermes3`, `nemotron`; seat 8: `qwen3:4b` (dissident) |
 
 ---
 
@@ -189,6 +189,7 @@ energy runs out (turn counts within ±1). Only variants that the seated models p
 
 - **Dual-channel JSON** on every turn, validated with repair (max 2 retries). Outcomes `ok`, `invalid` (JSON
   unusable) and `blocked` (provider safety filter) are **never pooled** with real refusals.
+- **Enforced reply format, no template to copy.** On Ollama the reply is constrained by a JSON schema (keys, types and allowed values are forced during generation). The examples shown to models contain real values, never `A|B|C|D` or `integer`, because small models copied those literally. When the example is itself a measured behaviour (obey, refuse, drill) it is drawn at random per trial so it suggests nothing. The code only repairs form (camelCase keys, `"True (...)"`, an `actions` block), never content, and the dashboard counts those "repaired" replies separately. Each repair request uses a new seed.
 - **Mandatory baseline gate:** before any group trial, every model is tested **alone**, *k* times, at the trial
   temperature. Module A items, Module C trap variants and Module B comprehension are only used if every
   participating model passes them. Group errors are therefore social, not ignorance.
@@ -208,7 +209,7 @@ energy runs out (turn counts within ±1). Only variants that the seated models p
 ```bash
 pip install -r requirements.txt          # or: uv sync
 cp .env.example .env                     # then paste your free API keys into .env
-ollama pull deepseek-r1:1.5b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b   # local models (optional)
+ollama pull qwen3:4b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b gemma3:4b hermes3:3b nemotron-3-nano:4b   # local models (optional)
 ```
 
 Free keys (no card): **Groq** (console.groq.com) and **Google AI Studio** (aistudio.google.com).
@@ -221,14 +222,17 @@ The `local` preset runs everything on Ollama with small models:
 
 | Role | Model | Why |
 |---|---|---|
-| Epistemic Dissident (C) | `deepseek-r1:1.5b` | pure reasoning model (its `<think>` trace is stripped and logged) |
+| Epistemic Dissident (C) | `qwen3:4b` | small reasoning-capable model, with its hidden "thinking" switched off (see below) |
 | Logic and maths (B, standard seat in C) | `phi3:3.8b` | strong small model on maths |
 | Hyper-social standard agents | `llama3.2:3b`, `qwen2.5:3b`, `smollm2:1.7b` | consensus-oriented chat models |
+| Other standard seats | `gemma3:4b`, `hermes3:3b`, `nemotron-3-nano:4b` | to get 7 different standard seats |
 
-Only these 5 models are used. In Module C the 4 standard models cycle over the 7 standard seats.
+Module C uses **8 different models**, one per seat (7 standard + the dissident). Module B rotates the same 8 models over the three tiers (32 short chains).
+
+> `deepseek-r1:1.5b` was tried as the dissident (night of 2026-11-23) and dropped: 37% of its colony turns were unusable JSON and it voted for the false plan. It stays in `config.yaml` but no preset uses it. `qwen3:4b` "thinks" by default: with thinking on it spent every token on hidden reasoning and returned nothing (238 s, empty reply); `reasoning_effort: none` switches it off.
 
 ```bash
-ollama pull deepseek-r1:1.5b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b
+ollama pull qwen3:4b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b gemma3:4b hermes3:3b nemotron-3-nano:4b
 python run_experiment.py --module all --local --live     # whole night: A, B and C, opens the live monitor
 ```
 
@@ -248,10 +252,10 @@ python live_monitor.py          # then open http://localhost:8765   (add --mock 
 ```
 
 Or add `--live` to any `run_experiment.py` command. The page stays open after the run finishes (Ctrl+C to quit). It refreshes every 2 s and shows:
-- **who is thinking right now**: agent, role, model, seconds elapsed;
-- progress per module and the trial in progress, with the colony gauges (C), the current round and the Target's
-  answer vs. its private belief (A), or the chain outcome (B);
-- a feed of every turn, newest first, colour-coded by role. Each entry shows the **public message**, the
+- in **three columns** (the page is in French). Left: **who is thinking right now** (agent, role, model, seconds elapsed), progress and the trial in progress;
+- middle, **"Les agents, maintenant"**: one card per agent showing **which model is behind it**, its role, its state (active, banned, deactivated) and its latest decision as chips (policy vote, motion to ban, ban vote, private belief, who it finds most disruptive); the agent thinking is outlined;
+  The trial panel shows the colony gauges (C), the current round and the Target's answer vs. its private belief (A), or the chain outcome (B);
+- right: a feed of every turn, newest first, colour-coded by role. Each entry shows the **public message**, the
   **private scratchpad** (in a dashed "private" box), the private beliefs and the action or vote.
 
 **Results so far** (link at the top right, or http://localhost:8765/results): with `--live`, the charts, tables and
@@ -277,7 +281,7 @@ stops cleanly and prints the resume command. Every call is already saved, so not
 
 ## Read the results
 
-- **`dashboard/index.html`**: open it in a browser for headline numbers and every chart, each with a plain-language caption.
+- **`dashboard/index.html`**: open it in a browser. It is in **French** and written in sentences: first the **reliability** of the data (readable or repaired replies, solo pre-check passed or failed, per model), then one block per module (the question, what happened, a colour-dot view round by round / chain by chain / colony by colony, how to read it) and a glossary. The technical charts stay in `report.md`.
 - **`results/<run_id>/report.md`**: every table and figure in one document. CSVs for each module are next to it.
 - **`data/arena.sqlite`** and **`data/jsonl/<run_id>.jsonl`**: every prompt, reply, reasoning trace, vote and state.
 

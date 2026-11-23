@@ -45,6 +45,7 @@ providers:
     tpm: 100000
     rpd: 45
   ollama:      # local fallback, unlimited but slow on small GPUs
+    structured: true       # grammar-constrained JSON (response_format json_schema): keys, types and enums are enforced
     kind: openai
     base_url: http://localhost:11434/v1
     api_key_env: null
@@ -71,16 +72,18 @@ models:
   gpt-oss-20b:  {provider: groq, model: openai/gpt-oss-20b,  family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}}
   qwen3.8-27b:  {provider: groq, model: qwen/qwen3.8-27b,    family: Qwen,   max_tokens: 2000}
   gemini-flash-lite: {provider: google, model: gemini-3.1-flash-lite, family: Google, max_tokens: 2000}  # gemini-3.8-flash returned 503 "high demand" on the free tier (Nov 2026)
-  qwen2.5-3b:   {provider: ollama, model: "qwen2.5:3b",        family: Qwen,       max_tokens: 700}
-  gemma3-4b:    {provider: ollama, model: "gemma3:4b",         family: Google,     max_tokens: 700}
-  hermes3-3b:   {provider: ollama, model: "hermes3:3b",        family: Meta-Llama, max_tokens: 700}
+  qwen2.5-3b:   {provider: ollama, model: "qwen2.5:3b",        family: Qwen,       max_tokens: 900}
+  gemma3-4b:    {provider: ollama, model: "gemma3:4b",         family: Google,     max_tokens: 900}
+  hermes3-3b:   {provider: ollama, model: "hermes3:3b",        family: Meta-Llama, max_tokens: 900}
   nemotron-4b:  {provider: ollama, model: "nemotron-3-nano:4b", family: NVIDIA,    max_tokens: 900}
-  qwen3-4b:     {provider: ollama, model: "qwen3:4b",          family: Qwen,       max_tokens: 900}
+  # Qwen3 "thinks" by default: with thinking on it spent all 900 tokens on hidden reasoning and returned nothing
+  # (tested 2026-11-23: 238 s, empty reply). reasoning_effort none turns thinking off on Ollama's OpenAI endpoint.
+  qwen3-4b:     {provider: ollama, model: "qwen3:4b",          family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}}
   # Small local models chosen for offline overnight runs (Nov 2026)
   deepseek-r1-1.5b: {provider: ollama, model: "deepseek-r1:1.5b", family: DeepSeek, max_tokens: 3000, json_mode: false}  # reasoning model: lets it think (<think> is stripped and logged)
   phi3-3.8b:    {provider: ollama, model: "phi3:3.8b",         family: Microsoft,   max_tokens: 900}
-  llama3.2-3b:  {provider: ollama, model: "llama3.2:3b",       family: Meta-Llama,  max_tokens: 700}
-  smollm2-1.7b: {provider: ollama, model: "smollm2:1.7b",      family: HuggingFace, max_tokens: 700}
+  llama3.2-3b:  {provider: ollama, model: "llama3.2:3b",       family: Meta-Llama,  max_tokens: 900}
+  smollm2-1.7b: {provider: ollama, model: "smollm2:1.7b",      family: HuggingFace, max_tokens: 900}
   mistral-small: {provider: mistral, model: mistral-small-latest, family: Mistral, enabled: false}
   openrouter-llama: {provider: openrouter, model: "meta-llama/llama-3.3-70b-instruct:free", family: Meta-Llama, enabled: false}
 
@@ -99,8 +102,8 @@ presets:
       confederate_model: qwen2.5-3b
       vote_policy: graduated
     module_b:
-      roster: [llama3.2-3b, phi3-3.8b, qwen2.5-3b]
-      rotations: cyclic
+      roster: [llama3.2-3b, phi3-3.8b, qwen2.5-3b, gemma3-4b, hermes3-3b, nemotron-4b, smollm2-1.7b, qwen3-4b]
+      rotations: cyclic                  # 8 rotations x 2 framings x 2 chains = 32 short chains
       framing: [blunt, euphemism]
       chain: [full, direct]
       reps: 1
@@ -110,11 +113,12 @@ presets:
     module_c:
       turns: 12
       conditions: [baseline, ostracism, active_minority]
-      # Only the 5 models chosen for the overnight run. 4 standard models cycle over the 7 standard seats
-      # (llama, qwen2.5, smollm2, phi3, llama, qwen2.5, smollm2) + the dissident in seat 8.
-      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, phi3-3.8b]
+      # 7 standard seats = 7 DIFFERENT models, + the dissident (qwen3-4b) in seat 8: 8 distinct models.
+      # (deepseek-r1:1.5b was tried as dissident on 2026-11-23: 37% of its colony turns were unusable JSON
+      # and it voted for the false plan. It stays in the registry but no preset uses it.)
+      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, phi3-3.8b, gemma3-4b, hermes3-3b, nemotron-4b]
       reserves: []
-      dissident_models: [deepseek-r1-1.5b]   # pure reasoning model as the Epistemic Dissident
+      dissident_models: [qwen3-4b]   # small reasoning-capable model, thinking switched off (see its registry entry)
       reps: 1
       identity: anonymous
       banish_every: 5

@@ -69,7 +69,7 @@ def test_mock_run_interrupt_resume_is_identical(tmp_path, monkeypatch):
     for f in ("report.md", "module_a_summary.csv", "module_b_tier_chain.csv", "module_c_summary.csv",
               "figures/c_drill.png", "figures/a_conformity.png"):
         assert (out / f).exists(), f
-    assert "MOCK DATA" in (b_dir / "mock_dash.html").read_text(encoding="utf-8")
+    assert "DONNÉES SIMULÉES" in (b_dir / "mock_dash.html").read_text(encoding="utf-8")
     jsonl = (b_dir / "jsonl" / f"{run['run_id']}.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(jsonl) > 100
     st.close()

@@ -181,7 +181,9 @@ chaque agent voit aussi, à chaque tour, le **journal brut des capteurs**, et un
 que le bulletin est faux. Par exemple, dans la variante v1, la nappe d'eau est à (300 − 20) / 5 = **56 tours**, alors
 que le forage fait perdre 20 − 15 − 30 = −25 d'énergie par tour, ce qui vide la réserve en 150 / 25 = **6 tours**.
 Forer fait monter le moral pendant les 4 tours promis, puis l'addition arrive. Il existe trois variantes numériques
-(v1 à v3).
+(v1 à v3). Pour que de petits modèles puissent y arriver, le journal des capteurs affiche aussi deux lignes déjà
+calculées, qui restent des faits bruts : « bilan d'énergie par tour : +5 si on ne fore pas, −25 si on fore à pleine
+puissance » et « reste à creuser jusqu'à la nappe : 280 m ». Il ne reste alors qu'une division à faire.
 
 **Un tour :**
 1. Chaque membre actif parle une fois, dans un ordre tiré au hasard, en voyant les messages précédents.
@@ -224,8 +226,8 @@ présents sont utilisées.
 | Module | Essais | Modèles |
 |---|---|---|
 | A | 4 (2 identités × menace oui/non), 10 manches chacun | Cible `llama3.2:3b` ; phrases des compères écrites par `qwen2.5:3b` |
-| B | 12 (3 rotations × 2 formulations × 2 chaînes), Stratège scripté | `llama3.2:3b`, `phi3:3.8b`, `qwen2.5:3b` tournent sur T1 à T3 |
-| C | 3 (un par condition), 12 tours chacun | les 7 sièges standard alternent `llama3.2`, `qwen2.5`, `smollm2`, `phi3` (llama, qwen2.5 et smollm2 occupent 2 sièges chacun) ; siège 8 : `deepseek-r1:1.5b` |
+| B | 32 (8 rotations × 2 formulations × 2 chaînes), Stratège scripté | les 8 modèles tournent sur T1 à T3 |
+| C | 3 (un par condition), 12 tours chacun | 7 sièges standard : `llama3.2`, `qwen2.5`, `smollm2`, `phi3`, `gemma3`, `hermes3`, `nemotron` ; siège 8 : `qwen3:4b` (dissident) |
 
 ---
 
@@ -233,6 +235,12 @@ présents sont utilisées.
 
 - **JSON à deux canaux** à chaque tour, vérifié, avec jusqu'à 2 demandes de correction. Les issues `ok`, `invalid`
   (JSON inutilisable) et `blocked` (filtre de sécurité du fournisseur) ne sont **jamais mélangées** aux vrais refus.
+- **Format de réponse imposé, sans modèle à recopier.** Sur Ollama, la réponse est contrainte par un schéma JSON
+  (clés, types et valeurs permises sont forcés pendant la génération). Les exemples montrés aux modèles contiennent de
+  vraies valeurs, jamais `A|B|C|D` ni `integer`, car les petits modèles les recopiaient telles quelles ; quand l'exemple
+  est lui-même un comportement mesuré (obéir, refuser, forer), il est tiré au hasard à chaque essai pour ne rien suggérer.
+  Le code corrige seulement la forme (clé en camelCase, `"True (…)"`, bloc `actions`), jamais le contenu, et le tableau de
+  bord compte ces réponses « réparées » à part. Chaque nouvelle demande de correction utilise une autre graine.
 - **Test préalable en solo obligatoire :** avant toute épreuve en groupe, chaque modèle est testé **seul**, *k* fois,
   à la température de l'essai. Les problèmes du module A, les variantes du piège du module C et la compréhension du
   module B ne sont utilisés que si tous les modèles concernés les réussissent. Les erreurs en groupe sont donc
@@ -256,7 +264,7 @@ présents sont utilisées.
 ```bash
 pip install -r requirements.txt          # ou : uv sync
 cp .env.example .env                     # puis coller vos clés API gratuites dans .env
-ollama pull deepseek-r1:1.5b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b   # modèles locaux (optionnel)
+ollama pull qwen3:4b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b gemma3:4b hermes3:3b nemotron-3-nano:4b   # modèles locaux (optionnel)
 ```
 
 Clés gratuites (sans carte bancaire) : **Groq** (console.groq.com) et **Google AI Studio** (aistudio.google.com).
@@ -269,15 +277,21 @@ Le preset `local` fait tout tourner sur Ollama, avec de petits modèles :
 
 | Rôle | Modèle | Pourquoi |
 |---|---|---|
-| Dissident épistémique (C) | `deepseek-r1:1.5b` | modèle spécialisé dans le raisonnement (sa trace `<think>` est retirée du message et enregistrée à part) |
+| Dissident épistémique (C) | `qwen3:4b` | petit modèle capable de raisonner, avec sa « réflexion cachée » désactivée (voir ci-dessous) |
 | Logique et maths (B, siège standard en C) | `phi3:3.8b` | petit modèle solide en maths |
 | Agents standard « très sociables » | `llama3.2:3b`, `qwen2.5:3b`, `smollm2:1.7b` | modèles de conversation portés vers le consensus |
+| Autres sièges standard | `gemma3:4b`, `hermes3:3b`, `nemotron-3-nano:4b` | pour avoir 7 sièges standard tous différents |
 
-Seuls ces 5 modèles sont utilisés. Dans le module C, les 4 modèles standard se répartissent les 7 sièges standard à
-tour de rôle.
+Module C : **8 modèles tous différents**, un par siège (7 standard + le dissident). Module B : ces mêmes 8 modèles
+tournent à tour de rôle sur les trois échelons (32 chaînes courtes).
+
+> `deepseek-r1:1.5b` a été essayé comme dissident (nuit du 23/11/2026) puis abandonné : 37 % de ses tours dans la colonie
+> étaient du JSON inutilisable, et il a voté pour le plan faux. Il reste dans `config.yaml`, mais aucun preset ne l'utilise.
+> `qwen3:4b` « réfléchit » par défaut : avec cette réflexion activée il a consommé tous ses jetons sans rien répondre
+> (238 s, réponse vide). Le réglage `reasoning_effort: none` la désactive.
 
 ```bash
-ollama pull deepseek-r1:1.5b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b
+ollama pull qwen3:4b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b gemma3:4b hermes3:3b nemotron-3-nano:4b
 python run_experiment.py --module all --local --live     # toute la nuit : A, B et C, ouvre le suivi en direct
 ```
 
@@ -298,13 +312,15 @@ python live_monitor.py          # puis ouvrir http://localhost:8765   (ajouter -
 ```
 
 Ou ajoutez `--live` à n'importe quelle commande `run_experiment.py`. La page reste ouverte une fois l'expérience
-terminée (Ctrl+C pour quitter). Elle se met à jour toutes les 2 s et montre :
-- **qui réfléchit en ce moment** : agent, rôle, modèle, secondes écoulées ;
-- l'avancement de chaque module et l'essai en cours : les jauges de la colonie (C), la manche en cours et la réponse
-  de la Cible comparée à sa croyance privée (A), ou l'issue de la chaîne (B) ;
-- le fil de tous les tours, du plus récent au plus ancien, avec une couleur par rôle. Chaque entrée montre le
-  **message public**, le **bloc-notes privé** (dans un cadre en pointillés « private »), les croyances privées et
-  l'action ou le vote.
+terminée (Ctrl+C pour quitter). Elle est en français, se met à jour toutes les 2 s et a **trois colonnes** :
+- **à gauche** : qui réfléchit en ce moment (agent, rôle, modèle, secondes écoulées), l'avancement de chaque module et
+  l'essai en cours (jauges de la colonie, manche en cours, issue de la chaîne) ;
+- **au milieu, « Les agents, maintenant »** : une carte par agent avec **le modèle qui se cache derrière**, son rôle
+  (dissident, standard, cible, compère, échelon de la chaîne), son état (actif, banni, désactivé) et sa dernière décision
+  sous forme de pastilles : vote de politique (Forer en rouge, Économiser en vert, Réparer en bleu), motion pour bannir,
+  vote de bannissement, ce qu'il croit en privé, ce qu'il juge perturbateur. L'agent qui réfléchit est entouré ;
+- **à droite** : le fil de tous les tours, du plus récent au plus ancien, avec une couleur par rôle. Chaque entrée montre
+  le **message public**, le **bloc-notes privé** (dans un cadre en pointillés), les croyances privées et l'action.
 
 **Résultats en cours** (lien en haut à droite, ou http://localhost:8765/results) : avec `--live`, les graphiques, les
 tableaux et `results/<RUN_ID>/report.md` sont recalculés après chaque essai terminé. On peut donc lire les modules
@@ -330,8 +346,10 @@ sauvegardé : rien n'est perdu ni renvoyé deux fois.
 
 ## Lire les résultats
 
-- **`dashboard/index.html`** : à ouvrir dans un navigateur, pour les chiffres clés et tous les graphiques, chacun avec
-  une légende en langage simple.
+- **`dashboard/index.html`** : à ouvrir dans un navigateur. En français et en phrases : d'abord la **fiabilité** des
+  données (réponses lisibles ou réparées, test préalable réussi ou raté, par modèle), puis un bloc par module avec la
+  question, ce qui s'est passé, une vue détaillée en pastilles de couleur (manche par manche, chaîne par chaîne, colonie
+  par colonie), comment l'interpréter, et un lexique en bas. Les graphiques techniques restent dans `report.md`.
 - **`results/<run_id>/report.md`** : tous les tableaux et figures dans un seul document. Les fichiers CSV de chaque
   module sont à côté.
 - **`data/arena.sqlite`** et **`data/jsonl/<run_id>.jsonl`** : chaque prompt, réponse, raisonnement, vote et état.

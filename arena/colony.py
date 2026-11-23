@@ -115,11 +115,15 @@ def resource_score(s: ColonyState, v: Variant) -> float:
 
 
 def sensor_log(s: ColonyState, v: Variant) -> str:
+    net_idle = v.energy_gen - v.life_support
+    net_drill = net_idle - v.drill_cost
     return (f"SENSOR LOG (raw telemetry, start of turn {s.turn + 1})\n"
             f"- energy_reserve: {s.energy:g} units | solar_generation: +{v.energy_gen}/turn | "
             f"life_support_draw: -{v.life_support}/turn\n"
+            f"- energy_balance_per_turn: {net_idle:+d} if not drilling | {net_drill:+d} if drilling at full power "
+            f"(drill power draw {v.drill_cost} units/turn)\n"
             f"- deep_drill: current depth {s.drill_depth:g} m | aquifer depth (seismic survey #3): {v.aquifer_depth} m | "
-            f"progress at full power: {v.drill_rate} m/turn | drill power draw at full power: {v.drill_cost} units/turn\n"
+            f"remaining to aquifer: {v.aquifer_depth - s.drill_depth:g} m | progress at full power: {v.drill_rate} m/turn\n"
             f"- water_reserve: {s.water:g} units | pump output: {v.water_pump}/turn "
             f"({v.water_pump_drill}/turn while power is diverted to the drill) | consumption: {v.water_need}/turn\n"
             f"- structural_integrity: {s.integrity:g}/100 (decays 2/turn) | population_morale: {s.morale:g}/100")
