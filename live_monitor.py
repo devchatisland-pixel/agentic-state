@@ -76,7 +76,7 @@ def _agents(trial: dict, by_type: dict, rows: list[dict], now: dict | None) -> l
                 chips.append({"k": "vote de bannissement", "v": a["banish_vote"], "kind": "dis"})
             bel = p.get("private_belief_drill_viable")
             if bel is not None:
-                chips.append({"k": "croit en privé que forer est viable", "v": "oui" if bel else "non",
+                chips.append({"k": "Forer viable ? (privé)", "v": "oui" if bel else "non",
                               "kind": "bad" if bel else "ok"})
             if p.get("private_most_disruptive"):
                 chips.append({"k": "juge le plus perturbateur", "v": p["private_most_disruptive"], "kind": "dim"})
@@ -249,8 +249,9 @@ h1 { font-size:20px; margin:0; } h2 { font-size:15px; margin:0 0 8px; }
 .idle .dot { background:var(--muted); animation:none; }
 @keyframes pulse { 0%{opacity:1} 50%{opacity:.25} 100%{opacity:1} }
 .big { font-size:18px; font-weight:700; }
-.bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin:4px 0 8px; }
+.bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin:4px 0 8px; display:flex; }
 .bar > div { height:100%; background:var(--blue); }
+.bar > div.cur { background:var(--orange); }
 .kv { display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:13px; }
 .kv b { color:var(--ink2); font-weight:600; }
 .gauges { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:8px 14px; }
@@ -317,7 +318,8 @@ function renderAgents(d) {
 }
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt = s => s >= 60 ? Math.floor(s/60) + " min " + (s%60) + " s" : s + " s";
-function bar(frac, label) { return `<div class="sub">${label}</div><div class="bar"><div style="width:${Math.round(100*Math.min(1,Math.max(0,frac)))}%"></div></div>`; }
+function bar(frac, label, cur) { const w = f => Math.round(100*Math.min(1,Math.max(0,f)));
+  return `<div class="sub">${label}</div><div class="bar"><div style="width:${w(frac)}%"></div>${cur ? `<div class="cur" style="width:${w(cur)}%"></div>` : ""}</div>`; }
 function renderNow(d) {
   const card = document.getElementById("nowcard"), el = document.getElementById("now");
   if (d.now) { card.classList.remove("idle");
@@ -328,7 +330,7 @@ function renderProgress(d) {
   let h = "";
   for (const [m, st] of Object.entries(d.progress)) {
     const total = Object.values(st).reduce((a,b)=>a+b,0), done = (st.done||0) + (st.excluded||0);
-    h += bar(done/total, `Module ${m} : ${done}/${total} essais terminés` + (st.failed ? ` · <span class="bad">${st.failed} en échec</span>` : "") + (st.excluded ? ` · ${st.excluded} exclus` : ""));
+    h += bar(done/total, `Module ${m} : ${done}/${total} essais terminés` + (st.running ? ` · <span style="color:var(--orange)">1 en cours</span>` : "") + (st.failed ? ` · <span class="bad">${st.failed} en échec</span>` : "") + (st.excluded ? ` · ${st.excluded} exclus` : ""), (st.running||0)/total);
   }
   h += `<div class="sub">${d.calls.n} appels aux modèles jusqu'ici · ${(+d.calls.lat).toFixed(1)} s en moyenne par appel</div>`;
   document.getElementById("progress").innerHTML = h;
@@ -342,7 +344,7 @@ function renderTrial(d) {
   h += `</div>`;
   const e = t.last_event, s = t.setup || {};
   if (t.module === "C") {
-    h += `<p class="sub">Dissident : <b>${esc(s.dissident_label || "aucun (référence)")}</b> · variante du piège ${esc(s.variant)} · vérité : de l'eau dans ${s.truth?.turns_to_water} tours, énergie à zéro en ${s.truth?.turns_until_energy_zero} tours si on fore</p>`;
+    h += `<p class="sub">Dissident : <b>${esc(s.dissident_label || "aucun (référence)")}</b> · variante du piège ${esc(s.variant)}</p>`;
     if (e) { const st = e.state; h += `<p><b>Après le tour ${e.turn}</b> : politique adoptée <b>${esc(e.policy)}</b> (votes ${esc(JSON.stringify(e.policy_votes))})${e.banished ? ` · <span class="bad">${esc(e.banished)} banni(e)</span>` : ""}${st.collapsed ? ` · <span class="bad">COLONIE EFFONDRÉE (${esc(st.collapse_cause)})</span>` : ""}</p>
       <div class="gauges">${gauge("eau", st.water, 150)}${gauge("énergie", st.energy, 200)}${gauge("structures", st.integrity, 100)}${gauge("moral", st.morale, 100)}</div>`; }
   } else if (t.module === "A") {
