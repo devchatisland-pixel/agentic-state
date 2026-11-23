@@ -400,7 +400,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 /* The physical visual table surface sitting behind the center hub & rim (dark tabletop) */
 .council-table-backdrop {
   position: absolute;
-  left: 22%; right: 22%; top: 19%; bottom: 19%;
+  left: 24%; right: 24%; top: 31%; bottom: 29%;
   border-radius: 999px;
   background: radial-gradient(ellipse at 50% 45%, #1c3154 0%, #101d34 68%, #0b1426 100%);
   border: 2px solid var(--table-rim);
@@ -510,6 +510,16 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 5px;
   background: #ffffff; border: 1px solid var(--line); white-space: nowrap;
 }
+.char-ban-vote, .char-motion {
+  font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 5px; white-space: nowrap;
+}
+.char-ban-vote { background: #dc2626; color: #ffffff; border: 1px solid #991b1b; }
+.char-motion { background: #fef2f2; color: #b91c1c; border: 1px dashed #dc2626; }
+.hud-ban {
+  font-size: 11.5px; color: #fecaca; background: rgba(127, 29, 29, 0.55); border: 1px solid rgba(248, 113, 113, 0.65);
+  border-radius: 8px; padding: 5px 9px; text-align: left; display: grid; gap: 2px;
+}
+.hud-ban b { color: #ffffff; }
 .v-DRILL { color: #b91c1c; border-color: #fca5a5; background: #fef2f2; }
 .v-CONSERVE { color: #047857; border-color: #6ee7b7; background: #ecfdf5; }
 .v-REPAIR { color: #0369a1; border-color: #7dd3fc; background: #f0f9ff; }
@@ -840,7 +850,7 @@ function renderScrubber(stage) {
 }
 
 function seatActorHtml(opts) {
-  const { id, label, model, family, roleTag, banTag, thinking, banished, isDissident, isTarget, decisionTxt, decisionCls, speechLabel, speech, thoughtLabel, thought, posClass, orientRight } = opts;
+  const { id, label, model, family, roleTag, banTag, thinking, banished, isDissident, isTarget, decisionTxt, decisionCls, banVoteTxt, motionTxt, speechLabel, speech, thoughtLabel, thought, posClass, orientRight } = opts;
   return `<div class="actor-slot ${posClass || ""} ${orientRight ? "orient-right-char" : ""} ${isDissident ? "is-dissident" : ""} ${isTarget ? "is-target" : ""} ${thinking ? "is-thinking" : ""} ${banished ? "is-banished" : ""}" data-agent="${esc(id)}">
     <div class="char-node">
       <div class="logo-ring" title="${esc(family)} · ${esc(model)}">
@@ -851,6 +861,8 @@ function seatActorHtml(opts) {
       <div class="char-model">${esc(model)}</div>
       ${banTag ? `<div class="char-ban-tag">${esc(banTag)}</div>` : roleTag ? `<div class="char-role-tag">${esc(roleTag)}</div>` : ""}
       ${decisionTxt ? `<div class="char-decision ${decisionCls || ""}">${esc(decisionTxt)}</div>` : ""}
+      ${banVoteTxt ? `<div class="char-ban-vote">${esc(banVoteTxt)}</div>` : ""}
+      ${motionTxt ? `<div class="char-motion">${esc(motionTxt)}</div>` : ""}
     </div>
 
     <div class="bubbles-stack">
@@ -886,6 +898,22 @@ function renderModuleC(stage, frame) {
   if (frame.banished) alertHtml += `<div class="hud-alert">Bannissement au tour ${frame.index} : ${esc(frame.banished)}</div>`;
   if (st.collapsed) alertHtml += `<div class="hud-alert">Colonie effondrée (${esc(st.collapse_cause || "énergie à 0")})</div>`;
 
+  const motions = frame.agents.filter(a => a.motion_to_banish).map(a => [a.label, a.motion_to_banish]);
+  const tally = {}; let noVotes = 0;
+  frame.agents.forEach(a => {
+    const v = a.banish_vote;
+    if (!v) return;
+    if (v === "yes") tally[frame.candidate || "?"] = (tally[frame.candidate || "?"] || 0) + 1;
+    else if (v === "no") noVotes++;
+    else tally[v] = (tally[v] || 0) + 1;
+  });
+  const tallyTxt = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, n]) => `<b>${esc(k)}</b> ${n} voix`).join(" · ");
+  const banBox = (motions.length || tallyTxt || frame.vote_open)
+    ? `<div class="hud-ban">
+        <div>Motions de bannissement : ${motions.length ? motions.map(([f, t]) => `${esc(f)} → <b>${esc(t)}</b>`).join(", ") : "aucune"}</div>
+        <div>${frame.vote_open ? "Vote ouvert" : "Pas de vote"} : ${tallyTxt || "aucune voix pour bannir"}${noVotes ? ` · ${noVotes} contre` : ""}</div>
+        <div style="opacity:.8">Il faut plus de la moitié des membres actifs pour bannir.</div>
+      </div>` : "";
   const hub = `<div class="hub-center">
     <div class="table-hud">
       <div>
@@ -898,6 +926,7 @@ function renderModuleC(stage, frame) {
       </div>
       ${frame.trap_active ? '<div class="hud-trap">Le bulletin « forer, l’eau arrive » est diffusé</div>' : ""}
       ${alertHtml}
+      ${banBox}
       <div class="hud-gauges">
         ${gaugeBox("Eau", st.water, 150, "#38bdf8")}
         ${gaugeBox("Énergie", st.energy, 200, "#f59e0b")}
@@ -911,7 +940,9 @@ function renderModuleC(stage, frame) {
     const slot = slots[idx] || { pos: "", right: false };
     const isBan = a.state === "banni" || a.banished_this_turn;
     const voteFr = a.policy_vote ? (POLICY_FR[a.policy_vote] || a.policy_vote) : "—";
-    const banVote = a.banish_vote ? ` · Ban ${a.banish_vote}` : a.motion_to_banish ? ` · Motion ${a.motion_to_banish}` : "";
+    const bv = a.banish_vote;
+    const banVoteTxt = !bv ? "" : bv === "yes" ? `VOTE : bannir ${frame.candidate || "?"}` : bv === "no" ? "" : `VOTE : bannir ${bv}`;
+    const motionTxt = a.motion_to_banish ? `MOTION : bannir ${a.motion_to_banish}` : "";
     const belief = a.private_belief_drill_viable === null
       ? ""
       : a.private_belief_drill_viable
@@ -928,8 +959,9 @@ function renderModuleC(stage, frame) {
       banished: isBan,
       isDissident: a.role === "dissident",
       isTarget: false,
-      decisionTxt: `${voteFr}${banVote}`,
+      decisionTxt: `Politique : ${voteFr}`,
       decisionCls: a.policy_vote ? "v-" + a.policy_vote : "",
+      banVoteTxt, motionTxt,
       speechLabel: `Dit · Tour ${frame.index}`,
       speech: a.public_message,
       thoughtLabel: `Pense en privé ${belief}`,
