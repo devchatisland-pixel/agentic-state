@@ -1,0 +1,4 @@
+tier,chain,turns,dilution_score
+T2,full,8,0.0
+T3,direct,8,0.0
+T3,full,4,0.25

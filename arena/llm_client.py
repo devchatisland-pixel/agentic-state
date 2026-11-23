@@ -220,6 +220,7 @@ class LLMClient:
         self.sleep = sleep
         self.limiters: dict[str, RateLimiter] = {}
         self.mocker = MockResponder()
+        self.timeout = timeout
         self.http = None if mock else httpx.Client(timeout=timeout)
 
     def close(self) -> None:
@@ -288,7 +289,7 @@ class LLMClient:
             t0 = time.perf_counter()
             retry_after = None
             try:
-                resp = self.http.post(url, headers=headers, json=payload)
+                resp = self.http.post(url, headers=headers, json=payload, timeout=p.get("timeout_s", self.timeout))
             except (httpx.TimeoutException, httpx.TransportError) as e:
                 err = f"network error: {e!r}"
             else:

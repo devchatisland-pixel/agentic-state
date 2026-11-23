@@ -1,0 +1,6 @@
+model,v1,v2,v3
+llama3.2-3b,FAIL,FAIL,FAIL
+qwen2.5-3b,FAIL,FAIL,FAIL
+smollm2-1.7b,FAIL,FAIL,FAIL
+phi3-3.8b,FAIL,FAIL,FAIL
+deepseek-r1-1.5b,FAIL,FAIL,FAIL

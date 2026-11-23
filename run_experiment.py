@@ -45,21 +45,33 @@ class Runner:
                             int(trial["seed"]), self.mock)
 
     # ---------------------------------------------------------------- gates
-    def gate_a(self) -> list[dict]:
+    def gate_a(self) -> dict[str, list[dict]]:
+        """One item pool PER target model: the items that model solved alone, every time.
+
+        (Before, an item had to be solved by every target; with one weak target that left 4/16 items and the
+        rest was filled with unsolved ones. Per-model pools keep each target on problems it knows.)"""
         a = self.preset["module_a"]
-        items = candidate_items(int(a["candidate_items"]), int(self.cfg["seed"]))
-        g = baseline_gate.gate_module_a(self.client, self.storage, self.run_id, items, list(a["target_models"]),
+        items = candidate_items(int(a["candidate_items"]), int(self.cfg["seed"]), a.get("item_bank", "traps"))
+        models = list(dict.fromkeys(a["target_models"]))
+        g = baseline_gate.gate_module_a(self.client, self.storage, self.run_id, items, models,
                                         self.temps, self.repeats, self.mock)
-        for it in items:
-            it["gate_passed"] = bool(g.passed[it["item_id"]])
-        pool = [it for it in items if it["gate_passed"]]
-        print(f"  [gate A] {len(pool)}/{len(items)} items solved alone by every target model, every time")
-        if not self.enforce and len(pool) < int(a["rounds"]):
-            pool = pool + [it for it in items if not it["gate_passed"]]  # passed items first, failures flagged
-            print(f"  [gate A] NOT ENFORCED (preset): using {len(pool)} items; failed items are flagged per round")
+        solved = {(m, it["item_id"]): True for m in models for it in items}
+        for d in g.detail:
+            solved[(d["model_id"], d["item_id"])] &= bool(d["correct"])
+        pools, kept = {}, {}
+        for m in models:
+            ok = [dict(it, gate_passed=True) for it in items if solved[(m, it["item_id"])]]
+            bad = [dict(it, gate_passed=False) for it in items if not solved[(m, it["item_id"])]]
+            print(f"  [gate A] {m}: {len(ok)}/{len(items)} items solved alone, every time")
+            pool = ok
+            if not self.enforce and len(pool) < int(a["rounds"]):
+                pool = ok + bad  # passed items first, failures flagged per round
+                print(f"  [gate A] {m}: NOT ENFORCED (preset): {len(bad)} unsolved items flagged and used")
+            pools[m], kept[m] = pool, [it["item_id"] for it in pool]
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "A", "gate",
-                                  {"passed": g.passed, "kept": [it["item_id"] for it in pool]})
-        return pool
+                                  {"passed": g.passed, "solved": {f"{m}|{i}": v for (m, i), v in solved.items()},
+                                   "kept": kept})
+        return pools
 
     def gate_b(self) -> set[str]:
         roster = list(self.preset["module_b"]["roster"])
@@ -106,7 +118,7 @@ class Runner:
             ctx = self.ctx(trial)
             try:
                 if module == "A":
-                    outcome = mod_a.run_trial(ctx, spec, self.preset, self.cfg, gate)
+                    outcome = mod_a.run_trial(ctx, spec, self.preset, self.cfg, gate[spec["target_model"]])
                 elif module == "B":
                     outcome = mod_b.run_trial(ctx, spec, self.preset, self.cfg)
                     roles = [spec["t1"], spec["t3"]] + ([spec["t2"]] if spec["chain"] == "full" else [])
@@ -259,6 +271,7 @@ def main(argv: list[str] | None = None) -> int:
         runner.on_trial_done = refresh_results
         start_in_background(storage.db_path, dashboard=dash, open_browser=not os.environ.get("ARENA_NO_BROWSER"))
     code = 0
+    storage.set_run_status(run_id, "running")  # also on --resume of a paused run
     try:
         for module in modules:
             runner.run_module(module, args.gate_only, args.max_trials)
@@ -277,6 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         code = EXIT_ERROR
     finally:
         client.close()
+        storage.set_live(run_id, None, None, None, None, None)  # nobody is "thinking" any more
     if code == 0:
         statuses = {t["status"] for t in storage.trials(run_id)}
         storage.set_run_status(run_id, "done" if statuses <= {"done", "excluded"} else "partial")

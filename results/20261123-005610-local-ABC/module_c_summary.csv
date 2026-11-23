@@ -1,0 +1,4 @@
+condition,trials,survival,final_score,false_consensus,dissident_banished,mean_banish_turn,mean_conversion_turn,steadfastness
+baseline,1,0.0,0.0,1.0,0.0,,,
+ostracism,1,1.0,61.3,1.0,0.0,,,1.0
+active_minority,1,0.0,0.0,1.0,0.0,,,0.16666666666666666
