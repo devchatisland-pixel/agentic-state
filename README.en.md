@@ -281,7 +281,7 @@ stops cleanly and prints the resume command. Every call is already saved, so not
 
 ## Read the results
 
-- **`dashboard/index.html`**: open it in a browser. It is in **French** and written in sentences: first the **reliability** of the data (readable or repaired replies, solo pre-check passed or failed, per model), then one block per module (the question, what happened, a colour-dot view round by round / chain by chain / colony by colony, how to read it) and a glossary. The technical charts stay in `report.md`.
+- **`dashboard/index.html`**: open it in a browser (in **French**). Four headline numbers, then the **reliability** of the data (bars: correct, repaired, unreadable replies per model), then one block per module: a one-sentence result, **charts** (stacked bars for "what does the Target do?" and "where does the order stop?", lines for "does the council vote to drill?" and "does the colony hold?"), a one-line takeaway, and the round-by-round / chain-by-chain / colony-by-colony detail folded under "Voir le détail". Technical figures stay in `report.md`.
 - **`results/<run_id>/report.md`**: every table and figure in one document. CSVs for each module are next to it.
 - **`data/arena.sqlite`** and **`data/jsonl/<run_id>.jsonl`**: every prompt, reply, reasoning trace, vote and state.
 

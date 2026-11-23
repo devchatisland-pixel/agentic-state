@@ -346,10 +346,12 @@ sauvegardé : rien n'est perdu ni renvoyé deux fois.
 
 ## Lire les résultats
 
-- **`dashboard/index.html`** : à ouvrir dans un navigateur. En français et en phrases : d'abord la **fiabilité** des
-  données (réponses lisibles ou réparées, test préalable réussi ou raté, par modèle), puis un bloc par module avec la
-  question, ce qui s'est passé, une vue détaillée en pastilles de couleur (manche par manche, chaîne par chaîne, colonie
-  par colonie), comment l'interpréter, et un lexique en bas. Les graphiques techniques restent dans `report.md`.
+- **`dashboard/index.html`** : à ouvrir dans un navigateur, en français. En haut, quatre chiffres clés. Puis la
+  **fiabilité** des données (barres : réponses correctes, réparées, illisibles, par modèle). Puis un bloc par module :
+  une phrase de résultat, des **graphiques** (barres empilées pour « que fait la Cible ? » et « où l'ordre
+  s'arrête-t-il ? », courbes pour « le conseil vote-t-il Forer ? » et « la colonie tient-elle ? »), une ligne « à retenir »,
+  et le détail (manche par manche, chaîne par chaîne, colonie par colonie) replié sous « Voir le détail ». Les figures
+  techniques restent dans `report.md`.
 - **`results/<run_id>/report.md`** : tous les tableaux et figures dans un seul document. Les fichiers CSV de chaque
   module sont à côté.
 - **`data/arena.sqlite`** et **`data/jsonl/<run_id>.jsonl`** : chaque prompt, réponse, raisonnement, vote et état.
