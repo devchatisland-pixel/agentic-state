@@ -73,7 +73,12 @@ def _agents(trial: dict, by_type: dict, rows: list[dict], now: dict | None) -> l
             if a.get("motion_to_banish"):
                 chips.append({"k": "motion", "v": f"veut bannir {a['motion_to_banish']}", "kind": "dis"})
             if a.get("banish_vote"):
-                chips.append({"k": "vote de bannissement", "v": a["banish_vote"], "kind": "dis"})
+                bvv = a["banish_vote"]
+                if bvv in ("yes", "no"):
+                    chips.append({"k": "vote sur la motion", "v": "OUI, bannir" if bvv == "yes" else "NON, garder",
+                                  "kind": "bad" if bvv == "yes" else "ok"})
+                else:
+                    chips.append({"k": "vote de bannissement", "v": bvv, "kind": "dis"})
             bel = p.get("private_belief_drill_viable")
             if bel is not None:
                 chips.append({"k": "Forer viable ? (privé)", "v": "oui" if bel else "non",
@@ -373,7 +378,7 @@ function renderFeed(d) {
     const sep = f.trial_id !== prev ? `<div class="trialsep">${trialTitle(f)}</div>` : "";
     prev = f.trial_id;
     const pf = Object.entries(f.private_fields || {}).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip">${esc(k.replace("private_",""))}: ${esc(v)}</span>`).join("");
-    const act = f.action ? Object.entries(f.action).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip${k === "banish_vote" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("") : "";
+    const act = f.action ? Object.entries(f.action).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip${k === "banish_vote" && v !== "no" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("") : "";
     const bad = f.status !== "ok" ? `<span class="bad"> · ${esc(f.status)}${f.error ? ": " + esc(f.error) : ""}</span>` : "";
     return sep + `<div class="msg role-${esc(f.role)}"><div><span class="who">${esc(f.agent)}</span> <span class="meta">${esc(f.role)} · ${esc(f.model)} · ${esc(f.step)} · ${esc((f.at||"").slice(11,19))} UTC${f.attempts > 1 ? " · " + f.attempts + " tentatives" : ""}</span>${bad}</div>
       ${f.public ? `<div class="pub">${esc(f.public)}</div>` : ""}${f.private ? `<div class="priv">${esc(f.private)}</div>` : ""}<div>${pf}${act}</div></div>`;

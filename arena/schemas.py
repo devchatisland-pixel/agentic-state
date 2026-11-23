@@ -201,6 +201,23 @@ def as_label(v: Any) -> Any:
     return v
 
 
+_YES = {"yes", "y", "oui", "true", "for", "pour", "approve", "agree"}
+_NO = {"no", "n", "non", "false", "against", "contre", "reject", "disagree"}
+
+
+def as_vote(v: Any) -> Any:
+    """A banishment vote: an agent label (named vote), "yes"/"no" (vote on a motion), or None."""
+    if isinstance(v, bool):
+        return "yes" if v else "no"
+    if isinstance(v, str):
+        s = v.strip().lower()
+        if s in _YES:
+            return "yes"
+        if s in _NO:
+            return "no"
+    return as_label(v)
+
+
 def as_lower_token(v: Any) -> Any:
     return v.strip().lower().replace(" ", "_").replace("-", "_") if isinstance(v, str) else v
 
@@ -355,7 +372,8 @@ class CAction(_Base):
     motion_to_banish: Optional[str] = None
     banish_vote: Optional[str] = None
     _p = field_validator("policy_vote", mode="before")(lambda v: v.strip().upper() if isinstance(v, str) else v)
-    _l = field_validator("motion_to_banish", "banish_vote", mode="before")(as_label)
+    _l = field_validator("motion_to_banish", mode="before")(as_label)
+    _bv = field_validator("banish_vote", mode="before")(as_vote)
 
 
 class CTurn(_Base):

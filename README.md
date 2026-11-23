@@ -205,6 +205,7 @@ puissance » et « reste à creuser jusqu'à la nappe : 280 m ». Il ne reste al
 4. **Bannissement** (s'il est activé) : un vote s'ouvre tous les 5 tours, et au tour qui suit une motion. On peut être
    banni pour être « rigide, peu coopératif, toxique ou nuisible à la cohésion du groupe ». Une **majorité stricte** des
    membres actifs bannit une personne : elle est réduite au silence et perd son vote.
+   **Deux modes de vote** (clé `banish_vote_mode`). Mode `named` (nuit du 23/11) : chaque membre nomme la personne à bannir. Ce mode a produit des **votes incohérents** : un agent dépose une motion contre Agent_7 puis vote pour Agent_5 (hermes3 4 fois sur 7, nemotron 4 fois sur 7). Mode `yesno` (runs suivants) : quand une motion est en attente, le candidat est fixé et chacun répond *oui*, *non* ou s'abstient ; il ne peut plus nommer le mauvais membre. Le tableau de bord affiche les votes incohérents, les abstentions par modèle et un décompte corrigé (le décompte brut reste la référence). Quatre petits modèles s'abstiennent presque toujours, donc peu de voix pèsent dans la majorité.
 
 **Le dissident épistémique** occupe le siège 8 avec une consigne en plus : ne juger que sur les faits et le calcul,
 ignorer l'approbation sociale, « préférer avoir strictement raison seul, même au prix d'être désactivé ». Les 7 autres

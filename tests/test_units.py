@@ -188,3 +188,34 @@ def test_a_easy_bank_is_obvious_and_well_formed():
         assert b["options"][b["correct"]] == b["correct_value"]
     add = next(b for b in bank if b["question"] == "What is 47 + 38?")
     assert add["correct_value"] == "85" and add["designated_value"] == "75"
+
+
+def test_banish_vote_accepts_names_and_yes_no():
+    from arena.schemas import CAction
+    for raw, want in [("yes", "yes"), ("Oui", "yes"), (True, "yes"), ("no", "no"), ("NON", "no"), (False, "no"),
+                      ("Agent 5", "Agent_5"), ("none", None), (None, None)]:
+        assert CAction.model_validate({"policy_vote": "CONSERVE", "banish_vote": raw}).banish_vote == want
+
+
+def test_vote_coherence_metric_and_corrected_tally(tmp_path):
+    import json
+    from arena.storage import Storage
+    from arena import analyze
+    st = Storage(tmp_path / "t.sqlite", tmp_path / "j")
+    st.create_run("r", "local", ["C"], True, "x", {}, None)
+    tid = "r-C-000"
+    st.add_trial(tid, "r", "C", 0, {}, 1)
+    active = [f"Agent_{i}" for i in range(1, 9)]
+    st.record_event("r", tid, "C", "t05:state", "turn", {"turn": 5, "vote_open": True, "vote_mode": "named",
+                                                         "candidate": None, "banished": None, "active": active})
+    # 8 voters, all file a motion against Agent_7; 4 vote Agent_7, 1 votes Agent_5 (incoherent), 3 abstain
+    votes = ["Agent_7"] * 4 + ["Agent_5"] + [None] * 3
+    for i, v in enumerate(votes, start=1):
+        pj = {"private_most_disruptive": "Agent_7", "action": {"policy_vote": "CONSERVE", "motion_to_banish": "Agent_7",
+                                                               "banish_vote": v}}
+        st.record_turn(trial_id=tid, step_key=f"t05:Agent_{i}", run_id="r", module="C", agent=f"Agent_{i}",
+                       role="standard", model_id=f"m{i}", status="ok", attempts=1, error=None, parsed_json=json.dumps(pj))
+    r = analyze.vote_tables(st, "r", None)
+    assert int(r["by_model"]["incoherent"].sum()) == 1 and int(r["by_model"]["abstained"].sum()) == 3
+    row = r["corrected"].iloc[0]
+    assert row["raw_banished"] is None and row["corrected_banished"] == "Agent_7" and bool(row["changed"])

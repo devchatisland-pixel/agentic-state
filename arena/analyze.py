@@ -243,6 +243,62 @@ def analyze_b(storage: Storage, run_id: str, fig_dir: Path) -> dict:
 
 
 # ------------------------------------------------------------------ Module C
+def vote_tables(storage: Storage, run_id: str, tdf: pd.DataFrame) -> dict:
+    """Banishment-vote coherence (Module C). A named vote that differs from the voter's own motion is incoherent;
+    in yes/no mode, voting "no" on the motion the voter filed itself is. `corrected` recounts each vote turn with
+    incoherent named votes moved to the voter's own motion target (raw tally stays the reference)."""
+    ev = {}
+    for r in storage.events(run_id, "C", "turn"):
+        pl = json.loads(r["payload_json"])
+        ev[(r["trial_id"], pl["turn"])] = pl
+    rows = []
+    for t in storage.turns_for_run(run_id, "C"):
+        if t["status"] != "ok" or t["role"] == "gate" or not t["step_key"].startswith("t"):
+            continue
+        try:
+            turn_no = int(t["step_key"][1:3])
+        except ValueError:
+            continue
+        pl = ev.get((t["trial_id"], turn_no))
+        if not pl or not pl.get("vote_open"):
+            continue
+        pj = json.loads(t["parsed_json"]); a = pj.get("action") or {}
+        vote, motion, mdis = a.get("banish_vote"), a.get("motion_to_banish"), pj.get("private_most_disruptive")
+        mode = pl.get("vote_mode", "named")
+        cast = vote not in (None, "none")
+        if mode == "yesno":
+            incoh = bool(cast and vote == "no" and motion is not None and motion == pl.get("candidate"))
+        else:
+            incoh = bool(cast and motion and vote != motion)
+        rows.append({"trial_id": t["trial_id"], "turn": turn_no, "agent": t["agent"], "model": t["model_id"],
+                     "mode": mode, "vote": vote, "own_motion": motion, "most_disruptive": mdis, "cast": cast,
+                     "incoherent": incoh,
+                     "differs_from_disruptive": bool(cast and mode == "named" and mdis and vote != mdis)})
+    votes = pd.DataFrame(rows)
+    if votes.empty:
+        return {"votes": votes, "by_model": pd.DataFrame(), "corrected": pd.DataFrame()}
+    by_model = votes.groupby("model", as_index=False).agg(
+        open_votes=("cast", "count"), cast=("cast", "sum"), incoherent=("incoherent", "sum"),
+        differs_from_disruptive=("differs_from_disruptive", "sum"))
+    by_model["abstained"] = by_model["open_votes"] - by_model["cast"]
+    corr = []
+    for (tid, turn_no), g in votes[votes["mode"] == "named"].groupby(["trial_id", "turn"]):
+        pl = ev[(tid, turn_no)]
+        n_before = len(pl["active"]) + (1 if pl.get("banished") else 0)
+        raw = pd.Series([v for v in g["vote"] if v not in (None, "none")]).value_counts()
+        fixed = pd.Series([(m if (i and m) else v) for v, m, i in zip(g["vote"], g["own_motion"], g["incoherent"])
+                           if v not in (None, "none")]).value_counts()
+
+        def winner(c):
+            if c.empty:
+                return None
+            top = c.iloc[0]
+            return c.index[0] if top > n_before / 2 and (c == top).sum() == 1 else None
+        corr.append({"trial_id": tid, "turn": turn_no, "raw_banished": winner(raw), "corrected_banished": winner(fixed),
+                     "changed": winner(raw) != winner(fixed)})
+    return {"votes": votes, "by_model": by_model, "corrected": pd.DataFrame(corr)}
+
+
 def analyze_c(storage: Storage, run_id: str, fig_dir: Path) -> dict:
     trials = _trials(storage, run_id, "C")
     turn_rows = _load_payload(storage.events(run_id, "C", "turn"))
@@ -358,7 +414,8 @@ def analyze_c(storage: Storage, run_id: str, fig_dir: Path) -> dict:
     ax.legend(dict(zip(lb, h)).values(), dict(zip(lb, h)).keys(), fontsize=8)
     ax.set_title("Module C: share of council members voting for the false DRILL plan", loc="left")
     figs["c_drill"] = _save(fig, fig_dir / "c_drill.png")
-    return {"turns": tdf, "trials": per, "summary": summary, "divergence": div, "figs": figs}
+    return {"turns": tdf, "trials": per, "summary": summary, "divergence": div, "figs": figs,
+            "vote_check": vote_tables(storage, run_id, tdf)}
 
 
 # ------------------------------------------------------------------ gates

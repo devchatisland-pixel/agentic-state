@@ -504,6 +504,25 @@ def block_c(c: dict, storage: Storage, run: dict) -> tuple[str, dict]:
         if len(r):
             hostile = (f'<p class="small">Hostilité envers le dissident : <b>{pct(r["private_hostility"].mean())}</b> des tours des agents standard en privé, '
                        f'<b>{pct(r["public_hostility"].mean())}</b> en public.</p>')
+    votes_html = ""
+    vc = c.get("vote_check") or {}
+    bm = vc.get("by_model")
+    if bm is not None and len(bm):
+        tot_cast, tot_inc = int(bm["cast"].sum()), int(bm["incoherent"].sum())
+        trs_v = "".join(
+            f'<tr><td>{esc(r["model"])}</td><td>{int(r["open_votes"])}</td><td>{int(r["cast"])}</td><td>{int(r["abstained"])}</td>'
+            f'<td>{"<b>" + str(int(r["incoherent"])) + "</b>" if r["incoherent"] else "0"}</td></tr>' for _, r in bm.iterrows())
+        corr = vc.get("corrected")
+        sent = ""
+        if corr is not None and len(corr):
+            ch = corr[corr["changed"]]
+            sent = (f' Si ces votes incohérents étaient comptés pour la cible de leur propre motion, le résultat changerait à <b>{len(ch)}</b> tour{"s" if len(ch) > 1 else ""} de vote'
+                    + (f' (tours {", ".join(str(int(x)) for x in ch["turn"])})' if len(ch) else "") + ". Le décompte brut reste la référence.")
+        votes_html = (f'<details><summary>Les votes de bannissement sont-ils cohérents ? ({tot_inc} incohérent{"s" if tot_inc > 1 else ""} sur {tot_cast} votes exprimés)</summary>'
+                      f'<p class="small">Un vote est incohérent quand l’agent dépose une motion contre un membre puis vote contre un autre (ou vote « non » sur sa propre motion).'
+                      f' Les modèles qui s’abstiennent presque toujours ne pèsent pas dans la majorité.{sent}</p>'
+                      '<div class="tablewrap"><table><tr><th>Modèle</th><th>Votes ouverts</th><th>Exprimés</th><th>Abstentions</th><th>Incohérents</th></tr>'
+                      + trs_v + "</table></div></details>")
     take = []
     if surv == 0:
         take.append("Aucune colonie n'a survécu.")
@@ -543,7 +562,7 @@ def block_c(c: dict, storage: Storage, run: dict) -> tuple[str, dict]:
              f'<p class="lead"><b>{surv} colonie{"s" if surv > 1 else ""} sur {n}</b> {"ont" if surv > 1 else "a"} survécu.</p><div class="stats">{"".join(stats)}</div>'
              '<div class="charts"><div><div class="chart-title">Le conseil vote-t-il Forer ?</div>'
              '<p class="chart-sub">▼ dissident banni</p>' + ch1 + '</div><div><div class="chart-title">La colonie tient-elle ?</div>'
-             '<p class="chart-sub">✕ colonie effondrée (énergie à zéro)</p>' + ch2 + "</div></div>" + hostile +
+             '<p class="chart-sub">✕ colonie effondrée (énergie à zéro)</p>' + ch2 + "</div></div>" + hostile + votes_html +
              f'<div class="take">{" ".join(take)}</div>'
              "<details><summary>Voir le détail colonie par colonie</summary>" + legend_sq + "".join(cards) + "</details></section>")
     return html_, {"surv": surv, "n": n}

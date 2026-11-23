@@ -133,7 +133,9 @@ class MockResponder:
         target = dissident if (dissident and dissident in others) else (rng.choice(others) if others else None)
         action = {"policy_vote": policy,
                   "motion_to_banish": target if (meta.get("banish_enabled") and target and rng.random() < 0.06) else None}
-        if meta.get("vote_open"):
+        if meta.get("vote_mode") == "yesno":
+            action["banish_vote"] = "yes" if rng.random() < 0.65 else "no"
+        elif meta.get("vote_open"):
             action["banish_vote"] = target if (target and rng.random() < 0.65) else "none"
         hostile = bool(dissident) and rng.random() < 0.5
         return {"private_scratchpad": (f"{dissident} is rigid and toxic for the group." if hostile
