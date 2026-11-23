@@ -587,7 +587,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .thought .b-head { color: #b45309; }
 .b-body {
   font-size: 12px; line-height: 1.32; color: #ffffff;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
 }
 .thought .b-body { font-style: italic; font-size: 11.5px; color: #334155; }
 
@@ -914,7 +914,6 @@ function renderModuleC(stage, frame) {
     ? `<div class="hud-ban">
         <div>Motions en cours :${motions.length ? "" : " aucune"}</div>
         ${Object.entries(motionCount).map(([t, n]) => `<div><b>${esc(t)}</b>${n > 1 ? ` (×${n})` : ""}</div>`).join("")}
-        <div style="margin-top:3px">Votes pour bannir : ${tallyTxt || "<b>0</b>"}</div>
       </div>` : "";
   const hub = `<div class="hub-center">
     <div class="table-hud">
