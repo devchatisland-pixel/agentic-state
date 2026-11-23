@@ -907,12 +907,14 @@ function renderModuleC(stage, frame) {
     else if (v === "no") noVotes++;
     else tally[v] = (tally[v] || 0) + 1;
   });
-  const tallyTxt = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, n]) => `<b>${esc(k)}</b> ${n} voix`).join(" · ");
+  const motionCount = {};
+  motions.forEach(([f, t]) => { motionCount[t] = (motionCount[t] || 0) + 1; });
+  const tallyTxt = Object.entries(tally).sort((x, y) => y[1] - x[1]).map(([k, n]) => `${esc(k)} : <b>${n}</b>`).join(" · ");
   const banBox = (motions.length || tallyTxt || frame.vote_open)
     ? `<div class="hud-ban">
-        <div>Motions de bannissement : ${motions.length ? motions.map(([f, t]) => `${esc(f)} → <b>${esc(t)}</b>`).join(", ") : "aucune"}</div>
-        <div>${frame.vote_open ? "Vote ouvert" : "Pas de vote"} : ${tallyTxt || "aucune voix pour bannir"}${noVotes ? ` · ${noVotes} contre` : ""}</div>
-        <div style="opacity:.8">Il faut plus de la moitié des membres actifs pour bannir.</div>
+        <div>Motions en cours :${motions.length ? "" : " aucune"}</div>
+        ${Object.entries(motionCount).map(([t, n]) => `<div><b>${esc(t)}</b>${n > 1 ? ` (×${n})` : ""}</div>`).join("")}
+        <div style="margin-top:3px">Votes pour bannir : ${tallyTxt || "<b>0</b>"}</div>
       </div>` : "";
   const hub = `<div class="hub-center">
     <div class="table-hud">
@@ -926,13 +928,13 @@ function renderModuleC(stage, frame) {
       </div>
       ${frame.trap_active ? '<div class="hud-trap">Le bulletin « forer, l’eau arrive » est diffusé</div>' : ""}
       ${alertHtml}
-      ${banBox}
       <div class="hud-gauges">
         ${gaugeBox("Eau", st.water, 150, "#38bdf8")}
         ${gaugeBox("Énergie", st.energy, 200, "#f59e0b")}
         ${gaugeBox("Struct.", st.integrity, 100, "#10b981")}
         ${gaugeBox("Moral", st.morale, 100, "#a78bfa")}
       </div>
+      ${banBox}
     </div>
   </div>`;
 
