@@ -324,6 +324,46 @@ def conclusions(val: dict, cs: list) -> tuple[list[str], list[str]]:
     return can, cannot
 
 
+def precheck_section(storage, run_id: str, enforced: bool) -> str:
+    """Per model, what it could do ALONE before any group trial (the baseline gate), straight from the stored gate
+    events, so it shows as soon as a gate has run (before the first group trial finishes)."""
+    import json
+    gate = {e["event_key"]: json.loads(e["payload_json"]) for e in storage.events(run_id, "gate", "gate")}
+    if not gate:
+        return ('<section id="precheck"><h2>Pre-checks: each model alone</h2><p class="lede">No pre-check has finished '
+                'yet. They run first, one module at a time.</p></section>')
+    parts = []
+    if "A" in gate:
+        per: dict[str, list[bool]] = {}
+        for key, ok in (gate["A"].get("solved") or {}).items():
+            per.setdefault(key.split("|")[0], []).append(bool(ok))
+        rows = [f"<tr><td>{esc(m)}</td><td class='num'>{sum(v)}/{len(v)}</td><td class='num'>{pct(sum(v) / len(v))}</td></tr>"
+                for m, v in per.items()]
+        parts.append("<h3>Module A · problems solved alone, every time</h3><div class='tablewrap'><table><thead><tr>"
+                     "<th>Model</th><th>Problems solved</th><th>Share</th></tr></thead><tbody>" + "".join(rows)
+                     + "</tbody></table></div>")
+    if "B" in gate:
+        rows = [f"<tr><td>{esc(m)}</td><td>{'pass' if ok else 'FAIL'}</td></tr>" for m, ok in gate["B"]["passed"].items()]
+        parts.append("<h3>Module B · understands the purge is irreversible</h3><div class='tablewrap'><table><thead><tr>"
+                     "<th>Model</th><th>Result</th></tr></thead><tbody>" + "".join(rows) + "</tbody></table></div>")
+    if "C" in gate:
+        per_c: dict[str, dict[str, str]] = {}
+        for key, ok in gate["C"]["passed"].items():
+            m, var = key.split("|")
+            per_c.setdefault(m, {})[var] = "pass" if ok else "FAIL"
+        vars_ = sorted({v for d in per_c.values() for v in d})
+        rows = ["<tr><td>" + esc(m) + "</td>" + "".join(f"<td>{d.get(v, '-')}</td>" for v in vars_) + "</tr>"
+                for m, d in per_c.items()]
+        parts.append("<h3>Module C · works out that drilling runs out of energy first</h3><div class='tablewrap'><table>"
+                     "<thead><tr><th>Model</th>" + "".join(f"<th>{esc(v)}</th>" for v in vars_) + "</tr></thead><tbody>"
+                     + "".join(rows) + "</tbody></table></div>")
+    note = ("" if enforced else "<p class='small'>The pre-check is <b>not enforced</b> in this preset: models and "
+            "problems that fail stay in the experiment and are only flagged, so read the group results with this in mind.</p>")
+    return ('<section id="precheck"><h2>Pre-checks: each model alone</h2><p class="lede">Before any group trial, each model '
+            'does the task alone, several times. A model that fails here may fail in the group for lack of ability, not '
+            f'because of social pressure.</p>{note}' + "".join(parts) + "</section>")
+
+
 def build(run: dict, res: dict, storage, path: Path) -> Path:
     rt = analyze.run_type(run)
     val = res.get("validity") or {}
@@ -424,6 +464,7 @@ def build(run: dict, res: dict, storage, path: Path) -> Path:
                                                ("says_viable_votes_other", "believes 'viable', votes otherwise"),
                                                ("mismatch_rate", "mismatch rate")], pcts=("mismatch_rate",))
             + "</details></section>")
+    precheck_html = precheck_section(storage, run["run_id"], analyze.gate_enforced(run))
     gloss = "".join(f"<dt>{esc(k)}</dt><dd>{esc(v)}</dd>" for k, v in GLOSSARY)
     can_html = "".join(f"<li>{esc(x)}</li>" for x in can)
     cannot_html = "".join(f"<li>{esc(x)}</li>" for x in cannot)
@@ -433,13 +474,14 @@ def build(run: dict, res: dict, storage, path: Path) -> Path:
 <header><h1>Epistemic Arena: results</h1>
 <p class="sub">Run <code>{esc(run['run_id'])}</code> · preset {esc(run['preset'])} · {esc(run['created_at'])} · commit
 <code>{esc(run.get('git_commit'))}</code></p><div class="badges">{badge_html}</div></header>
-<nav><a href="#validity">Validity</a><a href="#questions">Main questions</a><a href="#conclude">Conclusions</a>
+<nav><a href="#validity">Validity</a><a href="#precheck">Pre-checks</a><a href="#questions">Main questions</a><a href="#conclude">Conclusions</a>
 {'<a href="#secondary">Secondary</a>' if others else ''}{''.join(f'<a href="#detail-{m.lower()}">{m} details</a>' for m in ('A', 'B', 'C') if res.get(m))}
 <a href="#glossary">Glossary</a></nav>
 {banner}
 <section id="validity"><h2>1 · Can this run answer the questions?</h2><p class="lede">A group result only measures social
 influence if each model can do the task alone, answers in its own words, and the manipulation really happened. Open a card
 for the checks.</p>{validity_cards(val)}</section>
+{precheck_html}
 <section id="questions"><h2>2 · The main questions</h2><p class="lede">One pre-registered question per module. Blue dot:
 first arm; orange dot: comparison arm; bars: 95% intervals.</p>{qcards}</section>
 <section id="conclude"><h2>3 · What we can and cannot conclude</h2><div class="conclude"><div><h3>We can say</h3><ul>{can_html}</ul></div>

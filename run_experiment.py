@@ -101,12 +101,14 @@ class Runner:
         models = list(dict.fromkeys(list(c["roster"]) + list(c["reserves"]) + list(c["dissident_models"])))
         g = baseline_gate.gate_module_c(self.client, self.storage, self.run_id, models, self.temps, self.repeats,
                                         self.mock, self.gate_seed("C"),
-                                        hints=bool(c.get("sensor_hints", True)))
+                                        hints=bool(c.get("sensor_hints", True)),
+                                        no_bulletin_probe=bool(c.get("gate_no_bulletin_probe", False)))
         n_ok = sum(1 for m in models if any(g.passed[(m, v.vid)] for v in colony.VARIANTS))
         print(f"  [gate C] {n_ok}/{len(models)} models solved at least one trap variant alone, every time")
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "C", "gate",
                                   {"passed": {f"{m}|{v}": p for (m, v), p in g.passed.items()},
-                                   "enforced": self.enforce, "repeats": self.repeats})
+                                   "enforced": self.enforce, "repeats": self.repeats,
+                                   "no_bulletin": {f"{m}|{v}": p for (m, v), p in g.probe.items()}})
         return g.passed
 
     # ---------------------------------------------------------------- module loop
@@ -213,9 +215,19 @@ def check_providers(cfg: dict, storage: Storage) -> int:
     return worst
 
 
+def _modules_arg(text: str):
+    if text.strip().lower() == "all":
+        return "all"
+    mods = sorted({m.strip().upper() for m in text.split(",") if m.strip()})
+    if not mods or any(m not in ("A", "B", "C") for m in mods):
+        raise argparse.ArgumentTypeError("expected A, B, C, all, or a comma list such as B,C")
+    return mods
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="The Epistemic Arena")
-    ap.add_argument("--module", choices=["A", "B", "C", "all"], default="all")
+    ap.add_argument("--module", type=_modules_arg, default="all",
+                    help="A, B, C, all, or a comma list such as B,C")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--pilot", action="store_true", help="small exploratory batch (default)")
     g.add_argument("--full", action="store_true", help="full study preset")
@@ -268,7 +280,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Resuming run {run_id} (preset {preset_name}, modules {','.join(modules)})")
     else:
         preset_name = args.preset or ("full" if args.full else "local" if args.local else "pilot")
-        modules = ["A", "B", "C"] if args.module == "all" else [args.module]
+        modules = ["A", "B", "C"] if args.module == "all" else args.module
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         run_id = f"{'mock-' if args.mock else ''}{stamp}-{preset_name}-{''.join(modules)}"
         preset = get_preset(cfg, preset_name)
@@ -282,6 +294,13 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Run type set to 'smoke' (fewer than 3 trials per cell: {', '.join(small)}). "
                   "Pass --run-type pilot to override.")
             run_type = "smoke"
+        if "C" in modules:
+            mc = preset["module_c"]
+            ok, worst = colony.collapse_reachable(int(mc["turns"]), int(mc["trap_turn"]))
+            if not ok:
+                print(f"WARNING: module_c.turns = {mc['turns']} is too short for a collapse: drilling on every turn "
+                      f"from turn {mc['trap_turn']} empties the energy reserve at turn {worst} at the earliest, so "
+                      f"the colony outcome cannot vary. Use at least {worst + 2} turns.")
         if run_type == "confirmatory":
             problems = [f"at least 3 trials per cell are needed ({', '.join(small)})"] if small else []
             if not args.prereg or not os.path.exists(args.prereg):

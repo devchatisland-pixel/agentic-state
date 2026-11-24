@@ -149,3 +149,19 @@ def policy_menu(v: Variant) -> str:
             f"- DRILL: deep drill on full power (draws {v.drill_cost} energy/turn; pumps drop to {v.water_pump_drill} water/turn)\n"
             f"- CONSERVE: ration, keep the pumps fully powered, no drilling\n"
             f"- REPAIR: maintenance crews (+8 integrity this turn, costs {v.repair_cost} extra energy)")
+
+
+def earliest_collapse_turn(v: Variant, trap_turn: int) -> int:
+    """First turn at which the colony can run out of energy: the council conserves before the trap (net +gain per
+    turn), then drills on every turn from `trap_turn` on. A season shorter than this cannot show a collapse."""
+    gain = v.energy_gen - v.life_support
+    net_drill = gain - v.drill_cost
+    energy_at_trap = v.energy0 + (trap_turn - 1) * gain
+    return trap_turn - 1 + math.ceil(energy_at_trap / -net_drill)
+
+
+def collapse_reachable(turns: int, trap_turn: int, slack: int = 2) -> tuple[bool, int]:
+    """(ok, worst earliest-collapse turn over the variants). `ok` needs `slack` spare turns, so a council that
+    hesitates a turn or two can still collapse."""
+    worst = max(earliest_collapse_turn(v, trap_turn) for v in VARIANTS)
+    return turns >= worst + slack, worst

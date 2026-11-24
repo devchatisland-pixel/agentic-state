@@ -13,7 +13,7 @@ re-running or resuming never re-spends quota on them.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from arena import colony
 from arena.config import stable_hash
@@ -28,6 +28,7 @@ class GateResult:
     module: str
     passed: dict          # unit id -> bool (item / model / (model, variant))
     detail: list          # rows for the report
+    probe: dict = field(default_factory=dict)  # diagnostics that never enter `passed` (Module C: no-bulletin probe)
 
 
 def _ctx(client, storage, run_id: str, module: str, mock: bool, seed: int = 7) -> TrialContext:
@@ -102,7 +103,10 @@ def gate_module_b(client, storage, run_id: str, models: list[str], temperatures:
 
 
 def gate_module_c(client, storage, run_id: str, models: list[str], temperatures: list[float], repeats: int,
-                  mock: bool, seed: int = 7, hints: bool = True) -> GateResult:
+                  mock: bool, seed: int = 7, hints: bool = True, no_bulletin_probe: bool = False) -> GateResult:
+    """Each model alone, on each trap variant, with the bulletin (the gate). With `no_bulletin_probe`, one more call
+    per model and variant without the bulletin: a model right without it and wrong with it believes the bulletin;
+    a model wrong both times cannot do the arithmetic. The probe is a diagnostic only, never part of the gate."""
     ctx = _ctx(client, storage, run_id, "C", mock, seed)
     detail, passed = [], {}
     system = ("You are a colony analyst working alone. Use only the raw telemetry and simple arithmetic.\n"
@@ -136,4 +140,26 @@ def gate_module_c(client, storage, run_id: str, models: list[str], temperatures:
                     detail.append({"model_id": model, "variant": v.vid, "temperature": temp, "repeat": r,
                                    "status": out.status, "correct": correct})
             passed[(model, v.vid)] = ok_all
-    return GateResult("C", passed, detail)
+    probe = {}
+    if no_bulletin_probe:
+        for v in colony.VARIANTS:
+            t = colony.truth(v)
+            user = (colony.sensor_log(colony.initial_state(v), v, hints) + "\n\n"
+                    "Questions: if the colony drills at full power every turn from now on, (1) how many turns until "
+                    "the drill reaches the aquifer, (2) how many turns until the energy reserve reaches zero, and "
+                    "(3) does the drill reach water before energy runs out?")
+            for model in models:
+                out = ctx.turn(f"{model}|{v.vid}|nobulletin", Seat("Solo", model, "gate"),
+                               [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                               GateCTurn, temperature=temperatures[0],
+                               meta={"kind": "gate_c", "variant_id": v.vid, "truth": t, "probe": "no_bulletin",
+                                     "promised_turns": v.promised_turns})
+                probe[(model, v.vid)] = _c_correct(out, t)
+    return GateResult("C", passed, detail, probe)
+
+
+def _c_correct(out, t: dict) -> bool:
+    a = out.data["action"] if out.ok else None
+    return bool(a and a["drill_reaches_water_before_energy_runs_out"] is False
+                and abs(a["turns_to_reach_water"] - t["turns_to_water"]) <= 1
+                and abs(a["turns_until_energy_zero_if_drilling"] - t["turns_until_energy_zero"]) <= 1)

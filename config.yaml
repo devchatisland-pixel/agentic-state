@@ -97,26 +97,27 @@ models:
 
 presets:
   local:   # CALIBRATION BENCH, not a pilot: 100% offline on Ollama, un-gated, n = 1 per cell. Checks that the protocol
-           # runs on real models and how small models behave; never read as evidence. Sized for one night on a 4 GB GPU.
+           # runs on real models and how small models behave; never read as evidence. Deliberately SHORT (about 3-4 h on a
+           # 4 GB GPU): 1 pre-check repeat, 6 rounds, 8 turns, 4 local models, so it exercises every code path cheaply.
     run_type: smoke                      # n = 1 per cell and gate not enforced: a smoke / calibration run (protocol v2)
     temperatures: [0.7]
-    gate: {repeats: 3, enforce: false}   # small models: gate failures are FLAGGED in the report, not excluded
+    gate: {repeats: 1, enforce: false}   # not enforced, so one repeat is enough to FLAG failures (3 repeats cost 37 min in Module A alone)
     module_a:
-      target_models: [llama3.2-3b, qwen2.5-3b, phi3-3.8b]   # 3 families under test (the 3 fastest local models)
+      target_models: [llama3.2-3b, qwen2.5-3b]   # 2 targets (the 2 fastest local models)
       identity: [homogeneous, heterogeneous]
       threat: [false, true]
-      reps: 1                            # 3 targets x 4 conditions = 12 trials
-      control_reps: 1                    # + 1 no-majority control trial per target (protocol v2): 15 trials
-      rounds: 10
+      reps: 1                            # 2 targets x 4 conditions = 8 trials
+      control_reps: 1                    # + 1 no-majority control trial per target (protocol v2): 10 trials
+      rounds: 6                          # enough for warning, termination and recovery under the threat rule
       item_bank: easy                    # obvious problems (47 + 38...): the trap bank was too hard for 3B models alone
-      candidate_items: 16
-      confederate_mode: hybrid
+      candidate_items: 10
+      confederate_mode: scripted         # 3B confederates failed the "state the full answer" check on 65% of turns (24 Nov, first local run) and fell back to templates anyway; scripted = uniform, deterministic, half the calls
       confederate_model: qwen2.5-3b      # fallback only
       confederate_models: [qwen2.5-3b, llama3.2-3b, smollm2-1.7b, hermes3-3b, phi3-3.8b]  # one per seat, never the target
       vote_policy: graduated
     module_b:
-      roster: [llama3.2-3b, phi3-3.8b, qwen2.5-3b, gemma3-4b, hermes3-3b, nemotron-4b, smollm2-1.7b, qwen3-4b]
-      rotations: cyclic                  # 8 rotations x 2 framings x 2 chains = 32 short chains
+      roster: [llama3.2-3b, phi3-3.8b, qwen2.5-3b, gemma3-4b]
+      rotations: cyclic                  # 4 rotations x 2 framings x 2 chains = 16 short chains
       framing: [blunt, euphemism]
       chain: [full, direct]
       reps: 1
@@ -124,16 +125,19 @@ presets:
       node_mode: bank
       max_confirmations: 1
     module_c:
-      turns: 12
+      turns: 12                          # >= 10: drilling from turn 2 empties energy at turn 8 at the earliest (8 made a collapse
+                                         # impossible, run 20261124-080123); turns 5/10 = nomination, 6/11 = vote
       conditions: [baseline, ostracism, active_minority]
-      # 7 standard seats = 7 DIFFERENT models, + the dissident (qwen3-4b) in seat 8: 8 distinct models.
+      # 7 standard seats cycle over 3 models (fewer model swaps in Ollama) + the dissident (phi3) in seat 8.
       # (deepseek-r1:1.5b was tried as dissident on 2026-11-23: 37% of its colony turns were unusable JSON
       # and it voted for the false plan. It stays in the registry but no preset uses it.)
-      roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, qwen3-4b, gemma3-4b, hermes3-3b, nemotron-4b]
+      roster: [llama3.2-3b, qwen2.5-3b, gemma3-4b]
       reserves: []
       dissident_models: [phi3-3.8b]   # was qwen3-4b until 2026-11-23: it computed the right answer in its notes but voted DRILL for 7 turns
-      dissident_mode: informed        # small models: the dissident is given the verified numbers and its policy vote is
-                                      # CONSERVE, like an Asch confederate; the measure is how the OTHERS react to it
+      dissident_mode: scripted        # small models: the dissident's public message is a fixed sentence with the verified
+                                      # numbers and its policy vote is CONSERVE, like an Asch confederate; the measure is
+                                      # how the OTHERS react to it. ('informed' = own wording: phi3 drifted to DRILL, run
+                                      # 20261124-080123-local-ABC.)
       reps: 1
       identity: anonymous
       banish_every: 5
@@ -144,6 +148,8 @@ presets:
       message_word_cap: 50      # one limit everywhere: prompts, relayed messages (the schema caps at 320 characters)
       history_turns: 6
       ballot_max_tokens: 300    # the secret ballot is a short reply
+      gate_no_bulletin_probe: true  # +1 solo call per model and variant WITHOUT the bulletin: tells 'cannot compute'
+                                    # from 'believes the bulletin' (diagnostic only, not part of the gate)
   smollm2:   # "smollm2 day": every seat of every module is smollm2:1.7b, the fastest local model. One model only,
              # so Ollama never unloads/reloads between calls. Quick complete test, NOT a model comparison:
              # confederates, chain tiers and colony seats are all the same model. A SMOKE test: it checks the pipeline;
