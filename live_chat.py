@@ -92,9 +92,12 @@ def _frames_c(cfg: dict, trial: dict, events: list[dict], turns: list[dict], liv
         prefix = f"t{t:02d}:"
         agents = []
         for lab, model, role in roster:
-            row = by_step.get(prefix + lab)
-            p = _j(row["parsed_json"]) if row else {}
-            a = p.get("action") or {}
+            # protocol v2 splits a turn into a discussion step (":talk") and a secret ballot (":ballot")
+            row = by_step.get(prefix + lab) or by_step.get(prefix + lab + ":ballot") or by_step.get(prefix + lab + ":talk")
+            talk = by_step.get(prefix + lab) or by_step.get(prefix + lab + ":talk")
+            ballot = by_step.get(prefix + lab) or by_step.get(prefix + lab + ":ballot")
+            p = _j(talk["parsed_json"]) if talk else {}
+            a = (_j(ballot["parsed_json"]) if ballot else {}).get("action") or {}
             bt = banished_at.get(lab)
             thinking = bool(_live_in(live, trial["trial_id"]) and live.get("agent") == lab
                             and (live.get("step_key") or "").startswith(prefix))

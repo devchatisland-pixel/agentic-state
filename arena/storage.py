@@ -64,10 +64,13 @@ class Storage:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
         self.conn.executescript(SCHEMA)
-        try:  # migration: databases created before the "repairs" column existed
-            self.conn.execute("ALTER TABLE turns ADD COLUMN repairs INTEGER DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass
+        for ddl in ("ALTER TABLE turns ADD COLUMN repairs INTEGER DEFAULT 0",  # migrations for older databases
+                    "ALTER TABLE runs ADD COLUMN run_type TEXT", "ALTER TABLE runs ADD COLUMN prereg_hash TEXT",
+                    "ALTER TABLE runs ADD COLUMN run_seed INTEGER"):
+            try:
+                self.conn.execute(ddl)
+            except sqlite3.OperationalError:
+                pass
         self.lock = threading.Lock()
         self.db_path = db_path
 
@@ -93,12 +96,12 @@ class Storage:
 
     # ------------------------------------------------------------ runs & trials
     def create_run(self, run_id: str, preset: str, modules: list[str], mock: bool, cfg_hash: str,
-                   cfg: dict, commit: str | None) -> None:
+                   cfg: dict, commit: str | None, run_type: str | None = None, prereg_hash: str | None = None,
+                   run_seed: int | None = None) -> None:
         rec = dict(run_id=run_id, created_at=now_iso(), preset=preset, modules=",".join(modules),
                    mock=int(mock), config_hash=cfg_hash, config_json=json.dumps(cfg, default=str),
-                   git_commit=commit, status="running")
-        self._exec("INSERT INTO runs(run_id,created_at,preset,modules,mock,config_hash,config_json,"
-                   "git_commit,status) VALUES(?,?,?,?,?,?,?,?,?)", tuple(rec.values()))
+                   git_commit=commit, status="running", run_type=run_type, prereg_hash=prereg_hash, run_seed=run_seed)
+        self._exec(f"INSERT INTO runs({','.join(rec)}) VALUES({','.join('?' * len(rec))})", tuple(rec.values()))
         self._mirror(run_id, "runs", {k: v for k, v in rec.items() if k != "config_json"})
 
     def get_run(self, run_id: str) -> dict | None:
@@ -179,6 +182,14 @@ class Storage:
             sql += " AND event_type=?"
             params.append(event_type)
         return self._all(sql + " ORDER BY trial_id, event_key", tuple(params))
+
+    def calls_for_run(self, run_id: str, first_attempt_only: bool = True) -> list[dict]:
+        """Recorded API calls of a run (prompts included), for the validity checks (example echo, context size)."""
+        sql = ("SELECT trial_id, step_key, attempt, agent, role, model_id, provider, messages_json, tokens_in, "
+               "tokens_out, latency_s, error_type FROM calls WHERE run_id=?")
+        if first_attempt_only:
+            sql += " AND attempt=0"
+        return self._all(sql + " ORDER BY trial_id, step_key, attempt", (run_id,))
 
     def turns_for_run(self, run_id: str, module: str | None = None) -> list[dict]:
         if module:

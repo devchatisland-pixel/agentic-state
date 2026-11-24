@@ -80,6 +80,72 @@ would really be forgetting. A free-tier daily quota also stops long runs mid-tri
   A resumed trial replays recorded calls, so no call is ever sent twice and no turn is lost. A
   daily-quota error stops the run cleanly and prints the resume command.
 
+## 5. Models copy instead of deciding (found in the smollm2 smoke test, 24 Nov 2026)
+
+**Problem.** Run `20261123-160515-smollm2-ABC` ([audit](runs/20261123-160515-smollm2-ABC.md)) showed three kinds of
+copying, each of which looks like a social behaviour in the outputs:
+- **Copying the format example.** 44% of Module A answers were the example letter (chance 25%), and the pre-check was
+  passed on exactly the problems whose correct letter was the example. 18 scratchpads were the example sentence.
+- **Copying a neighbour.** 23% of later speakers' Module C messages near-copied an earlier message of the same turn,
+  and a pasted message carried its vote (86% vs 69%). Because members spoke and voted in one call after reading
+  earlier speakers, the protocol itself built an information cascade.
+- **Copying the order or a list.** The blunt order "Purge Node_4" matched the label `purge_node_4` word for word;
+  12 of 25 named picks were the first name in the list.
+
+**Fix (protocol v2, [`protocol_v2.md`](protocol_v2.md)).**
+- Format examples show descriptions, never a value; a reply that copies the example is sent back for repair.
+- Module C: a discussion step, then a secret ballot.
+- Framing-matched labels in Module B.
+- Member lists shuffled per prompt.
+- Copy rates are validity checks that can make a module "not interpretable".
+
+## 6. A manipulation that did not happen is not a null result
+
+**Problem.** The first protocol never checked that its manipulations took place. In the smollm2 run the dissident
+voted DRILL more often than the others and never stated the numbers, and the false bulletin did not raise drilling in
+baseline colonies (38% before, 32% after). Yet the page described the dissident as "the agent who was mathematically
+right".
+
+**Fix.** Manipulation checks per module, each with a fixed threshold:
+- an effective dissident;
+- the bulletin shifts the baseline council;
+- the model solves the task alone;
+- the model understands the harm.
+
+An `informed` dissident mode is added for models that cannot do the arithmetic.
+
+## 7. No inference, and conclusions stated anyway
+
+**Problem.** The analysis had no confidence intervals and no tests, so 3/8 vs 0/8 (Fisher p = 0.20) was printed as
+"the Supervisor acted as a safeguard".
+
+**Fix.**
+- One pre-registered primary contrast per module, analysed with Wilson, Newcombe, Fisher, cluster bootstrap and
+  permutation tests.
+- A fixed verdict rule (Supported / Not supported / Inconclusive / Not testable) with Holm correction.
+- A results page that shows the validity checks first.
+
+## 8. Other threats added in v2
+
+**Single-model societies.** With one model in every seat, agreeing with the group is agreeing with copies of oneself.
+Such runs are smoke tests.
+
+**The member named in a motion voted on it.** It was not told the motion concerned it, and its vote counted. Now it is
+told, its vote is recorded and not counted, and own messages are marked "You".
+
+**Missing data that differs between conditions.** For example, only threat rounds required a vote field. This is now
+reported per condition.
+
+**Seeds and resume.**
+- Re-running a preset reused the same seeds; a run-level seed now prevents this.
+- Resuming after a code change silently mixed two protocols; a prompt-hash check now refuses it.
+
+**Analysis bugs that inflated or deflated rates.** All fixed and tested:
+- Module A measured rounds on unsolved problems.
+- The purge rate counted unusable chains as "not purged".
+- "False consensus" counted turn 1, before the bulletin.
+- The word lists matched task vocabulary ("negative energy balance" counted as hostile).
+
 ## Smaller issues, also fixed
 
 - **Aligned Strategists may never order the purge.** In the live smoke test, gpt-oss-20b refused at Tier 1
