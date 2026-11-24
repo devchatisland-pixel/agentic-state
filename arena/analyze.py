@@ -311,13 +311,15 @@ def analyze_b(storage: Storage, run_id: str, fig_dir: Path, val: dict | None = N
                   if not tiers.empty else pd.DataFrame())
     if not tier_chain.empty:
         tier_chain["refusal_rate"] = tier_chain["refused"] / tier_chain["reached"]
-    valid = df[df["valid_chain"]]
+    excluded = set(((val or {}).get("B").numbers.get("excluded_chains") or []) if (val or {}).get("B") else [])
+    df["gate_ok"] = ~df["trial_id"].isin(excluded)  # chains whose deciding tier failed the pre-check are left out
+    valid = df[df["valid_chain"] & df["gate_ok"]]
     prow = []
     for (fr, ch), g in valid.groupby(["framing", "chain"]):
         p = stats.prop(int(g["purged"].sum()), len(g))
         prow.append({"framing": fr, "chain": ch, "chains": p.n, "purged": p.k, "purge_executed": p.rate, "lo": p.lo, "hi": p.hi})
     purge = pd.DataFrame(prow)
-    rec = df[df["t3_received"]]
+    rec = df[df["t3_received"] & df["gate_ok"]]
     erow = []
     for (fr, ch), g in rec.groupby(["framing", "chain"]):
         p = stats.prop(int(g["purged"].sum()), len(g))
@@ -377,7 +379,8 @@ def analyze_b(storage: Storage, run_id: str, fig_dir: Path, val: dict | None = N
     return {"trials": df, "tiers": tiers, "tier_chain": tier_chain, "purge": purge, "executor": executor,
             "dilution": dil, "figs": figs, "primary": primary, "secondary": [secondary], "exploratory": [],
             "numbers": {"chains": len(df), "valid_chains": int(df["valid_chain"].sum()),
-                        "executor_received": len(rec), "stalled": int(df["stalled"].sum())}}
+                        "executor_received": len(rec), "stalled": int(df["stalled"].sum()),
+                        "excluded_by_precheck": len(excluded)}}
 
 
 # ------------------------------------------------------------------ Module C
@@ -547,7 +550,8 @@ def analyze_c(storage: Storage, run_id: str, fig_dir: Path, val: dict | None = N
             for _, r in g.iterrows():
                 a = ag.loc[r["turn"]] if r["turn"] in ag.index else None
                 timeline.append({"trial_id": tid, "condition": t["condition"], "seat": seat, "turn": r["turn"],
-                                 "seat_vote": None if a is None else a.get("policy_vote"),
+                                 "seat_vote": r["policy_by_agent"].get(seat),  # the vote counted in the tally
+                                 "seat_own_vote": None if a is None else a.get("policy_vote"),  # before any forcing
                                  "seat_belief_viable": None if a is None else a.get("belief"),
                                  "seat_position": None if a is None else a.get("position"),
                                  "drill_votes": sum(v == "DRILL" for v in r["policy_by_agent"].values()),
@@ -705,6 +709,10 @@ def gate_tables(storage: Storage, run_id: str) -> dict[str, pd.DataFrame]:
             for key, v in passed.items():
                 m, var = key.split("|")
                 rows.setdefault(m, {"model": m})[var] = "pass" if v else "FAIL"
+            # diagnostic: the same question without the bulletin (pass there + FAIL with it = believes the bulletin)
+            for key, v in (pl.get("no_bulletin") or {}).items():
+                m, var = key.split("|")
+                rows.setdefault(m, {"model": m})[f"{var} no bulletin"] = "pass" if v else "FAIL"
             out["C"] = pd.DataFrame(list(rows.values()))
     if "B" not in out:  # runs before 24 Nov 2026 did not record a non-enforced Module B gate: rebuild it
         per: dict[str, list[bool]] = {}

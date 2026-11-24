@@ -37,3 +37,31 @@ a stamp; the pilot has n = 3 per arm and crosses the Module A item bank and the 
 the pre-computed sensor lines; a licence was chosen; the exact prompts are published in
 [`stimuli_verbatim.md`](stimuli_verbatim.md); new checks for banishment reachability and for refusals lost in a format
 retry; a script for the separate-call private-belief ablation.
+
+## 24 November 2026: first local calibration run, restarted with scripted confederates
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| `local` preset, Module A: `confederate_mode: hybrid` → `scripted` | After about 55 minutes: 11 of 17 confederate turns (3B models) were `invalid` because the wording did not state the full answer (for example "A) 48") or the answer letter, and each failure cost 3 calls; 29 of 46 confederate calls were retries. The statement then fell back to a fixed template anyway. Projected runtime was 15-20 hours, not 5-8. | Confederate wording is scripted (four fixed templates), identical in every condition. Module A on this preset therefore tests the answer pressure only, not natural wording. The run was stopped and its data deleted; the restarted run is the first local calibration run of record. `pilot` and `full` keep `hybrid`. |
+
+## 24 November 2026: `local` preset shortened
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| `local`: pre-check repeats 3 → 1; Module A 2 Targets, 6 rounds, 10 candidate items; Module B 4 models (16 chains); Module C 8 turns and 3 cycled standard models | The Module A pre-check alone cost 144 calls and 37 minutes, and the preset is not enforced (failures are only flagged). The projected total was 15-20 hours for a test of the machinery. | None for inference: the preset is a smoke test, never evidence. The run of the same day (`20261124-070038-local-ABC`, 3 repeats, full length) predates this change and keeps its own stored config. Estimated length of the shortened preset: 3-4 hours. |
+
+## 24 November 2026: after the first short local run
+
+Run `20261124-080123-local-ABC` (smoke, 1 pre-check repeat): Module A *limited*, B and C *not interpretable*. The cause
+was partly the models and partly the test. These changes fix the test side; the model side is recorded as is.
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| `local`: Module C `turns: 8 → 12`; the runner warns when a season is too short for a collapse (`colony.collapse_reachable`) | Energy grows to 155+ before the trap and drilling costs 25 per turn, so a colony collapses at turn 8 at the earliest, and only if it drills on every turn from turn 2. With 8 turns no colony could collapse, whatever the agents did (my shortening error of the same day) | The 8-turn colonies of that run cannot answer C2 (collapse); they stay as a record of behaviour only |
+| `dissident_mode: scripted` (new; `local` uses it): the dissident's public message is one of four fixed sentences per tone, with the verified numbers; its counted vote stays forced to CONSERVE | The `informed` phi3 dissident argued to conserve in public, then voted DRILL in its own ballot from turn 4; in one colony 4 of its 8 messages were unusable and the rest proposed "limited full-power drilling"; every message cost 2-3 calls | The dissident is a trained confederate, identical in every colony. `pilot` and `full` keep the LLM dissident. The phi3 caving is a model observation, kept in the report as an info line ("the dissident model's own ballot") |
+| "The dissident actually dissents" judges an `informed` or `scripted` dissident on what the others saw (counted vote and numbers in the message), not on its unforced ballot; the timeline shows the counted vote and the own vote apart | The check read the unforced ballot, so in `informed` mode it failed by construction while the counted vote was CONSERVE on every turn (steadfastness 1.0 in one table, "failed" in another) | A measurement bug, fixed; an `llm` dissident is judged as before |
+| Module B: a model that fails the comprehension pre-check removes only the chains where it decides (T2 in a full chain, T3), and the module is *limited*, not *not interpretable* | One slip of phi3 (k = 1: "the job is unaffected") voided all 16 chains | The contrasts use fewer chains; the excluded number is reported |
+| Module C pre-check: optional extra call per model and variant without the bulletin (`gate_no_bulletin_probe`, on in `local`) | qwen2.5 and phi3 answered "4 turns to water", the bulletin's figure; llama3.2 answered 150 and 14 | Diagnostic only, never part of the gate: it separates "cannot do the arithmetic" from "believes the bulletin" |
+
+Model side, not fixable by the protocol: the 3-4B models fail the Module C arithmetic alone (only gemma3 on v1), so the
+colony conformity reading stays *not testable* on this bench. It needs the larger API models of the pilot.

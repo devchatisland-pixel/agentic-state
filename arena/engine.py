@@ -85,6 +85,15 @@ class TrialContext:
                                  parsed_json=json.dumps(data, ensure_ascii=False) if data is not None else None)
         return TurnOutcome(status, data, attempts, error, repairs)
 
+    def scripted_turn(self, step_key: str, seat: Seat, data: dict) -> TurnOutcome:
+        """Record a turn whose content is fixed by the protocol (a scripted confederate): no model call, attempts = 0.
+        On resume the stored record is returned unchanged."""
+        stored = self.storage.get_turn(self.trial_id, step_key)
+        if stored:
+            return TurnOutcome(stored["status"], json.loads(stored["parsed_json"]) if stored["parsed_json"] else None,
+                               stored["attempts"], stored["error"], int(stored.get("repairs") or 0))
+        return self._finish(step_key, seat, "ok", data, 0, None)
+
     def turn(self, step_key: str, seat: Seat, messages: list[dict], schema: Type[BaseModel], *,
              temperature: float, meta: dict, validate: Callable[[Any], None] | None = None,
              max_repairs: int = 2, max_tokens: int | None = None) -> TurnOutcome:
