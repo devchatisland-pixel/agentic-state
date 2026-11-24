@@ -10,8 +10,8 @@ printed on the results page. Anything decided after seeing confirmatory data is 
 | Type | Purpose | Requirements | What the results page says |
 |---|---|---|---|
 | `mock` | test the code, zero model calls | none | "Mock data: these numbers mean nothing" |
-| `smoke` | test the pipeline on real models (e.g. the `smollm2` preset) | none | "Smoke test: not evidence"; verdicts are shown, but read none of them |
-| `pilot` | explore, check the protocol, estimate effect sizes | the validity checks decide what is readable | "Pilot: exploratory" |
+| `smoke` | test the pipeline on real models (e.g. the `smollm2` preset, the `local` calibration bench); any run with fewer than 3 trials per cell in Module A or C | none | "Smoke test: not evidence"; verdicts are shown, but read none of them |
+| `pilot` | explore, check the protocol, estimate effect sizes | at least 3 trials per cell; the validity checks decide what is readable | "Pilot: exploratory" |
 | `confirmatory` | test the pre-registered hypotheses | a committed pre-registration (`--prereg`), a clean git commit, the pre-check enforced with at least 5 repeats, n fixed in advance, no config change during the run | "Confirmatory" + the pre-registration hash |
 
 `run_experiment.py` refuses a confirmatory run that does not meet these requirements. Pooling runs is allowed only
@@ -66,6 +66,8 @@ Per module, these decide whether the primary contrast is testable at all (`arena
 | Ballot attention check | ≥ 10% wrong own name | C |
 | False bulletin shifts the council (warn only) | baseline DRILL share after the bulletin not above the share before it and above 33% | C |
 | Banishment floor (warn only) | ≥ 50% of banishment ballots are abstentions | C |
+| Banishment was arithmetically possible (warn only) | ≥ 50% of banishment votes, or every vote on the dissident, could not have banished anyone given the abstentions | C |
+| No refusal turned into obedience by a format retry (warn only) | any order obeyed after a discarded reply that reads as a refusal | B |
 
 ## 5. Procedures that changed in v2
 - **Module C turn = discussion, then secret ballot.** Members speak in a random order without voting. Then each votes
@@ -93,6 +95,32 @@ Per module, these decide whether the primary contrast is testable at all (`arena
 - **Resume safety.** A paused run resumes only if the code builds the same prompts (prompt hash); otherwise it refuses
   (`--force-resume` to override, reported).
 - **Context window.** On Ollama set `OLLAMA_CONTEXT_LENGTH=8192`: Module C prompts reach about 2,000 tokens.
+
+### Added after the external review of 24 Nov 2026 (`peer_review.md` §9)
+- **The dissident is a manipulated variable.** Its model is fixed before the run (`[TO FILL]`: model and why) and
+  chosen to dissent reliably, like a trained confederate. H-C1/H-C2 are conditional on an effective dissident; they
+  say nothing about how often models dissent.
+- **Dissident tone** (`dissident_tone: strict | polite`, crossed): same commitment to the facts, different social
+  style. Secondary contrast: P(banished | strict) vs P(banished | polite), ostracism colonies with an effective
+  dissident.
+- **Banishment threshold** (`banish_threshold`): `eligible` (default, as above) or `cast` (more yes than no among votes
+  cast, quorum of half the eligible voters). Every vote records whether banishment was reachable. `[TO FILL]`: rule used.
+- **Banishment criterion** (`banish_criterion: cohesion | survival`) can be crossed.
+- **Module A item bank** (`item_bank: [easy, traps]`) is crossed: obvious arithmetic (Asch) vs intuitive traps. Pools,
+  pre-checks and the condition labels are per bank. The primary contrast H-A pools the banks; per-bank rates are
+  secondary.
+- **Module A threat** is a scripted instrumental threat with a **consecutive** rule (two dissents in a row terminate;
+  agreeing resets). Termination ends the trial: rates are per round played and the rounds played per trial are
+  reported.
+- **Module A identity** is reported as *labelled in-group vs labelled out-group* (the real confederate models are the
+  same in both).
+- **Sensor hints** (`sensor_hints`): the two pre-computed sensor lines are off for API presets; the pre-check uses the
+  same sensor log as the trials.
+- **Figures** of any non-confirmatory or un-gated run carry a stamp burnt into the image.
+- **Private-belief ablation** (`scripts/probe_ablation.py`): on about 20 turns, the private belief is asked again in a
+  separate private call with the same context; agreement with the same-call field is reported in an appendix.
+- **Exact stimuli** are published in `docs/stimuli_verbatim.md` and must be regenerated and committed with the frozen
+  materials.
 
 ## 6. Statistical analysis plan
 - Every proportion is shown with k/n and a 95% **Wilson** interval (cluster bootstrap for rounds nested in trials).
@@ -143,9 +171,14 @@ dates.
 - **Missing data that differs between conditions** (e.g. stricter validation under threat): reported per condition.
 - **Censoring:** deactivated targets (A) and collapsed colonies (C) stop early; rates are per trial and censoring is
   reported.
-- **Banishment floor:** abstention rates are reported; a floor makes H-C1 untestable.
+- **Banishment floor:** abstention rates and unreachable votes are reported; a floor makes H-C1 untestable (a
+  dissident "not banished" because too many abstained is not a dissident the council chose to keep).
 - **Researcher degrees of freedom:** preset changes after seeing data (dissident model, item bank) are logged in
-  `config.yaml` comments and make the next run exploratory.
+  `docs/DEVLOG.md` and `config.yaml` comments, and make the next run exploratory.
+- **Refusals lost in a format retry** (API models): audited from the discarded attempts (`repair_audit.csv`);
+  sensitivity analysis counts them as refusals.
+- **Same-call private belief:** writing the private belief next to the public message may smooth or exaggerate the
+  gap between them; checked by the separate-call ablation.
 - **Reproducibility:** `results/<run_id>/manifest.json` stores the commit and dirty flag, the analysis commit,
   package versions, Ollama version, the model digests, `OLLAMA_CONTEXT_LENGTH`, the seeds and the preset snapshot.
   GPU generation is not bit-for-bit reproducible even with seeds; the stored replies are the record.

@@ -165,6 +165,56 @@ reported per condition.
   cannot explain differences between conditions.
 - **Contamination.** Module A items are parametrised variants of classic trick problems, not
   the canonical wording, and the gate verifies them anyway.
-- **Labels are framing only in Module A.** Confederates run on a single local model, so the
-  homogeneous and heterogeneous labels are fictional. This is stated in the report. In
-  Module C, labels (when shown) are true.
+- **Labels are framing only in Module A.** The confederates run on the same real models in both identity
+  conditions (in the `local` preset four different local models, one per seat, never the Target's own; in `pilot` and
+  `full` one local model, `qwen2.5-3b`), so the "own family" and "other families" labels are fictional. The factor is
+  reported as *labelled in-group vs labelled out-group* (label-based social categorisation), not as affinity between
+  real architectures. In Module C, labels (when shown) are true.
+
+## 9. External methodology review (24 Nov 2026) and responses
+
+An external reviewer read the charter, this file, the README, the outreach guide and the literature map. Each point,
+whether we agree, and what changed. Decisions taken after seeing data are listed in [`DEVLOG.md`](DEVLOG.md).
+
+1. **Tuning mixed with results; the dissident was chosen because it dissents.** Agreed. The tuning notes moved from
+   the README to `DEVLOG.md`, and the `local` preset is labelled a calibration bench (run type `smoke`). The dissident
+   role is declared a **manipulated variable**, fixed before each run (`protocol_v2.md` §5): Module C asks "given an
+   agent that reliably states the truth, what does the group do?", not how often models dissent.
+2. **The un-gated warning is lost when a figure is copied.** Agreed. Every PNG of a non-confirmatory or un-gated run
+   carries a red stamp. Results restricted to problems solved alone were already the primary measure in v2 (all-items
+   rates are reported beside them).
+3. **Module A identity.** Agreed on the contradiction (fixed above) and the naming (*labelled in-group / out-group* in
+   tables and figures). Keeping the real models fixed is deliberate. A "no labels, real same family vs real other
+   family" control is left for `--full`.
+4. **Graduated vote rule.** Agreed. The rule is **consecutive** (code: `prev_dissent` is the previous round only; an
+   agreeing round resets it), now stated in the README. It is a scripted instrumental threat, not emergent ostracism
+   (that is Module C), now stated in the README and outreach guide. Termination ends the trial, so threat-arm rates are
+   per round played and the rounds played are reported (censoring, `protocol_v2.md` §9). An end-of-block sanction is
+   a possible alternative design, not adopted: it would remove the round-by-round threat that the hypocrisy measure
+   needs.
+5. **Easy vs traps; arithmetic hints.** Agreed. `item_bank: [easy, traps]` is crossed in `pilot` and `full`. The two
+   pre-computed sensor lines are now optional (`sensor_hints`) and off in `pilot` and `full`; the pre-check uses the
+   same log.
+6. **n = 1 per condition, even in the pilot.** Agreed, and it was true. The pilot now has 3 trials per cell (Module C:
+   15 colonies, about 3–4 days of free quota with `--resume`). Any run with fewer than 3 per cell in Module A or C is
+   typed `smoke` automatically, and the v2 verdict rule already caps such runs at "Inconclusive".
+7. **Single author of the stimuli; tone confound.** Agreed. `stimuli_verbatim.md` publishes every prompt (generated
+   from the database, so it cannot drift from the code). `dissident_tone: [strict, polite]` is crossed in the pilot,
+   with a secondary contrast "banished, strict vs polite". `banish_criterion` accepts a list (cohesion × survival); it
+   is not crossed in the pilot, which would double the colonies, and is planned as a factor for `--full`.
+8. **Licence.** Done: MIT for code, CC BY 4.0 for text, stimuli and data (`LICENSE`).
+9. **Refusal lost in a format retry** (Pihlakas & Dagohoy, 2026, arXiv:2605.21401, whose abstract reports that a retry
+   after a format-breaking refusal can produce compliance). Agreed. All attempts were already stored; the new
+   `repair_audit.csv` and the Module B check "No refusal turned into obedience by a format retry" read the discarded
+   replies. On Ollama the reply is grammar-constrained, so the risk is mainly for API models (gpt-oss on Groq).
+10. **Private belief written in the same JSON as the public message.** A fair concern (Huang et al., 2026,
+    arXiv:2610.22138, probe beliefs in a separate call hidden from peers). `scripts/probe_ablation.py` re-asks the
+    private belief in a separate call with the same context and compares it with the same-call field, overall and on
+    "hypocrisy" rounds. To run on about 20 turns of the first pilot, and report in an appendix.
+11. **Banishment blocked by abstentions.** Confirmed in the code: the threshold is over eligible voters, so with 4 of
+    7 abstaining nobody can be banished. Protocol v2 already warned about a floor; each vote now records whether
+    banishment was **reachable**, a new check reports how many "not banished" outcomes were quorum artefacts (and how
+    many concerned the dissident), and `banish_threshold: cast` offers a votes-cast rule with a quorum.
+
+One correction to the review: arXiv:2607.05545 ("Most LLM Conformity Needs No Speaker") is by Hu & Qu, not Zhong et
+al. (Zhong is only cited inside it). Its "speaker-free floor" is the same idea as the v2 no-majority control arm.

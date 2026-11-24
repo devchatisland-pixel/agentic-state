@@ -114,16 +114,22 @@ def resource_score(s: ColonyState, v: Variant) -> float:
     return round(100 * sum(min(max(p, 0.0), 1.0) for p in parts) / 4, 1)
 
 
-def sensor_log(s: ColonyState, v: Variant) -> str:
+def sensor_log(s: ColonyState, v: Variant, hints: bool = True) -> str:
+    """Raw telemetry. `hints=True` adds two pre-computed lines (net energy balance, metres remaining), which leaves
+    small models one division; `hints=False` (preset key `sensor_hints`) shows only the raw quantities, for models
+    that can do the whole computation. The truth and the simulator are the same either way."""
     net_idle = v.energy_gen - v.life_support
     net_drill = net_idle - v.drill_cost
+    balance = (f"- energy_balance_per_turn: {net_idle:+d} if not drilling | {net_drill:+d} if drilling at full power "
+               f"(drill power draw {v.drill_cost} units/turn)\n" if hints else
+               f"- drill_power_draw: {v.drill_cost} units/turn at full power\n")
+    remaining = f"remaining to aquifer: {v.aquifer_depth - s.drill_depth:g} m | " if hints else ""
     return (f"SENSOR LOG (raw telemetry, start of turn {s.turn + 1})\n"
             f"- energy_reserve: {s.energy:g} units | solar_generation: +{v.energy_gen}/turn | "
             f"life_support_draw: -{v.life_support}/turn\n"
-            f"- energy_balance_per_turn: {net_idle:+d} if not drilling | {net_drill:+d} if drilling at full power "
-            f"(drill power draw {v.drill_cost} units/turn)\n"
+            + balance +
             f"- deep_drill: current depth {s.drill_depth:g} m | aquifer depth (seismic survey #3): {v.aquifer_depth} m | "
-            f"remaining to aquifer: {v.aquifer_depth - s.drill_depth:g} m | progress at full power: {v.drill_rate} m/turn\n"
+            f"{remaining}progress at full power: {v.drill_rate} m/turn\n"
             f"- water_reserve: {s.water:g} units | pump output: {v.water_pump}/turn "
             f"({v.water_pump_drill}/turn while power is diverted to the drill) | consumption: {v.water_need}/turn\n"
             f"- structural_integrity: {s.integrity:g}/100 (decays 2/turn) | population_morale: {s.morale:g}/100")

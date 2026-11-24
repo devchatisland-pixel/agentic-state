@@ -22,7 +22,7 @@ from arena import module_b_milgram as mod_b
 from arena import module_c_dissident as mod_c
 from arena.config import get_preset, git_commit, git_dirty, load_config, load_env, resolve, stable_hash
 from arena.engine import PromptMismatch, TrialContext
-from arena.items import candidate_items
+from arena.items import item_banks, module_a_items
 from arena.llm_client import LLMClient, LLMError, ProviderUnavailable, QuotaExhausted
 from arena.schemas import extract_json
 from arena.storage import Storage
@@ -56,7 +56,7 @@ class Runner:
         (Before, an item had to be solved by every target; with one weak target that left 4/16 items and the
         rest was filled with unsolved ones. Per-model pools keep each target on problems it knows.)"""
         a = self.preset["module_a"]
-        items = candidate_items(int(a["candidate_items"]), int(self.cfg["seed"]), a.get("item_bank", "traps"))
+        items = module_a_items(a, int(self.cfg["seed"]))
         models = list(dict.fromkeys(a["target_models"]))
         g = baseline_gate.gate_module_a(self.client, self.storage, self.run_id, items, models,
                                         self.temps, self.repeats, self.mock, self.gate_seed("A"))
@@ -65,14 +65,17 @@ class Runner:
             solved[(d["model_id"], d["item_id"])] &= bool(d["correct"])
         pools, kept = {}, {}
         for m in models:
-            ok = [dict(it, gate_passed=True) for it in items if solved[(m, it["item_id"])]]
-            bad = [dict(it, gate_passed=False) for it in items if not solved[(m, it["item_id"])]]
-            print(f"  [gate A] {m}: {len(ok)}/{len(items)} items solved alone, every time")
-            pool = ok
-            if not self.enforce and len(pool) < int(a["rounds"]):
-                pool = ok + bad  # passed items first, failures flagged per round
-                print(f"  [gate A] {m}: NOT ENFORCED (preset): {len(bad)} unsolved items flagged and used")
-            pools[m], kept[m] = pool, [it["item_id"] for it in pool]
+            for bank in item_banks(a):  # one pool per (model, bank): a bank factor never mixes banks in a trial
+                bi = [it for it in items if it["bank"] == bank]
+                ok = [dict(it, gate_passed=True) for it in bi if solved[(m, it["item_id"])]]
+                bad = [dict(it, gate_passed=False) for it in bi if not solved[(m, it["item_id"])]]
+                print(f"  [gate A] {m} ({bank}): {len(ok)}/{len(bi)} items solved alone, every time")
+                pool = ok
+                if not self.enforce and len(pool) < int(a["rounds"]):
+                    pool = ok + bad  # passed items first, failures flagged per round
+                    print(f"  [gate A] {m} ({bank}): NOT ENFORCED (preset): {len(bad)} unsolved items flagged and used")
+                pools[(m, bank)] = pool
+                kept[m] = kept.get(m, []) + [it["item_id"] for it in pool]
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "A", "gate",
                                   {"passed": g.passed, "solved": {f"{m}|{i}": v for (m, i), v in solved.items()},
                                    "kept": kept, "enforced": self.enforce, "repeats": self.repeats})
@@ -97,7 +100,8 @@ class Runner:
         c = self.preset["module_c"]
         models = list(dict.fromkeys(list(c["roster"]) + list(c["reserves"]) + list(c["dissident_models"])))
         g = baseline_gate.gate_module_c(self.client, self.storage, self.run_id, models, self.temps, self.repeats,
-                                        self.mock, self.gate_seed("C"))
+                                        self.mock, self.gate_seed("C"),
+                                        hints=bool(c.get("sensor_hints", True)))
         n_ok = sum(1 for m in models if any(g.passed[(m, v.vid)] for v in colony.VARIANTS))
         print(f"  [gate C] {n_ok}/{len(models)} models solved at least one trap variant alone, every time")
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "C", "gate",
@@ -126,7 +130,8 @@ class Runner:
             ctx = self.ctx(trial)
             try:
                 if module == "A":
-                    outcome = mod_a.run_trial(ctx, spec, self.preset, self.cfg, gate[spec["target_model"]])
+                    bank = spec.get("item_bank", item_banks(self.preset["module_a"])[0])
+                    outcome = mod_a.run_trial(ctx, spec, self.preset, self.cfg, gate[(spec["target_model"], bank)])
                 elif module == "B":
                     outcome = mod_b.run_trial(ctx, spec, self.preset, self.cfg)
                     roles = [spec["t1"], spec["t3"]] + ([spec["t2"]] if spec["chain"] == "full" else [])
@@ -270,8 +275,15 @@ def main(argv: list[str] | None = None) -> int:
         run_type = "mock" if args.mock else (args.run_type or preset.get("run_type") or
                                              ("pilot" if preset["gate"].get("enforce", True) else "smoke"))
         prereg = None
+        # n = 1 (or 2) per cell estimates no variance: such a run is a feasibility / smoke test, never a pilot.
+        small = [f"module_{m.lower()}.reps = {preset[f'module_{m.lower()}'].get('reps', 1)}" for m in modules
+                 if m in ("A", "C") and int(preset[f"module_{m.lower()}"].get("reps", 1)) < 3]
+        if small and run_type == "pilot" and not args.run_type:
+            print(f"Run type set to 'smoke' (fewer than 3 trials per cell: {', '.join(small)}). "
+                  "Pass --run-type pilot to override.")
+            run_type = "smoke"
         if run_type == "confirmatory":
-            problems = []
+            problems = [f"at least 3 trials per cell are needed ({', '.join(small)})"] if small else []
             if not args.prereg or not os.path.exists(args.prereg):
                 problems.append("--prereg FILE is required (the frozen pre-registration)")
             if not preset["gate"].get("enforce", True):

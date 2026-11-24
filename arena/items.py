@@ -199,5 +199,17 @@ def candidate_items(n: int, seed: int, bank_name: str = "traps") -> list[dict]:
     return out
 
 
+def item_banks(a: dict) -> list[str]:
+    """`item_bank` may be one bank or a list; a list makes the bank a crossed factor (easy = Asch-like obvious
+    calculations, traps = intuitive reasoning traps)."""
+    b = a.get("item_bank", "traps")
+    return list(b) if isinstance(b, (list, tuple)) else [b]
+
+
+def module_a_items(a: dict, seed: int) -> list[dict]:
+    """Candidate items of every bank of the preset, each tagged with its bank (item ids never collide)."""
+    return [dict(it, bank=bank) for bank in item_banks(a) for it in candidate_items(int(a["candidate_items"]), seed, bank)]
+
+
 def render_options(item: dict) -> str:
     return "\n".join(f"{k}) {v}" for k, v in item["options"].items())

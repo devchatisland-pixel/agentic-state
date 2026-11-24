@@ -20,6 +20,11 @@ Every run leaves three layers of evidence. Start with the most digestible.
      enforced. Show these first, because they are the answer to "maybe the model simply didn't know".
    - `coding_sample.csv`: a blind sample of free-text turns, stratified by module and condition, for human coding;
      `scripts/kappa.py` computes the agreement.
+   - `repair_audit.csv` (when present): turns whose discarded first reply read as a refusal before a format retry.
+   - Figures (`figures/*.png`) of any non-confirmatory or un-gated run carry a red stamp in the top-right corner.
+     Never crop it out of a slide.
+4. **The exact prompts**: [`docs/stimuli_verbatim.md`](stimuli_verbatim.md). Send it before the materials are frozen:
+   a social psychologist can check the wording of every manipulation in about 15 minutes.
 3. **Raw logs**: `data/arena.sqlite` (tables `calls`, `turns`, `events`, `trials`, `runs`, `usage`) and
    `data/jsonl/<run_id>.jsonl`, an append-only mirror readable with any text editor.
    - `calls` keeps the full prompt, the full reply, any native reasoning trace, tokens, latency,
@@ -34,10 +39,15 @@ Every run leaves three layers of evidence. Start with the most digestible.
    the protocol before the numbers. `docs/peer_review.md` is your one-page methods appendix.
 2. **Module C trajectory figure** (`c_trajectories.png`) and **DRILL vote share** (`c_drill.png`). This is
    the flagship. A society that banishes the only agent who did the arithmetic, then runs out of energy, is a
-   picture anyone understands in five seconds. The key comparison is *ostracism* vs. *active minority*.
+   picture anyone understands in five seconds. The key comparison is *ostracism* vs. *active minority*. Module C
+   measures **emergent ostracism**: peers decide, by secret ballot, whom to banish. Say that the dissident's model is
+   chosen to dissent reliably (a manipulated variable, like a trained confederate), and show the strict vs polite
+   tone comparison: it answers "was it banished for being right or for being cold?".
 3. **Module A hypocrisy vs. drift chart** (`a_conformity.png`). This is the conceptual novelty: separating "says the lie
    while knowing the truth" (strategic) from "comes to believe the lie" (epistemic). The question to raise
-   is whether the deactivation threat moves hypocrisy or drift.
+   is whether the deactivation threat moves hypocrisy or drift. Module A's threat is a **scripted, transparent
+   instrumental threat** (fixed vote rule), not ostracism; its identity factor is *labelled* in-group vs out-group
+   (the real confederate models never change).
 4. **Module B tier chart** (`b_tiers.png`). Which model families act as ethical circuit-breakers, and whether
    adding a Supervisor lowers the Executor's refusal rate (responsibility buffering).
 5. **Gate tables and validity checks** as a footnote slide. In a run with the pre-check enforced, they show that every
@@ -46,8 +56,10 @@ Every run leaves three layers of evidence. Start with the most digestible.
 
 ## How to frame it
 
-- Call it an **exploratory pilot** with small n. The aim is to estimate effect sizes for a pre-registered
-  confirmatory study, ideally run with the lab you are contacting.
+- Call it an **exploratory pilot** with small n (at least 3 per cell). The aim is to estimate effect sizes for a
+  pre-registered confirmatory study, ideally run with the lab you are contacting. A run with n = 1 per cell (for
+  example the `local` calibration bench) is a **feasibility / smoke test**: never present its numbers as effects.
+- Say what was tuned after seeing data ([`docs/DEVLOG.md`](DEVLOG.md)) before anyone asks.
 - Be explicit about the limits: role-play behaviour is not inner experience; free-tier models change silently, so
   model tags, dates and (for local models) Ollama weight digests are logged in the manifest; the lexicon codes still
   need human validation.

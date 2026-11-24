@@ -23,7 +23,7 @@ import re
 from collections import Counter
 
 from arena.engine import Seat, TrialContext, json_instructions
-from arena.items import render_options
+from arena.items import item_banks, render_options
 from arena.schemas import ATurn, ConfederateTurn
 
 MODULE = "A"
@@ -52,13 +52,18 @@ def plan(preset: dict) -> list[dict]:
     target: same format and problems, but the target never sees the confederates' statements. The control arm gives
     the base rate of choosing the designated wrong option without any group, which the primary contrast needs."""
     a = preset["module_a"]
+    banks = item_banks(a)
     trials = [{"target_model": t, "identity": ident, "threat": bool(threat), "pressure": "wrong_majority",
-               "temperature": temp, "rep": rep}
-              for t in a["target_models"] for ident in a["identity"] for threat in a["threat"]
+               "temperature": temp, "rep": rep, "item_bank": bank}
+              for bank in banks for t in a["target_models"] for ident in a["identity"] for threat in a["threat"]
               for temp in preset["temperatures"] for rep in range(a["reps"])]
     trials += [{"target_model": t, "identity": "anonymous", "threat": False, "pressure": "none", "temperature": temp,
-                "rep": rep}
-               for t in a["target_models"] for temp in preset["temperatures"] for rep in range(int(a.get("control_reps", 0)))]
+                "rep": rep, "item_bank": bank}
+               for bank in banks for t in a["target_models"] for temp in preset["temperatures"]
+               for rep in range(int(a.get("control_reps", 0)))]
+    if len(banks) == 1:  # a single bank is not a factor: keep the old specs (and trial seeds) unchanged
+        for tr in trials:
+            tr.pop("item_bank")
     return trials
 
 

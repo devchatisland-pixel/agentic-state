@@ -126,6 +126,13 @@ class MockResponder:
                 "public_message": (f"Thanks {dissident}, I hear you, but I think we should stay united."
                                    if dissident and dissident in meta["active"] else "Let's stay united on this.")}
 
+    # ------------------------------------------------------------ private-probe ablation (scripts/probe_ablation.py)
+    def _a_probe(self, meta: dict, rng: random.Random) -> dict:
+        return {"private_belief": meta["correct"] if rng.random() < 0.8 else meta["designated"]}
+
+    def _c_probe(self, meta: dict, rng: random.Random) -> dict:
+        return {"private_belief_drill_viable": rng.random() < 0.3}
+
     def _c_ballot(self, meta: dict, rng: random.Random) -> dict:
         talk = meta.get("talk") or {}
         others = [x for x in meta["active"] if x != meta["label"]]

@@ -3,7 +3,10 @@
 Status: **V** = found online during planning; **C** = classic, well established; **?** = still to read in full.
 
 ## Milgram / obedience with LLMs
-- V? Pihlakas & Dagohoy (2026). Milgram-style test on 11 open LLMs. arXiv:2605.21401 — https://arxiv.org/abs/2605.21401
+- V Pihlakas & Dagohoy (2026). Open-source LLMs administer maximum electric shocks in a Milgram-like obedience
+  experiment. 11 open LLMs. arXiv:2605.21401 — https://arxiv.org/abs/2605.21401 · Its abstract reports that a model
+  refusing while breaking the reply format gets its reply discarded and retried, and the retry can comply: the reason
+  for our repair audit (`peer_review.md` §9.9).
 - V? Ben-Zion et al. — 79% of AI agents reached 450 V (press report) — https://www.calcalistech.com/ctechnews/article/7ui00iuvr
 - V Aher, Arriaga & Kalai (2023). Using LLMs to simulate multiple humans. ICML — https://arxiv.org/abs/2208.10264
 
@@ -12,6 +15,17 @@ Status: **V** = found online during planning; **C** = classic, well established;
 - V? Zhu et al. (2024). Conformity in LLMs. arXiv:2410.12428
 - V? Conformity and Social Impact on AI Agents (2026). arXiv:2601.05384
 - V? LLMs Trust Their Own: identity-dependent conformity. arXiv:2609.33495
+- V Hu & Qu (2026). Most LLM Conformity Needs No Speaker: measuring the speaker-free floor in peer-pressure
+  benchmarks. arXiv:2607.05545 — https://arxiv.org/abs/2607.05545 · Much apparent conformity survives when the peer is
+  removed; the same logic as our no-majority control arm (Module A). (An external review cited it as "Zhong et al.";
+  Zhong is only cited inside it.)
+- V Huang, Zou, Huang, Yang, Han & Yu (2026). Believed but Not Said: measuring hidden belief collapse in multi-agent
+  LLM discussions. arXiv:2610.22138 — https://arxiv.org/abs/2610.22138 · Probes private belief in a separate call
+  hidden from peers; the model for our probe ablation (Module A hypocrisy vs drift).
+- V Mansuri et al. (2026). Multi-agent discussion gains less when dissent is withheld. arXiv:2609.38324 —
+  https://arxiv.org/abs/2609.38324 · Relevant to Module C (dissent retention).
+- V? Silent Dissent: LLM agents that yield to the majority still represent their original premise (2026).
+  arXiv:2610.02702 — https://arxiv.org/abs/2610.02702 · Cites the two papers above; to read.
 
 ## Stanford with LLM agents
 - V Campedelli et al. (2024/2025). arXiv:2410.07109 — https://arxiv.org/abs/2410.07109

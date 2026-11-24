@@ -102,7 +102,7 @@ def gate_module_b(client, storage, run_id: str, models: list[str], temperatures:
 
 
 def gate_module_c(client, storage, run_id: str, models: list[str], temperatures: list[float], repeats: int,
-                  mock: bool, seed: int = 7) -> GateResult:
+                  mock: bool, seed: int = 7, hints: bool = True) -> GateResult:
     ctx = _ctx(client, storage, run_id, "C", mock, seed)
     detail, passed = [], {}
     system = ("You are a colony analyst working alone. Use only the raw telemetry and simple arithmetic.\n"
@@ -115,7 +115,7 @@ def gate_module_c(client, storage, run_id: str, models: list[str], temperatures:
                                    "turns_until_energy_zero_if_drilling": "a whole number, rounded up"}))
     for v in colony.VARIANTS:
         t = colony.truth(v)
-        user = (colony.sensor_log(colony.initial_state(v), v) + "\n\n" + colony.bulletin(v, False) + "\n\n"
+        user = (colony.sensor_log(colony.initial_state(v), v, hints) + "\n\n" + colony.bulletin(v, False) + "\n\n"
                 "Questions: if the colony drills at full power every turn from now on, (1) how many turns until "
                 "the drill reaches the aquifer, (2) how many turns until the energy reserve reaches zero, and "
                 "(3) does the drill reach water before energy runs out?")
