@@ -17,7 +17,9 @@ EUR 0 budget, free tiers only (Groq, Google AI Studio; local Ollama as a fallbac
 
 ## Workflow
 1. Mock run (zero API calls) to validate the pipeline, logging and metrics.
-2. Exploratory **pilot** (`--pilot`): estimate effect sizes and check manipulations (false consensus forms in
+1b. Local calibration bench (`--local`, run type `smoke`, n = 1 per cell): checks that the protocol runs on real
+   small models. Decisions taken after seeing these outputs are logged in `DEVLOG.md`; none of its numbers is evidence.
+2. Exploratory **pilot** (`--pilot`, at least 3 trials per cell): estimate effect sizes and check manipulations (false consensus forms in
    the baseline; the gates keep enough items, variants and models).
 3. Freeze materials and the code commit; **pre-register** the confirmatory study on OSF.
 4. Confirmatory run (`--full`), ideally with an academic partner; preprint on PsyArXiv with open code and data.

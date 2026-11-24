@@ -63,10 +63,12 @@ def _agents(trial: dict, by_type: dict, rows: list[dict], now: dict | None) -> l
         for p in by_type.get("turn", []):
             if p.get("banished"):
                 banned[p["banished"]] = p["turn"]
+        talk_rows = {r["agent"]: r for r in rows if not r["step_key"].endswith(":ballot")}
+        ballot_rows = {r["agent"]: r for r in rows if not r["step_key"].endswith(":talk")}
         for lab, (model, role) in sorted(setup.get("seats", {}).items(), key=lambda kv: int(kv[0].split("_")[1])):
             r = latest.get(lab)
-            p = parsed(r)
-            a = p.get("action") or {}
+            p = parsed(talk_rows.get(lab))  # protocol v2: private fields come from the discussion step,
+            a = parsed(ballot_rows.get(lab)).get("action") or {}  # votes from the secret ballot
             chips = []
             if r and r["status"] != "ok":
                 chips.append({"k": "statut", "v": "réponse inutilisable", "kind": "warn"})
@@ -281,7 +283,7 @@ button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var
 .legend span { margin-right:12px; font-size:12px; color:var(--ink2); } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
 </style></head><body><main>
 <div class="top"><div><h1>Arène : suivi en direct</h1><div class="sub" id="runline">connexion…</div></div>
-<div><a href="/live-chat" style="font-weight:600;margin-right:12px">Live Chat &rarr;</a><a href="/results" style="font-weight:600;margin-right:12px">Résultats pour l'instant &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
+<div><a href="/live-chat" style="font-weight:600;margin-right:12px">Live Chat &rarr;</a><a href="/results" style="font-weight:600;margin-right:12px">Results so far &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
 <div class="grid">
  <div>
   <div class="card" id="nowcard"><div class="now"><div class="dot"></div><div id="now">…</div></div></div>
@@ -404,23 +406,50 @@ tick();
 </script></body></html>"""
 
 
-RESULTS_BAR = ('<div style="position:sticky;top:0;z-index:9;padding:8px 16px;font:14px system-ui,sans-serif;'
-               'background:#1f6feb;color:#fff"><a href="/" style="color:#fff;font-weight:600">&larr; Suivi en direct</a>'
-               ' &middot; résultats partiels, recalculés après chaque essai terminé &middot; cette page se rafraîchit toutes les 30 s'
-               '</div>')
+def _bar(run_id: str | None, running: bool) -> str:
+    note = ("partial results, rebuilt after every finished trial &middot; this page refreshes every 30 s" if running
+            else "run finished: final results")
+    return ('<div style="position:sticky;top:0;z-index:9;padding:8px 16px;font:14px system-ui,sans-serif;'
+            'background:#1f6feb;color:#fff"><a href="/" style="color:#fff;font-weight:600">&larr; Live monitor</a>'
+            f' &middot; run <code style="color:#fff">{run_id or "-"}</code> &middot; {note}</div>')
 
 
-def results_page(dashboard: Path | None) -> bytes:
-    """The results dashboard with a back link and a 30 s auto-refresh injected."""
-    if dashboard is None or not Path(dashboard).exists():
-        html = ("<!doctype html><html><head><meta charset='utf-8'><meta http-equiv='refresh' content='30'>"
-                "<title>Résultats</title></head><body>" + RESULTS_BAR +
-                "<p style='font:16px system-ui;padding:16px'>Pas encore de résultats : ils apparaissent après le "
-                "premier essai terminé.</p></body></html>")
+def _run_status(db: Path | None, run_id: str | None) -> tuple[str | None, str | None]:
+    """(run_id, status) of the requested run, or of the latest run."""
+    if db is None or not Path(db).exists():
+        return run_id, None
+    try:
+        conn = _connect(Path(db))
+        row = (conn.execute("SELECT run_id, status FROM runs WHERE run_id=?", (run_id,)).fetchone() if run_id else
+               conn.execute("SELECT run_id, status FROM runs ORDER BY created_at DESC, run_id DESC LIMIT 1").fetchone())
+        conn.close()
+        return (row["run_id"], row["status"]) if row else (run_id, None)
+    except sqlite3.Error:
+        return run_id, None
+
+
+def results_page(dashboard: Path | None, db: Path | None = None, run_id: str | None = None,
+                 results_dir: Path | None = None) -> bytes:
+    """The results page of a run (?run=<id>, default: the latest run), with a back link.
+
+    It reloads every 30 s only while that run is still running, so an opened section stays open afterwards."""
+    run_id, status = _run_status(db, run_id)
+    running = status == "running"
+    path = None
+    if results_dir is not None and run_id and (Path(results_dir) / run_id / "dashboard.html").exists():
+        path = Path(results_dir) / run_id / "dashboard.html"
+    elif dashboard is not None and Path(dashboard).exists():
+        path = Path(dashboard)
+    refresh = "<meta http-equiv='refresh' content='30'>" if running else ""
+    if path is None:
+        html = ("<!doctype html><html><head><meta charset='utf-8'>" + refresh + "<title>Results</title></head><body>"
+                + _bar(run_id, True) + "<p style='font:16px system-ui;padding:16px'>No results yet: they appear after "
+                "the first finished trial.</p></body></html>")
         return html.encode()
-    html = Path(dashboard).read_text(encoding="utf-8", errors="replace")
-    html = html.replace("<head>", "<head><meta http-equiv='refresh' content='30'>", 1)
-    html = html.replace("<body>", "<body>" + RESULTS_BAR, 1)
+    html = path.read_text(encoding="utf-8", errors="replace")
+    if refresh:
+        html = html.replace("<head>", "<head>" + refresh, 1)
+    html = html.replace("<body>", "<body>" + _bar(run_id, running), 1)
     return html.encode()
 
 
@@ -442,7 +471,10 @@ def make_handler(db: Path, dashboard: Path | None = None):
             elif self.path.split("?")[0] in ("/live-chat", "/live-chat/"):
                 body, ctype = LIVE_CHAT_PAGE.encode(), "text/html; charset=utf-8"
             elif self.path.startswith("/results"):
-                body, ctype = results_page(dashboard), "text/html; charset=utf-8"
+                q = parse_qs(urlparse(self.path).query)
+                rdir = resolve(cfg["paths"]["results_dir"]) if cfg.get("paths") else None
+                body = results_page(dashboard, db, (q.get("run") or [None])[0], rdir)
+                ctype = "text/html; charset=utf-8"
             elif self.path.startswith("/api/state"):
                 try:
                     body = json.dumps(snapshot(db), default=str).encode()

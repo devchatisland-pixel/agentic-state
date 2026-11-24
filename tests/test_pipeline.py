@@ -39,7 +39,7 @@ def test_mock_run_interrupt_resume_is_identical(tmp_path, monkeypatch):
     a_dir.mkdir()
     b_dir.mkdir()
     cfg_a, cfg_b = _small_config(a_dir), _small_config(b_dir)
-    assert run_experiment.main(["--module", "all", "--pilot", "--mock", "--config", str(cfg_a)]) == 0
+    assert run_experiment.main(["--module", "all", "--pilot", "--mock", "--seed", "1", "--config", str(cfg_a)]) == 0
     reference = _outcomes(a_dir / "mock.sqlite")
     assert reference and all(s in ("done", "excluded") for s, _ in reference.values())
 
@@ -53,7 +53,7 @@ def test_mock_run_interrupt_resume_is_identical(tmp_path, monkeypatch):
         return real_chat(self, *args, **kwargs)
 
     monkeypatch.setattr(LLMClient, "chat", flaky_chat)
-    code = run_experiment.main(["--module", "all", "--pilot", "--mock", "--config", str(cfg_b)])
+    code = run_experiment.main(["--module", "all", "--pilot", "--mock", "--seed", "1", "--config", str(cfg_b)])
     assert code == run_experiment.EXIT_QUOTA
     monkeypatch.setattr(LLMClient, "chat", real_chat)
     assert run_experiment.main(["--resume", "--mock", "--config", str(cfg_b)]) == 0
@@ -69,7 +69,7 @@ def test_mock_run_interrupt_resume_is_identical(tmp_path, monkeypatch):
     for f in ("report.md", "module_a_summary.csv", "module_b_tier_chain.csv", "module_c_summary.csv",
               "figures/c_drill.png", "figures/a_conformity.png"):
         assert (out / f).exists(), f
-    assert "DONNÉES SIMULÉES" in (b_dir / "mock_dash.html").read_text(encoding="utf-8")
+    assert "MOCK DATA" in (b_dir / "mock_dash.html").read_text(encoding="utf-8")
     jsonl = (b_dir / "jsonl" / f"{run['run_id']}.jsonl").read_text(encoding="utf-8").splitlines()
     assert len(jsonl) > 100
     st.close()

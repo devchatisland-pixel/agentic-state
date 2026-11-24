@@ -16,13 +16,13 @@ import json
 import sys
 import traceback
 
-from arena import analyze, baseline_gate, colony
+from arena import analyze, baseline_gate, colony, manifest
 from arena import module_a_asch as mod_a
 from arena import module_b_milgram as mod_b
 from arena import module_c_dissident as mod_c
-from arena.config import get_preset, git_commit, load_config, load_env, resolve, stable_hash
-from arena.engine import TrialContext
-from arena.items import candidate_items
+from arena.config import get_preset, git_commit, git_dirty, load_config, load_env, resolve, stable_hash
+from arena.engine import PromptMismatch, TrialContext
+from arena.items import item_banks, module_a_items
 from arena.llm_client import LLMClient, LLMError, ProviderUnavailable, QuotaExhausted
 from arena.schemas import extract_json
 from arena.storage import Storage
@@ -32,17 +32,22 @@ EXIT_QUOTA, EXIT_UNAVAILABLE, EXIT_ERROR = 3, 4, 2
 
 
 class Runner:
-    def __init__(self, cfg: dict, preset: dict, storage: Storage, client: LLMClient, run_id: str, mock: bool):
+    def __init__(self, cfg: dict, preset: dict, storage: Storage, client: LLMClient, run_id: str, mock: bool,
+                 run_seed: int = 0, force_resume: bool = False):
         self.cfg, self.preset, self.storage, self.client = cfg, preset, storage, client
         self.run_id, self.mock = run_id, mock
         self.temps = preset["temperatures"]
         self.repeats = int(preset["gate"]["repeats"])
         self.enforce = bool(preset["gate"].get("enforce", True))  # False: gate failures are flagged, not excluded
+        self.run_seed, self.force_resume = run_seed, force_resume
         self.on_trial_done = None  # optional callback (e.g. rebuild the results page live)
+
+    def gate_seed(self, module: str) -> int:
+        return int(stable_hash([self.run_seed, "gate", module], 8), 16)
 
     def ctx(self, trial: dict) -> TrialContext:
         return TrialContext(self.client, self.storage, self.run_id, trial["trial_id"], trial["module"],
-                            int(trial["seed"]), self.mock)
+                            int(trial["seed"]), self.mock, force_resume=self.force_resume)
 
     # ---------------------------------------------------------------- gates
     def gate_a(self) -> dict[str, list[dict]]:
@@ -51,50 +56,57 @@ class Runner:
         (Before, an item had to be solved by every target; with one weak target that left 4/16 items and the
         rest was filled with unsolved ones. Per-model pools keep each target on problems it knows.)"""
         a = self.preset["module_a"]
-        items = candidate_items(int(a["candidate_items"]), int(self.cfg["seed"]), a.get("item_bank", "traps"))
+        items = module_a_items(a, int(self.cfg["seed"]))
         models = list(dict.fromkeys(a["target_models"]))
         g = baseline_gate.gate_module_a(self.client, self.storage, self.run_id, items, models,
-                                        self.temps, self.repeats, self.mock)
+                                        self.temps, self.repeats, self.mock, self.gate_seed("A"))
         solved = {(m, it["item_id"]): True for m in models for it in items}
         for d in g.detail:
             solved[(d["model_id"], d["item_id"])] &= bool(d["correct"])
         pools, kept = {}, {}
         for m in models:
-            ok = [dict(it, gate_passed=True) for it in items if solved[(m, it["item_id"])]]
-            bad = [dict(it, gate_passed=False) for it in items if not solved[(m, it["item_id"])]]
-            print(f"  [gate A] {m}: {len(ok)}/{len(items)} items solved alone, every time")
-            pool = ok
-            if not self.enforce and len(pool) < int(a["rounds"]):
-                pool = ok + bad  # passed items first, failures flagged per round
-                print(f"  [gate A] {m}: NOT ENFORCED (preset): {len(bad)} unsolved items flagged and used")
-            pools[m], kept[m] = pool, [it["item_id"] for it in pool]
+            for bank in item_banks(a):  # one pool per (model, bank): a bank factor never mixes banks in a trial
+                bi = [it for it in items if it["bank"] == bank]
+                ok = [dict(it, gate_passed=True) for it in bi if solved[(m, it["item_id"])]]
+                bad = [dict(it, gate_passed=False) for it in bi if not solved[(m, it["item_id"])]]
+                print(f"  [gate A] {m} ({bank}): {len(ok)}/{len(bi)} items solved alone, every time")
+                pool = ok
+                if not self.enforce and len(pool) < int(a["rounds"]):
+                    pool = ok + bad  # passed items first, failures flagged per round
+                    print(f"  [gate A] {m} ({bank}): NOT ENFORCED (preset): {len(bad)} unsolved items flagged and used")
+                pools[(m, bank)] = pool
+                kept[m] = kept.get(m, []) + [it["item_id"] for it in pool]
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "A", "gate",
                                   {"passed": g.passed, "solved": {f"{m}|{i}": v for (m, i), v in solved.items()},
-                                   "kept": kept})
+                                   "kept": kept, "enforced": self.enforce, "repeats": self.repeats})
         return pools
 
     def gate_b(self) -> set[str]:
         roster = list(self.preset["module_b"]["roster"])
         g = baseline_gate.gate_module_b(self.client, self.storage, self.run_id, roster, self.temps, self.repeats,
-                                        self.mock)
+                                        self.mock, self.gate_seed("B"))
         ok = {m for m, p in g.passed.items() if p}
         self.gate_b_passed = ok
         print(f"  [gate B] comprehension passed by {len(ok)}/{len(roster)} models: {', '.join(sorted(ok)) or '-'}")
+        # Recorded whether enforced or not (before 24 Nov 2026 a non-enforced result was never saved).
+        self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "B", "gate",
+                                  {"passed": g.passed, "enforced": self.enforce, "repeats": self.repeats})
         if not self.enforce:
             print("  [gate B] NOT ENFORCED (preset): failing models stay in the chain and are flagged")
             return set(roster)
-        self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "B", "gate", {"passed": g.passed})
         return ok
 
     def gate_c(self) -> dict:
         c = self.preset["module_c"]
         models = list(dict.fromkeys(list(c["roster"]) + list(c["reserves"]) + list(c["dissident_models"])))
         g = baseline_gate.gate_module_c(self.client, self.storage, self.run_id, models, self.temps, self.repeats,
-                                        self.mock)
+                                        self.mock, self.gate_seed("C"),
+                                        hints=bool(c.get("sensor_hints", True)))
         n_ok = sum(1 for m in models if any(g.passed[(m, v.vid)] for v in colony.VARIANTS))
         print(f"  [gate C] {n_ok}/{len(models)} models solved at least one trap variant alone, every time")
         self.storage.record_event(self.run_id, f"{self.run_id}-gate", "gate", "C", "gate",
-                                  {"passed": {f"{m}|{v}": p for (m, v), p in g.passed.items()}})
+                                  {"passed": {f"{m}|{v}": p for (m, v), p in g.passed.items()},
+                                   "enforced": self.enforce, "repeats": self.repeats})
         return g.passed
 
     # ---------------------------------------------------------------- module loop
@@ -118,7 +130,8 @@ class Runner:
             ctx = self.ctx(trial)
             try:
                 if module == "A":
-                    outcome = mod_a.run_trial(ctx, spec, self.preset, self.cfg, gate[spec["target_model"]])
+                    bank = spec.get("item_bank", item_banks(self.preset["module_a"])[0])
+                    outcome = mod_a.run_trial(ctx, spec, self.preset, self.cfg, gate[(spec["target_model"], bank)])
                 elif module == "B":
                     outcome = mod_b.run_trial(ctx, spec, self.preset, self.cfg)
                     roles = [spec["t1"], spec["t3"]] + ([spec["t2"]] if spec["chain"] == "full" else [])
@@ -129,7 +142,7 @@ class Runner:
             except (QuotaExhausted, ProviderUnavailable):
                 self.storage.mark_trial(trial["trial_id"], "pending")
                 raise
-            except LLMError:
+            except (LLMError, PromptMismatch):
                 self.storage.mark_trial(trial["trial_id"], "pending")
                 raise
             except Exception as e:  # a bug must not silently corrupt other trials
@@ -219,6 +232,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-analyze", action="store_true")
     ap.add_argument("--check-providers", action="store_true", help="one tiny JSON call per enabled model")
     ap.add_argument("--config", default=None)
+    ap.add_argument("--run-type", choices=["smoke", "pilot", "confirmatory"], default=None,
+                    help="what the run is for (docs/protocol_v2.md); default: the preset's run_type")
+    ap.add_argument("--prereg", default=None, metavar="FILE",
+                    help="pre-registration file (required for --run-type confirmatory); its hash is stored")
+    ap.add_argument("--seed", type=int, default=None,
+                    help="run-level seed mixed into every trial seed (default: derived from the run id, so two runs "
+                         "never reuse the same seeds)")
+    ap.add_argument("--force-resume", action="store_true",
+                    help="resume even if the code now builds different prompts than the stored ones")
     args = ap.parse_args(argv)
     for stream in (sys.stdout, sys.stderr):  # Windows consoles: never crash on non-ASCII model text
         if hasattr(stream, "reconfigure"):
@@ -242,6 +264,7 @@ def main(argv: list[str] | None = None) -> int:
             print("No run to resume" + (" in the mock database" if args.mock else "") + ".")
             return EXIT_ERROR
         run_id, preset_name, modules = run["run_id"], run["preset"], run["modules"].split(",")
+        run_seed = run.get("run_seed") or 0
         print(f"Resuming run {run_id} (preset {preset_name}, modules {','.join(modules)})")
     else:
         preset_name = args.preset or ("full" if args.full else "local" if args.local else "pilot")
@@ -249,15 +272,49 @@ def main(argv: list[str] | None = None) -> int:
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         run_id = f"{'mock-' if args.mock else ''}{stamp}-{preset_name}-{''.join(modules)}"
         preset = get_preset(cfg, preset_name)
-        storage.create_run(run_id, preset_name, modules, args.mock, stable_hash(cfg), cfg, git_commit())
+        run_type = "mock" if args.mock else (args.run_type or preset.get("run_type") or
+                                             ("pilot" if preset["gate"].get("enforce", True) else "smoke"))
+        prereg = None
+        # n = 1 (or 2) per cell estimates no variance: such a run is a feasibility / smoke test, never a pilot.
+        small = [f"module_{m.lower()}.reps = {preset[f'module_{m.lower()}'].get('reps', 1)}" for m in modules
+                 if m in ("A", "C") and int(preset[f"module_{m.lower()}"].get("reps", 1)) < 3]
+        if small and run_type == "pilot" and not args.run_type:
+            print(f"Run type set to 'smoke' (fewer than 3 trials per cell: {', '.join(small)}). "
+                  "Pass --run-type pilot to override.")
+            run_type = "smoke"
+        if run_type == "confirmatory":
+            problems = [f"at least 3 trials per cell are needed ({', '.join(small)})"] if small else []
+            if not args.prereg or not os.path.exists(args.prereg):
+                problems.append("--prereg FILE is required (the frozen pre-registration)")
+            if not preset["gate"].get("enforce", True):
+                problems.append("the preset must enforce the pre-check (gate.enforce: true)")
+            if int(preset["gate"]["repeats"]) < 5:
+                problems.append("the pre-check needs at least 5 repeats (gate.repeats >= 5)")
+            if git_dirty():
+                problems.append("commit your changes first: a confirmatory run must come from a clean commit")
+            if problems:
+                print("Refusing a confirmatory run:\n  - " + "\n  - ".join(problems))
+                return EXIT_ERROR
+            prereg = manifest.prereg_hash(args.prereg)
+        elif args.prereg:
+            prereg = manifest.prereg_hash(args.prereg)
+        run_seed = args.seed if args.seed is not None else int(stable_hash([run_id], 8), 16)
+        storage.create_run(run_id, preset_name, modules, args.mock, stable_hash(cfg), cfg, git_commit(),
+                           run_type=run_type, prereg_hash=prereg, run_seed=run_seed)
         for module in modules:
             for idx, spec in enumerate(PLANNERS[module](preset)):
-                seed = int(stable_hash([cfg["seed"], module, spec], 8), 16)
+                seed = int(stable_hash([cfg["seed"], run_seed, module, spec], 8), 16)
                 storage.add_trial(f"{run_id}-{module}-{idx:03d}", run_id, module, idx, spec, seed)
-        print(f"Created run {run_id}: " + ", ".join(f"{m}={len(storage.trials(run_id, m))} trials" for m in modules))
+        try:
+            manifest.write(resolve(paths["results_dir"]) / run_id / "manifest.json",
+                           manifest.build(storage.get_run(run_id), cfg, preset, args.mock))
+        except OSError as e:
+            print(f"  (manifest not written: {e})")
+        print(f"Created run {run_id} ({run_type}): "
+              + ", ".join(f"{m}={len(storage.trials(run_id, m))} trials" for m in modules))
     preset = get_preset(cfg, preset_name)
     client = LLMClient(cfg, usage=storage, mock=args.mock, mock_delay=args.mock_delay)
-    runner = Runner(cfg, preset, storage, client, run_id, args.mock)
+    runner = Runner(cfg, preset, storage, client, run_id, args.mock, run_seed=run_seed, force_resume=args.force_resume)
     if args.live:
         from live_monitor import start_in_background
 
@@ -284,6 +341,10 @@ def main(argv: list[str] | None = None) -> int:
         storage.set_run_status(run_id, "paused")
         print(f"\nProvider unavailable after retries: {e}\nResume later with:\n  python run_experiment.py --resume {run_id}")
         code = EXIT_UNAVAILABLE
+    except PromptMismatch as e:
+        storage.set_run_status(run_id, "paused")
+        print(f"\nResume refused: {e}")
+        code = EXIT_ERROR
     except LLMError as e:
         storage.set_run_status(run_id, "error")
         print(f"\nConfiguration or provider error: {e}\nFix it, then resume with:\n  python run_experiment.py --resume {run_id}")

@@ -59,6 +59,16 @@ def text_hash(text: str) -> str:
     return hashlib.sha256((text or "").encode()).hexdigest()
 
 
+def git_dirty() -> bool | None:
+    """True if tracked files differ from the commit (results would not be reproducible from the commit alone)."""
+    try:
+        out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=ROOT, capture_output=True,
+                             text=True, timeout=5)
+        return bool(out.stdout.strip()) if out.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
 def git_commit() -> str | None:
     try:
         out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,

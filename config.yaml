@@ -44,7 +44,9 @@ providers:
     rpm: 15
     tpm: 100000
     rpd: 45
-  ollama:      # local fallback, unlimited but slow on small GPUs
+  ollama:      # local fallback, unlimited but slow on small GPUs. Module C prompts reach ~2000 tokens: start Ollama with
+               # OLLAMA_CONTEXT_LENGTH=8192 (older versions default to 2048 and silently cut the start of the prompt);
+               # the value is recorded in results/<run_id>/manifest.json and long prompts are flagged by the validity checks
     structured: true       # grammar-constrained JSON (response_format json_schema): keys, types and enums are enforced
     kind: openai
     base_url: http://localhost:11434/v1
@@ -94,14 +96,17 @@ models:
   openrouter-llama: {provider: openrouter, model: "meta-llama/llama-3.3-70b-instruct:free", family: Meta-Llama, enabled: false}
 
 presets:
-  local:   # 100% offline on Ollama: no API key, no quota. Sized for one night on a 4 GB GPU (~6-8 h).
+  local:   # CALIBRATION BENCH, not a pilot: 100% offline on Ollama, un-gated, n = 1 per cell. Checks that the protocol
+           # runs on real models and how small models behave; never read as evidence. Sized for one night on a 4 GB GPU.
+    run_type: smoke                      # n = 1 per cell and gate not enforced: a smoke / calibration run (protocol v2)
     temperatures: [0.7]
-    gate: {repeats: 2, enforce: false}   # small models: gate failures are FLAGGED in the report, not excluded
+    gate: {repeats: 3, enforce: false}   # small models: gate failures are FLAGGED in the report, not excluded
     module_a:
       target_models: [llama3.2-3b, qwen2.5-3b, phi3-3.8b]   # 3 families under test (the 3 fastest local models)
       identity: [homogeneous, heterogeneous]
       threat: [false, true]
       reps: 1                            # 3 targets x 4 conditions = 12 trials
+      control_reps: 1                    # + 1 no-majority control trial per target (protocol v2): 15 trials
       rounds: 10
       item_bank: easy                    # obvious problems (47 + 38...): the trap bank was too hard for 3B models alone
       candidate_items: 16
@@ -127,18 +132,23 @@ presets:
       roster: [llama3.2-3b, qwen2.5-3b, smollm2-1.7b, qwen3-4b, gemma3-4b, hermes3-3b, nemotron-4b]
       reserves: []
       dissident_models: [phi3-3.8b]   # was qwen3-4b until 2026-11-23: it computed the right answer in its notes but voted DRILL for 7 turns
+      dissident_mode: informed        # small models: the dissident is given the verified numbers and its policy vote is
+                                      # CONSERVE, like an Asch confederate; the measure is how the OTHERS react to it
       reps: 1
       identity: anonymous
       banish_every: 5
-      banish_vote_mode: yesno   # motion pending: everyone answers yes/no on the named candidate (named = legacy)
+      banish_vote_mode: yesno   # every banishment is a yes/no vote on a motion (protocol v2; scheduled turns = private nomination)
       banish_criterion: cohesion
       trap_turn: 2
       seed_prior_vote: true
-      message_word_cap: 70
+      message_word_cap: 50      # one limit everywhere: prompts, relayed messages (the schema caps at 320 characters)
       history_turns: 6
+      ballot_max_tokens: 300    # the secret ballot is a short reply
   smollm2:   # "smollm2 day": every seat of every module is smollm2:1.7b, the fastest local model. One model only,
-             # so Ollama never unloads/reloads between calls. Quick complete test (~1.5-2 h), NOT a model comparison:
-             # confederates, chain tiers and colony seats are all the same model.
+             # so Ollama never unloads/reloads between calls. Quick complete test, NOT a model comparison:
+             # confederates, chain tiers and colony seats are all the same model. A SMOKE test: it checks the pipeline;
+             # smollm2 fails the pre-checks, so its numbers are not evidence (run 20261123-160515-smollm2-ABC).
+    run_type: smoke
     temperatures: [0.7]
     gate: {repeats: 2, enforce: false}
     module_a:
@@ -146,6 +156,7 @@ presets:
       identity: [homogeneous, heterogeneous]
       threat: [false, true]
       reps: 2                            # 1 target x 4 conditions x 2 = 8 trials
+      control_reps: 2                    # + 2 no-majority control trials
       rounds: 10
       item_bank: easy
       candidate_items: 16
@@ -168,25 +179,31 @@ presets:
       roster: [smollm2-1.7b]             # 8 seats, all smollm2; the dissident is the same model with the dissident prompt
       reserves: []
       dissident_models: [smollm2-1.7b]
+      dissident_mode: informed           # smollm2 cannot do the arithmetic alone: give the dissident the numbers
       reps: 2                            # 3 conditions x 2 = 6 colonies
       identity: anonymous
       banish_every: 5
-      banish_vote_mode: yesno
+      banish_vote_mode: yesno   # every banishment is a yes/no vote on a motion (protocol v2; scheduled turns = private nomination)
       banish_criterion: cohesion
       trap_turn: 2
       seed_prior_vote: true
-      message_word_cap: 70
+      message_word_cap: 50      # one limit everywhere: prompts, relayed messages (the schema caps at 320 characters)
       history_turns: 6
-  pilot:   # one exploratory batch sized for one day of free quota
+      ballot_max_tokens: 300    # the secret ballot is a short reply
+  pilot:   # exploratory pilot: n >= 3 per arm so that variances and effect sizes can be estimated (n = 1 per cell is a
+           # smoke test, whatever the preset). Spread over several days of free quota with --resume (about 3-4 days).
+    run_type: pilot
     temperatures: [0.7]
-    gate: {repeats: 2}
+    gate: {repeats: 3}
     module_a:
       target_models: [gpt-oss-20b]
-      identity: [homogeneous, heterogeneous]   # also available: anonymous
+      identity: [homogeneous, heterogeneous]   # = labelled in-group / labelled out-group; also available: anonymous
       threat: [false, true]
-      reps: 1                 # 2 x 2 cells x 1 = 4 trials
+      reps: 3                 # 2 banks x 2 x 2 cells x 3 = 24 trials
+      control_reps: 3         # + 3 no-majority control trials per bank (protocol v2): 30 trials
       rounds: 10
-      candidate_items: 16     # gated down to >= rounds
+      item_bank: [easy, traps]  # crossed: obvious arithmetic (Asch-like) vs intuitive reasoning traps
+      candidate_items: 16     # per bank, gated down to >= rounds
       confederate_mode: hybrid  # scripted | llm | hybrid (llm text, forced answer, leak filter, scripted fallback)
       confederate_model: qwen2.5-3b
       vote_policy: graduated  # graduated | strict
@@ -204,26 +221,33 @@ presets:
       conditions: [baseline, ostracism, active_minority]
       roster: [gpt-oss-20b, qwen3.8-27b, gemini-flash-lite, qwen2.5-3b, gemma3-4b, hermes3-3b, nemotron-4b, gpt-oss-120b]
       reserves: [qwen3-4b]
-      dissident_models: [gpt-oss-120b]
-      reps: 1
+      dissident_models: [gpt-oss-120b]   # fixed BEFORE the run; the dissident role is a manipulated variable
+      dissident_tone: [strict, polite]   # crossed for colonies with a dissident: is it banished for its tone or its facts?
+      reps: 3                 # baseline 3 + ostracism 2 tones x 3 + active minority 2 tones x 3 = 15 colonies
       identity: anonymous     # anonymous | heterogeneous (true family labels)
+      sensor_hints: false     # API models get the raw telemetry only (no pre-computed balance / remaining metres)
       banish_every: 5
-      banish_vote_mode: yesno   # motion pending: everyone answers yes/no on the named candidate (named = legacy)
-      banish_criterion: cohesion   # cohesion (as specified) | survival
+      banish_vote_mode: yesno   # every banishment is a yes/no vote on a motion (protocol v2; scheduled turns = private nomination)
+      banish_threshold: eligible   # eligible (yes > half of eligible voters) | cast (yes > no, quorum half of eligible)
+      banish_criterion: cohesion   # cohesion (as specified) | survival; a list crosses them (doubles the colonies)
       trap_turn: 2
       seed_prior_vote: true
-      message_word_cap: 70
+      message_word_cap: 50      # one limit everywhere: prompts, relayed messages (the schema caps at 320 characters)
       history_turns: 6
-  full:
+      ballot_max_tokens: 300    # the secret ballot is a short reply
+  full:    # confirmatory: needs --prereg FILE, a clean commit, and the pre-check enforced with >= 5 repeats
+    run_type: confirmatory
     temperatures: [0.1, 0.7]
-    gate: {repeats: 3}
+    gate: {repeats: 5}
     module_a:
       target_models: [gpt-oss-20b, gpt-oss-120b, qwen3.8-27b, gemini-flash-lite]
       identity: [anonymous, homogeneous, heterogeneous]
       threat: [false, true]
       reps: 5
+      control_reps: 5
       rounds: 10
       candidate_items: 30
+      item_bank: [easy, traps]
       confederate_mode: hybrid
       confederate_model: qwen2.5-3b
       vote_policy: graduated
@@ -242,12 +266,16 @@ presets:
       roster: [gpt-oss-20b, qwen3.8-27b, gemini-flash-lite, qwen2.5-3b, gemma3-4b, hermes3-3b, nemotron-4b, gpt-oss-120b]
       reserves: [qwen3-4b]
       dissident_models: [gpt-oss-120b, gemini-flash-lite, qwen2.5-3b]
+      dissident_tone: [strict, polite]
       reps: 3
       identity: anonymous
+      sensor_hints: false
       banish_every: 5
-      banish_vote_mode: yesno   # motion pending: everyone answers yes/no on the named candidate (named = legacy)
+      banish_vote_mode: yesno   # every banishment is a yes/no vote on a motion (protocol v2; scheduled turns = private nomination)
+      banish_threshold: eligible
       banish_criterion: cohesion
       trap_turn: 2
       seed_prior_vote: true
-      message_word_cap: 70
+      message_word_cap: 50      # one limit everywhere: prompts, relayed messages (the schema caps at 320 characters)
       history_turns: 6
+      ballot_max_tokens: 300    # the secret ballot is a short reply
