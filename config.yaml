@@ -72,6 +72,7 @@ families:
   DeepSeek: "DeepSeek (DeepSeek)"
   Microsoft: "Phi (Microsoft)"
   HuggingFace: "SmolLM (Hugging Face)"
+  IBM: "Granite (IBM)"
 
 models:
   gpt-oss-120b: {provider: groq, model: openai/gpt-oss-120b, family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}}
@@ -92,6 +93,12 @@ models:
   phi3-3.8b:    {provider: ollama, model: "phi3:3.8b",         family: Microsoft,   max_tokens: 900}
   llama3.2-3b:  {provider: ollama, model: "llama3.2:3b",       family: Meta-Llama,  max_tokens: 900}
   smollm2-1.7b: {provider: ollama, model: "smollm2:1.7b",      family: HuggingFace, max_tokens: 900}
+  # Candidates screened on 25 Nov 2026 with scripts/model_screen.py (all official Ollama-library models, free to use)
+  qwen3.5-4b:   {provider: ollama, model: "qwen3.5:4b",        family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}}
+  qwen3-1.7b:   {provider: ollama, model: "qwen3:1.7b",        family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}}
+  phi4-mini:    {provider: ollama, model: "phi4-mini:3.8b",    family: Microsoft,  max_tokens: 900}
+  granite3.3-2b: {provider: ollama, model: "granite3.3:2b",    family: IBM,        max_tokens: 900}
+  gemma4-e4b:   {provider: ollama, model: "gemma4:e4b",        family: Google,     max_tokens: 900}
   # Size tier of Bench L (already installed; larger than the 4 GB GPU, so part of each runs on the CPU: slow)
   qwen3-8b:     {provider: ollama, model: "qwen3:8b",          family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}}
   hermes3-8b:   {provider: ollama, model: "hermes3:8b",        family: Meta-Llama, max_tokens: 900}
@@ -104,15 +111,18 @@ presets:
   # private probe in a separate call. Run with:  python run_experiment.py --module bench --preset bench-local
   # Trials of one model run together (model-major), so Ollama loads each model once.
   bench-local:
+    # Models chosen by scripts/model_screen.py (docs/runs/model_screen_20261125.md): the ones that read short prompts,
+    # copy numbers and answer in one enum, ordered fastest first (a night can be stopped early and keeps its results).
+    # About 2,000 calls per model: roughly 10 hours in total on a GTX 1650.
     run_type: pilot                     # exploratory: n per cell is large enough to estimate effects (not confirmatory)
     temperatures: [0.7]
     gate: {repeats: 3, enforce: true}   # solo filter: an item / table counts only if solved alone 3 times out of 3
     bench:
-      models: [qwen2.5-3b, llama3.2-3b, phi3-3.8b, hermes3-3b, qwen3-4b, gemma3-4b]
+      models: [qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b]
       solo_repeats: 3
       LA:
         banks: [easy, lines]            # obvious arithmetic + Asch's lines in words
-        items_per_bank: 24              # candidates per bank; W/T/D only on those solved alone 3/3
+        items_per_bank: 16              # candidates per bank; W/T/D only on those solved alone 3/3
         n_peers: 5
         group_sizes: [1, 3]             # extra W cells (neutral, no threat) for the conformity-vs-N curve
         identity: [neutral, ingroup, outgroup]
@@ -124,7 +134,7 @@ presets:
         max_prods: 4
         reps: 1
       LC1:
-        instances: 20                   # vignette instances, each in the 16 cells
+        instances: 12                   # vignette instances, each in the 16 cells
         truth: [right, wrong]
         tone: [strict, polite]
         norm: [harmony, accuracy]
@@ -132,7 +142,7 @@ presets:
         reps: 1
       LC2:
         arms: [none, evicted, forced]
-        colonies_per_arm: 3             # per model: 6 models x 3 arms x 3 = 54 colonies (about 100 calls each)
+        colonies_per_arm: 2             # per model: 5 models x 3 arms x 2 = 30 colonies (about 100 calls each)
         turns: 12
         evict_after: 3
         renew_bulletin: true            # the loyalists renew the promise when it expires ("2 more turns")

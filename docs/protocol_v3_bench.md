@@ -151,7 +151,7 @@ loyalists, renewed bulletin), and the change is logged in `DEVLOG.md`.
 
 ## 6. Sample size and cost
 
-The `bench-local` preset runs 6 models.
+The `bench-local` preset runs 5 models (chosen by `scripts/model_screen.py`, see `runs/model_screen_20261125.md`).
 
 | Module | Trials per model | Calls per model |
 |---|---|---|

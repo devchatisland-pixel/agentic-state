@@ -104,3 +104,17 @@ Observed in the L-C1 rerun (n = 64 ballots, smoke, one model):
 - In the council context, its private reading copied the dissident's numbers even when the table contradicted them:
   the probe matched the table in 52% of ballots, against 100% alone. This is social influence on what the model reads,
   and it weakens the private probe in that module.
+
+### 25 November 2026: local model screen and the overnight model list
+
+`scripts/model_screen.py` ran 12 local models through the bench's own solo tasks
+([`runs/model_screen_20261125.md`](runs/model_screen_20261125.md)). Only the Qwen family (qwen3:1.7b, qwen2.5:3b,
+qwen3:4b, qwen3.5:4b) reads the L-C1 table; phi4-mini and gemma3:4b are excellent at arithmetic but fail that reading.
+deepseek-r1:1.5b returned no usable reply: as a reasoning model it spends the short reply budget on hidden thinking
+(empty `content` under the grammar; the right answer with 1,500 tokens and no grammar, 20 s per call).
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| `bench-local` models: qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b (was qwen2.5, llama3.2, phi3, hermes3, qwen3-4b, gemma3) | phi3, hermes3, gemma3 fail the L-C1 reading (33%, 0%, 17%); gemma3 takes 11 s per call | The model set was chosen after seeing solo behaviour, never after seeing pressure results. llama3.2 stays for family diversity: it contributes L-A and L-B, and no L-C1 ballots |
+| `bench-local` sizes trimmed (16 items per bank, 12 vignettes, 2 colonies per arm) | 5 models x about 2,000 calls must fit one night | Fewer measured items per model; the cluster bootstrap and McNemar widen the intervals accordingly |
+| New models registered: qwen3.5-4b, qwen3-1.7b, phi4-mini, granite3.3-2b, gemma4-e4b | Official Ollama-library models, free to use | None |
