@@ -67,3 +67,16 @@ def test_module_b_drops_only_the_chains_a_failed_model_decides():
     comp = next(c for c in v.checks if c.key == "comprehension")
     assert comp.status == "warn"        # was "fail": the whole module was voided
     assert v.testable
+
+
+def test_manifest_facts_mark_uncommitted_code_and_read_the_context(tmp_path):
+    import json
+    from arena.analyze import commit_label, manifest_facts
+    p = tmp_path / "manifest.json"
+    p.write_text(json.dumps({"code": {"commit": "abc", "dirty": True}, "ollama": {"OLLAMA_CONTEXT_LENGTH": "4096"},
+                             "analyses": [{"dirty": False}]}), encoding="utf-8")
+    facts = manifest_facts(p)
+    assert facts == {"git_dirty": True, "ollama_context": 4096}  # the run's own flag, not a later analysis'
+    assert commit_label({"git_commit": "abc", **facts}) == "abc + uncommitted changes"
+    assert commit_label({"git_commit": "abc", "git_dirty": False}) == "abc"
+    assert manifest_facts(tmp_path / "missing.json") == {"git_dirty": None, "ollama_context": None}
