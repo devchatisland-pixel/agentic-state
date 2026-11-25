@@ -65,3 +65,42 @@ was partly the models and partly the test. These changes fix the test side; the 
 
 Model side, not fixable by the protocol: the 3-4B models fail the Module C arithmetic alone (only gemma3 on v1), so the
 colony conformity reading stays *not testable* on this bench. It needs the larger API models of the pilot.
+
+## 25 November 2026: Bench L (literature-style local bench) and Module C fixes
+
+The analysis of run `20261124-161135-local-BC` showed that the local Module C did not fail on format (0 of 576
+replies unusable). It failed because no wrong majority ever formed:
+- the councils voted CONSERVE on 36 of 36 colony-turns;
+- the false bulletin moved DRILL from 0% to 1%;
+- 0 of 288 ballots filed a motion.
+
+Seven published studies were read for how they run first experiments on small models. All the ones that work below
+8B script every agent but one. Bench L ([`protocol_v3_bench.md`](protocol_v3_bench.md)) applies that design to the
+four postulates. Modules A-C are kept for the API pilot.
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| New run family Bench L (`--module bench`, presets `bench-local`, `bench-mini`, `bench-size`) | Small models play one-decision tasks reliably; free councils never formed a wrong majority | Bench L results are exploratory pilots about susceptibility to scripted pressure, not about emergent societies |
+| L-C2: the experimenter removes the dissident (user's choice) | Councils never voted anyone out, so "eviction" could not be studied | P4's causal claim is tested without depending on a council vote; whether councils *choose* to evict is L-C1's question |
+| Module C: the scripted dissident quotes live numbers (`colony.live_truth`) | At turn 12 it said "6 turns of energy" while the log gave about 8 | Runs before this date showed the dissident stating stale numbers; the validity check accepts the numbers recorded with each message |
+| Module C: the straw poll ("7 of 8 favoured drilling") is shown on the trap turn only | Pinned on every turn, it contradicted the visible totals "CONSERVE:8" | Changes the stimulus; Module C runs before and after are not comparable |
+| Module C pre-check: the two numbers come before the yes/no conclusion; scratchpad limit 500 → 1,200 characters | 21 of 36 conclusions contradicted the model's own numbers; 5 of 36 workings were cut off | Pre-check results before this date underestimate the models |
+| Manifest: the Ollama server's context length is read from `/api/ps`; the environment variable is marked "client env" | The recorded 4096 came from the Python process, not the server | The context check uses the server value when known |
+| Module A analysis: `accuracy_group` is now the accuracy under a wrong majority on problems solved alone (before: every valid round, control included); new per-model benchmark table (accuracy alone / control / wrong majority, conformity, independence, flip rate, knowing conformity) | Re-analysis of `20261124-080123-local-ABC`: qwen2.5-3b followed the wrong majority on 62% of solved problems and privately believed the wrong answer in 92% of those | A reporting change; the primary contrast is unchanged (38% vs 8%) |
+
+### 25 November 2026: first Bench L calibration (`bench-mini`, qwen2.5-3b)
+
+Speed: 576 calls in about 20 minutes (median 1.5 s per call, model on the GPU, 8,192-token context). Before, model
+switching made a call take 55 s.
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| L-C1 solo filter and private probe: the model copies the two turns that decide who is right; the code compares them. The yes/no question was dropped | qwen2.5-3b answered "no" to 24 of 24 "is the claim correct?" questions, right or wrong; it copied both numbers right in 36 of 36 replies | The L-C1 run `20261125-030724` has no measured vignette; use `20261125-033247-bench-mini-LC1` and later |
+| L-A letter-bias check compares the letters chosen with the letters that were correct | The 12 measured items happened to have 18 of 36 correct answers on D; the old check flagged that as a preference | Reporting only |
+
+Observed in the L-C1 rerun (n = 64 ballots, smoke, one model):
+- qwen2.5-3b rarely banished (5 of 64).
+- It voted for the majority's drilling plan in 26 of the 32 ballots where its own reading showed the dissident right.
+- In the council context, its private reading copied the dissident's numbers even when the table contradicted them:
+  the probe matched the table in 52% of ballots, against 100% alone. This is social influence on what the model reads,
+  and it weakens the private probe in that module.

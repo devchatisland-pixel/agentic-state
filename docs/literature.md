@@ -13,12 +13,20 @@ Status: **V** = found online during planning; **C** = classic, well established;
 ## Asch / conformity with LLMs
 - V Weng, Chen & Wang (2025). *Do as We Do, Not as You Think* (BenchForm). ICLR — https://arxiv.org/abs/2501.13381
 - V? Zhu et al. (2024). Conformity in LLMs. arXiv:2410.12428
-- V? Conformity and Social Impact on AI Agents (2026). arXiv:2601.05384
-- V? LLMs Trust Their Own: identity-dependent conformity. arXiv:2609.33495
+- V Bellina, De Marzo & Garcia (2026). Conformity and Social Impact on AI Agents. arXiv:2601.05384 · Scripted
+  confederates, A/B answers read from token probabilities, conformity rises with group size, unanimity, difficulty
+  and source strength; models without a perfect solo baseline are dropped (our solo filter). Small vision-language
+  models (3-4B) included.
+- V Soffer, Shwartz-Ziv & Shani (2026). LLMs Trust Their Own: identity-dependent conformity in multi-agent systems.
+  arXiv:2609.33495 · 7 scripted peers, "Answer: X", 12 open models 3-72B including Llama-3.2-3B and Gemma-3-4B;
+  identity-neutral conformity 13.3% (answer only), in-group +3.5 points, out-group -5.6 points; solved-alone filter.
+  The model for L-A's identity factor.
 - V Hu & Qu (2026). Most LLM Conformity Needs No Speaker: measuring the speaker-free floor in peer-pressure
   benchmarks. arXiv:2607.05545 — https://arxiv.org/abs/2607.05545 · Much apparent conformity survives when the peer is
   removed; the same logic as our no-majority control arm (Module A). (An external review cited it as "Zhong et al.";
   Zhong is only cited inside it.)
+- V Everyone Conforms, No One Believes: pluralistic ignorance in LLM agent populations (2026). arXiv:2608.02758 ·
+  20 real API agents, keyword-scored conformity 64-94% across 8 models; no model below 70B-class.
 - V Huang, Zou, Huang, Yang, Han & Yu (2026). Believed but Not Said: measuring hidden belief collapse in multi-agent
   LLM discussions. arXiv:2610.22138 — https://arxiv.org/abs/2610.22138 · Probes private belief in a separate call
   hidden from peers; the model for our probe ablation (Module A hypocrisy vs drift).
@@ -28,7 +36,10 @@ Status: **V** = found online during planning; **C** = classic, well established;
   arXiv:2610.02702 — https://arxiv.org/abs/2610.02702 · Cites the two papers above; to read.
 
 ## Stanford with LLM agents
-- V Campedelli et al. (2024/2025). arXiv:2410.07109 — https://arxiv.org/abs/2410.07109
+- V Campedelli et al. (2024/2025), zAImbardo / "I Want to Break Free!". arXiv:2410.07109 —
+  https://arxiv.org/abs/2410.07109 · Guard and prisoner, both real models on Ollama; fatally flawed conversations
+  (role switching, turn violations): Mistral 7B 90.5%, Orca2 37%, Llama3 8B 13.25%, gpt-4.1 0.5%. Evidence that
+  societies of 7-8B models break down: the reason Bench L scripts every agent but one.
 - V? Westover (2026). Algorithmic Authority. Preprints.org 202602.1638
 
 ## Humans and AI authority
@@ -43,10 +54,12 @@ Status: **V** = found online during planning; **C** = classic, well established;
 - C Sharma et al. (2023). Towards understanding sycophancy in LMs.
 - C Yafai, Verrier & Reidy (2014). Social conformity and autism spectrum disorder (evidence is mixed).
 
-## Named in the project brief (Nov 2026), to verify before citing
-- zAImbardo: Stanford Prison-style simulation with LLM agents
-- "Everyone Conforms, No One Believes": conformity in LLMs (public vs. private)
-- See also BenchForm and "LLMs Trust Their Own" above.
+## How these papers run their first, small-model experiments (read 25 Nov 2026)
+Every study that works below 8B uses scripted peers, one model subject, one short structured decision and a solo
+filter (BenchForm, Bellina et al., Soffer et al., Pihlakas & Dagohoy). Societies of real models appear only at 24B
+and above (Huang et al., Everyone Conforms). This is the design of Bench L: see [`protocol_v3_bench.md`](protocol_v3_bench.md).
+Numbers shown next to ours on the results page live in `arena/report/literature.py`, each marked as read in the
+paper text or still to check against the PDF.
 
 ## Relevant to the new modules
 - C Moscovici, Lage & Naffrechoux (1969); Moscovici (1980): consistent active minorities can convert majorities (Module C, condition 3).

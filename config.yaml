@@ -92,10 +92,79 @@ models:
   phi3-3.8b:    {provider: ollama, model: "phi3:3.8b",         family: Microsoft,   max_tokens: 900}
   llama3.2-3b:  {provider: ollama, model: "llama3.2:3b",       family: Meta-Llama,  max_tokens: 900}
   smollm2-1.7b: {provider: ollama, model: "smollm2:1.7b",      family: HuggingFace, max_tokens: 900}
+  # Size tier of Bench L (already installed; larger than the 4 GB GPU, so part of each runs on the CPU: slow)
+  qwen3-8b:     {provider: ollama, model: "qwen3:8b",          family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}}
+  hermes3-8b:   {provider: ollama, model: "hermes3:8b",        family: Meta-Llama, max_tokens: 900}
   mistral-small: {provider: mistral, model: mistral-small-latest, family: Mistral, enabled: false}
   openrouter-llama: {provider: openrouter, model: "meta-llama/llama-3.3-70b-instruct:free", family: Meta-Llama, enabled: false}
 
 presets:
+  # ---------------------------------------------------------------- Bench L (docs/protocol_v3_bench.md)
+  # Literature-style local bench: scripted peers, ONE model subject, ONE short decision per call, solo filter,
+  # private probe in a separate call. Run with:  python run_experiment.py --module bench --preset bench-local
+  # Trials of one model run together (model-major), so Ollama loads each model once.
+  bench-local:
+    run_type: pilot                     # exploratory: n per cell is large enough to estimate effects (not confirmatory)
+    temperatures: [0.7]
+    gate: {repeats: 3, enforce: true}   # solo filter: an item / table counts only if solved alone 3 times out of 3
+    bench:
+      models: [qwen2.5-3b, llama3.2-3b, phi3-3.8b, hermes3-3b, qwen3-4b, gemma3-4b]
+      solo_repeats: 3
+      LA:
+        banks: [easy, lines]            # obvious arithmetic + Asch's lines in words
+        items_per_bank: 24              # candidates per bank; W/T/D only on those solved alone 3/3
+        n_peers: 5
+        group_sizes: [1, 3]             # extra W cells (neutral, no threat) for the conformity-vs-N curve
+        identity: [neutral, ingroup, outgroup]
+        threat: [false, true]
+        cross_protocols: [W]            # identity x threat crossed on W (add T for the full grid: +6 cells per item)
+        reps: 1
+      LB:
+        instances: 12                   # scenario instances, each in the 4 cells (relay x framing)
+        max_prods: 4
+        reps: 1
+      LC1:
+        instances: 20                   # vignette instances, each in the 16 cells
+        truth: [right, wrong]
+        tone: [strict, polite]
+        norm: [harmony, accuracy]
+        hostility: [hostile, neutral]
+        reps: 1
+      LC2:
+        arms: [none, evicted, forced]
+        colonies_per_arm: 3             # per model: 6 models x 3 arms x 3 = 54 colonies (about 100 calls each)
+        turns: 12
+        evict_after: 3
+        renew_bulletin: true            # the loyalists renew the promise when it expires ("2 more turns")
+        variants: [v1, v2, v3]
+  bench-mini:   # calibration: one model, a few items, about 30-45 min. Checks latency, solo pass rates, invalid %.
+    run_type: smoke
+    temperatures: [0.7]
+    gate: {repeats: 3, enforce: true}
+    bench:
+      models: [qwen2.5-3b]
+      solo_repeats: 3
+      LA: {banks: [easy, lines], items_per_bank: 6, n_peers: 5, group_sizes: [1, 3],
+           identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
+      LB: {instances: 3, max_prods: 4, reps: 1}
+      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy],
+            hostility: [hostile, neutral], reps: 1}
+      LC2: {arms: [none, evicted, forced], colonies_per_arm: 1, turns: 12, evict_after: 3, renew_bulletin: true,
+            variants: [v1]}
+  bench-size:   # size tier: 8B models with CPU offload (slow), L-A and L-C1 only, overnight
+    run_type: pilot
+    temperatures: [0.7]
+    gate: {repeats: 3, enforce: true}
+    bench:
+      models: [qwen3-8b, hermes3-8b]
+      solo_repeats: 3
+      LA: {banks: [easy, lines], items_per_bank: 16, n_peers: 5, group_sizes: [1, 3],
+           identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
+      LB: {instances: 8, max_prods: 4, reps: 1}
+      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy],
+            hostility: [hostile, neutral], reps: 1}
+      LC2: {arms: [none, evicted, forced], colonies_per_arm: 2, turns: 12, evict_after: 3, renew_bulletin: true,
+            variants: [v1, v2]}
   local:   # CALIBRATION BENCH, not a pilot: 100% offline on Ollama, un-gated, n = 1 per cell. Checks that the protocol
            # runs on real models and how small models behave; never read as evidence. Deliberately SHORT (about 3-4 h on a
            # 4 GB GPU): 1 pre-check repeat, 6 rounds, 8 turns, 4 local models, so it exercises every code path cheaply.

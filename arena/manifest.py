@@ -41,6 +41,8 @@ def models_used(preset: dict, modules: list[str]) -> list[str]:
         out += list(b.get("roster", []))
     if "C" in modules:
         out += list(c.get("roster", [])) + list(c.get("reserves", [])) + list(c.get("dissident_models", []))
+    if any(m.startswith("L") for m in modules):  # Bench L (docs/protocol_v3_bench.md)
+        out += list((preset.get("bench") or {}).get("models", []))
     return [m for m in dict.fromkeys(out) if m]
 
 
@@ -54,6 +56,7 @@ def build(run: dict, cfg: dict, preset: dict, mock: bool) -> dict:
             pk[name] = None
     models = {}
     ollama_version = None
+    server_ctx = None
     for mid in models_used(preset, modules):
         m = cfg["models"].get(mid, {})
         prov = cfg["providers"].get(m.get("provider"), {})
@@ -62,6 +65,9 @@ def build(run: dict, cfg: dict, preset: dict, mock: bool) -> dict:
         if prov.get("base_url", "").startswith("http://localhost") and not mock:
             if ollama_version is None:
                 ollama_version = (_ollama(prov["base_url"], "/api/version") or {}).get("version")
+                # /api/ps lists the loaded models with the context length the server actually uses
+                ps = (_ollama(prov["base_url"], "/api/ps") or {}).get("models") or []
+                server_ctx = next((x.get("context_length") for x in ps if x.get("context_length")), None)
             tags = _ollama(prov["base_url"], "/api/tags") or {}
             hit = next((x for x in tags.get("models", []) if x.get("name") == m.get("model")), None)
             if hit:
@@ -76,7 +82,10 @@ def build(run: dict, cfg: dict, preset: dict, mock: bool) -> dict:
             "code": {"commit": run.get("git_commit"), "dirty": git_dirty()},
             "python": sys.version.split()[0], "platform": platform.platform(), "machine": platform.machine(),
             "packages": pk, "ollama": {"version": ollama_version,
-                                       "OLLAMA_CONTEXT_LENGTH": os.environ.get("OLLAMA_CONTEXT_LENGTH")},
+                                       # set in THIS (client) process; the server may run with another value
+                                       "OLLAMA_CONTEXT_LENGTH": os.environ.get("OLLAMA_CONTEXT_LENGTH"),
+                                       "client_env_only": True,
+                                       "server_context_length": server_ctx},
             "models": models, "analyses": []}
 
 

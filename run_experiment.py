@@ -22,6 +22,8 @@ from arena import module_b_milgram as mod_b
 from arena import module_c_dissident as mod_c
 from arena.config import get_preset, git_commit, git_dirty, load_config, load_env, resolve, stable_hash
 from arena.engine import PromptMismatch, TrialContext
+from arena.bench import BENCH_MODULES
+from arena.bench import runner as bench_runner
 from arena.items import item_banks, module_a_items
 from arena.llm_client import LLMClient, LLMError, ProviderUnavailable, QuotaExhausted
 from arena.schemas import extract_json
@@ -218,16 +220,20 @@ def check_providers(cfg: dict, storage: Storage) -> int:
 def _modules_arg(text: str):
     if text.strip().lower() == "all":
         return "all"
-    mods = sorted({m.strip().upper() for m in text.split(",") if m.strip()})
-    if not mods or any(m not in ("A", "B", "C") for m in mods):
-        raise argparse.ArgumentTypeError("expected A, B, C, all, or a comma list such as B,C")
-    return mods
+    if text.strip().lower() == "bench":
+        return list(BENCH_MODULES)
+    mods = {m.strip().upper() for m in text.split(",") if m.strip()}
+    order = ("A", "B", "C") + BENCH_MODULES
+    if not mods or any(m not in order for m in mods):
+        raise argparse.ArgumentTypeError("expected A, B, C, all, bench (= LA,LB,LC1,LC2), or a comma list such as "
+                                         "B,C or LC1,LA")
+    return [m for m in order if m in mods]
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="The Epistemic Arena")
     ap.add_argument("--module", type=_modules_arg, default="all",
-                    help="A, B, C, all, or a comma list such as B,C")
+                    help="A, B, C, all, bench (Bench L: LA, LB, LC1, LC2), or a comma list such as B,C or LC1,LA")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--pilot", action="store_true", help="small exploratory batch (default)")
     g.add_argument("--full", action="store_true", help="full study preset")
@@ -281,6 +287,9 @@ def main(argv: list[str] | None = None) -> int:
     else:
         preset_name = args.preset or ("full" if args.full else "local" if args.local else "pilot")
         modules = ["A", "B", "C"] if args.module == "all" else args.module
+        if any(m in BENCH_MODULES for m in modules) and "bench" not in get_preset(cfg, preset_name):
+            preset_name = "bench-local"  # Bench L needs a preset with a `bench` block
+            print("Bench L modules: using the 'bench-local' preset (pass --preset to choose another bench preset).")
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         run_id = f"{'mock-' if args.mock else ''}{stamp}-{preset_name}-{''.join(modules)}"
         preset = get_preset(cfg, preset_name)
@@ -321,7 +330,9 @@ def main(argv: list[str] | None = None) -> int:
         storage.create_run(run_id, preset_name, modules, args.mock, stable_hash(cfg), cfg, git_commit(),
                            run_type=run_type, prereg_hash=prereg, run_seed=run_seed)
         for module in modules:
-            for idx, spec in enumerate(PLANNERS[module](preset)):
+            specs = (bench_runner.plan(module, preset, int(cfg["seed"])) if module in BENCH_MODULES
+                     else PLANNERS[module](preset))
+            for idx, spec in enumerate(specs):
                 seed = int(stable_hash([cfg["seed"], run_seed, module, spec], 8), 16)
                 storage.add_trial(f"{run_id}-{module}-{idx:03d}", run_id, module, idx, spec, seed)
         try:
@@ -350,7 +361,14 @@ def main(argv: list[str] | None = None) -> int:
     storage.set_run_status(run_id, "running")  # also on --resume of a paused run
     try:
         for module in modules:
-            runner.run_module(module, args.gate_only, args.max_trials)
+            if module not in BENCH_MODULES:
+                runner.run_module(module, args.gate_only, args.max_trials)
+        bench_mods = [m for m in modules if m in BENCH_MODULES]
+        if bench_mods:  # model-major: every module of one model, then the next model (Ollama loads each model once)
+            br = bench_runner.BenchRunner(cfg, preset, storage, client, run_id, args.mock,
+                                          force_resume=args.force_resume)
+            br.on_trial_done = runner.on_trial_done
+            br.run(bench_mods, args.gate_only, args.max_trials)
     except QuotaExhausted as e:
         storage.set_run_status(run_id, "paused")
         print(f"\nDaily free-tier quota reached: {e}\nEverything so far is saved. Resume tomorrow with:\n"

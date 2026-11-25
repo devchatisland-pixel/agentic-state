@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Callable, Any, Literal, Optional
+from typing import Any, Callable, ClassVar, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
@@ -442,9 +442,11 @@ class GateBTurn(_Base):
 
 
 class GateCAction(_Base):
-    drill_reaches_water_before_energy_runs_out: bool
+    # The two numbers come BEFORE the conclusion (25 Nov 2026): fields are generated in order, and with the
+    # conclusion first 21 of 36 replies contradicted their own numbers (run 20261124-161135), the bug Module A fixed.
     turns_to_reach_water: int
     turns_until_energy_zero_if_drilling: int
+    drill_reaches_water_before_energy_runs_out: bool
     _b = field_validator("drill_reaches_water_before_energy_runs_out", mode="before")(as_bool)
     _i = field_validator("turns_to_reach_water", "turns_until_energy_zero_if_drilling", mode="before")(as_int)
 
@@ -453,6 +455,7 @@ def constrained_schema(model: type) -> dict:
     """JSON schema to hand to Ollama's structured output: every property required (nullable ones stay
     nullable), no extra keys, and bounded free text so a reply can never run away until max_tokens."""
     schema = model.model_json_schema()
+    scratch_max = int(getattr(model, "scratchpad_max", 500))
 
     def walk(node: Any) -> None:
         if isinstance(node, dict):
@@ -462,7 +465,7 @@ def constrained_schema(model: type) -> dict:
                 node["additionalProperties"] = False
                 for name, p in props.items():
                     if name == "private_scratchpad":
-                        p["maxLength"] = 500
+                        p["maxLength"] = scratch_max
                     elif name == "public_message":
                         p["maxLength"] = 320
                     p.pop("default", None)
@@ -478,6 +481,7 @@ def constrained_schema(model: type) -> dict:
 
 
 class GateCTurn(_Base):
+    scratchpad_max: ClassVar[int] = 1200   # 5 of 36 pre-check workings were cut at 500 characters
     private_scratchpad: str = ""
     action: GateCAction
     _t = field_validator("private_scratchpad", mode="before")(as_text)
