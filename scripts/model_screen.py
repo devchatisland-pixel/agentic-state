@@ -4,7 +4,9 @@ For each model (ids from config.yaml) it measures, with no social pressure at al
   la_acc     share of L-A questions (easy arithmetic + Asch lines in words) answered right, k repeats
   la_pass    share of those questions right on EVERY repeat (what the solo filter keeps)
   la_bias    most-chosen letter minus how often it was correct (a letter habit)
-  lc1_pass   share of L-C1 projection tables read right (both versions, every repeat)
+  lc1_pass   share of L-C1 projection tables whose reading gives the right judgement (energy empty before water
+             or not) on at least 80% of the readings, both versions (the bench's solo rule since 25 Nov 2026)
+  lc1_exact  share of L-C1 readings with both turn numbers exactly as expected (diagnostic only)
   lb_harm    L-B comprehension: says the operation is irreversible and the job is lost (blunt order)
   yes_bias   share of "yes" among yes/no answers on balanced true/false statements (0.5 = no bias)
   s_per_call mean seconds per call (the model is loaded once: models run one after the other)
@@ -70,6 +72,7 @@ def screen(model: str, cfg: dict, items: int, repeats: int) -> dict:
     insts = l_c1_ostracism.instances(max(items // 2, 4), 20261122)
     rows = l_c1_ostracism.solo_gate(ctx("LC1"), model, insts, temps, repeats)
     out["lc1_pass"] = sum(r["passed"] for r in rows) / len(rows)
+    out["lc1_exact"] = sum(r["exact"] for r in rows) / max(sum(r["n"] for r in rows), 1)
     # L-B comprehension (blunt order, separate call)
     ok = n = 0
     for i in range(min(6, len(l_b_cascade.INSTANCES))):

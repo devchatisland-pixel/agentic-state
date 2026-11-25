@@ -118,3 +118,9 @@ deepseek-r1:1.5b returned no usable reply: as a reasoning model it spends the sh
 | `bench-local` models: qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b (was qwen2.5, llama3.2, phi3, hermes3, qwen3-4b, gemma3) | phi3, hermes3, gemma3 fail the L-C1 reading (33%, 0%, 17%); gemma3 takes 11 s per call | The model set was chosen after seeing solo behaviour, never after seeing pressure results. llama3.2 stays for family diversity: it contributes L-A and L-B, and no L-C1 ballots |
 | `bench-local` sizes trimmed (16 items per bank, 12 vignettes, 2 colonies per arm) | 5 models x about 2,000 calls must fit one night | Fewer measured items per model; the cluster bootstrap and McNemar widen the intervals accordingly |
 | New models registered: qwen3.5-4b, qwen3-1.7b, phi4-mini, granite3.3-2b, gemma4-e4b | Official Ollama-library models, free to use | None |
+
+### 25 November 2026: L-C1 solo filter scored on the judgement, with a 5-of-6 rule
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| L-C1 solo filter: a reading counts as right when its judgement (energy empty before water, or not) is right, not when both numbers match exactly; a vignette passes with 80%+ right judgements (was: every reading exact) | On the table where energy never empties, gemma3, llama3.2, hermes3 and phi4-mini wrote the last turn shown (e.g. 5, 5) instead of 0, 5. Rescored, gemma3, llama3.2 and hermes3 read 100% of the tables right, phi4-mini 88% | Non-Qwen models now enter L-C1. The rule matches the private probe, which always scored the judgement. Run `20261125-053621-bench-local-LALBLC1LC2` was started with the old rule: its L-C1 gate for llama3.2 and phi4-mini excludes most vignettes (see the run's note) |

@@ -61,6 +61,31 @@ def test_lc1_tables_make_the_dissident_right_or_wrong():
         assert inst["z"] < inst["w"]
 
 
+def test_lc1_solo_filter_scores_the_judgement_and_allows_one_slip():
+    """gemma3 / llama3.2 wrote (w, w) instead of (0, w) on the 'energy never empties' table: right judgement."""
+    inst = l_c1_ostracism.instances(1, 1)[0]
+    z, w = inst["z"], inst["w"]
+
+    class Out:
+        def __init__(self, e, ww):
+            self.ok, self.data = True, {"turn_energy_reaches_zero_on_drilling_plan": e, "turn_drill_reaches_water": ww}
+
+    def run(replies):
+        it = iter(replies)
+
+        class Ctx:
+            def turn(self, *a, **k):
+                return next(it)
+        return l_c1_ostracism.solo_gate(Ctx(), "m", [inst], [0.7], 3)[0]
+
+    # right version read exactly; wrong version read as "water turn" instead of 0: all six judgements right
+    row = run([Out(z, w)] * 3 + [Out(w, w)] * 3)
+    assert row["passed"] and row["k"] == 6 and row["exact"] == 3
+    # one slip in six (energy before water on the wrong version) still passes; two do not
+    assert run([Out(z, w)] * 3 + [Out(w - 1, w)] + [Out(0, w)] * 2)["passed"]
+    assert not run([Out(z, w)] * 3 + [Out(w - 1, w)] * 2 + [Out(0, w)])["passed"]
+
+
 def test_lb_order_wording_differs_only_by_the_manipulated_factors():
     cfg = load_config()
     base = {"model": "qwen2.5-3b", "instance": 0, "temperature": 0.7, "rep": 0}

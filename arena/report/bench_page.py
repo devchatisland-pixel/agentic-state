@@ -198,7 +198,7 @@ def solo_section(res: dict) -> str:
         s = res["LC1"]["solo"]
         t = s.groupby("model").agg(vignettes=("instance", "count"), passed=("passed", "sum")).reset_index()
         t["share"] = t["passed"] / t["vignettes"]
-        parts.append("<h3>L-C1 · projection tables read right alone (both versions, every repeat)</h3>"
+        parts.append("<h3>L-C1 · projection tables read right alone (right judgement on at least 80% of the readings, both versions)</h3>"
                      + dashboard.table(t, [("model", "model"), ("vignettes", "vignettes"), ("passed", "passed"),
                                            ("share", "share")], pcts=("share",)))
     if "LB" in res["modules"] and not res["LB"]["df"].empty:
