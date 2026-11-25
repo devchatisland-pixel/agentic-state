@@ -7,7 +7,9 @@
 It reads the SQLite database read-only (safe while a run is writing) and shows:
 - the run, its progress per module, and the trial in progress;
 - who is thinking RIGHT NOW (agent, role, model, seconds elapsed);
-- the current situation (colony state in Module C, round and item in Module A, the chain in Module B);
+- the current situation (colony state in Module C, round and item in Module A, the chain in Module B; for
+  Bench L, the question and peers, the order and prods, the council turn and ballot, or the colony board);
+- for Bench L runs, progress per model (the bench runs one model after the other);
 - a feed of every agent turn: public message, private scratchpad, private beliefs and action.
 Standard library only.
 """
@@ -23,6 +25,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+import live_chat_bench
 from arena.config import load_config, resolve
 from live_chat import LIVE_CHAT_PAGE, live_chat_snapshot
 
@@ -184,7 +187,39 @@ def snapshot(db: Path, feed_limit: int = 60) -> dict:
             started = dt.datetime.fromisoformat(lv["started_at"])
             now = {**lv, "elapsed_s": round((dt.datetime.now(dt.timezone.utc) - started).total_seconds())}
         if trial:
-            trial["agents"] = _agents(trial, by_type, trows, now)
+            trial["agents"] = _agents(trial, by_type, trows, now) if trial["module"] in ("A", "B", "C") else []
+            if trial["module"] in live_chat_bench.BENCH:
+                full = _rows(conn, "SELECT trial_id, module, spec_json, status, outcome_json FROM trials WHERE trial_id=?",
+                             (trial["trial_id"],))[0]
+                tturns = _rows(conn, "SELECT step_key, agent, status, error, parsed_json, created_at FROM turns "
+                                     "WHERE trial_id=?", (trial["trial_id"],))
+                tcalls = _rows(conn, "SELECT step_key, messages_json, created_at FROM calls WHERE trial_id=? AND attempt=0",
+                               (trial["trial_id"],))
+                tev = _rows(conn, "SELECT event_type, event_key, payload_json FROM events WHERE trial_id=?",
+                            (trial["trial_id"],))
+                try:
+                    trial["bench"] = live_chat_bench.build(full, tev, tturns, tcalls, now)
+                except Exception as e:  # never let a parsing problem break the monitor
+                    trial["bench"] = {"error": repr(e)[:200]}
+        by_model: dict[str, dict] = {}
+        order: list[str] = []
+        if any(m in live_chat_bench.BENCH for m in progress):
+            for r in _rows(conn, "SELECT module, status, spec_json FROM trials WHERE run_id=? ORDER BY idx", (rid,)):
+                if r["module"] not in live_chat_bench.BENCH:
+                    continue
+                m = json.loads(r["spec_json"]).get("model", "?")
+                if m not in by_model:
+                    order.append(m)
+                d = by_model.setdefault(m, {"total": 0, "done": 0, "running": 0})
+                d["total"] += 1
+                d["done"] += r["status"] in ("done", "excluded")
+                d["running"] += r["status"] == "running"
+            try:  # the preset's model order is the run order (model-major)
+                cfg_models = json.loads(_rows(conn, "SELECT config_json FROM runs WHERE run_id=?", (rid,))[0]["config_json"]
+                                        )["presets"][run["preset"]]["bench"]["models"]
+                order = [m for m in cfg_models if m in by_model] + [m for m in order if m not in cfg_models]
+            except (KeyError, IndexError, TypeError, ValueError):
+                pass
         feed = []
         for r in _rows(conn, "SELECT rowid, trial_id, step_key, agent, role, model_id, status, attempts, error, "
                              "parsed_json, created_at FROM turns WHERE run_id=? OR trial_id LIKE 'gate-%' "
@@ -195,7 +230,11 @@ def snapshot(db: Path, feed_limit: int = 60) -> dict:
                          "error": r["error"], "at": r["created_at"],
                          "public": p.get("public_message", ""), "private": p.get("private_scratchpad", ""),
                          "private_fields": {k: v for k, v in p.items() if k.startswith("private_") and k != "private_scratchpad"},
-                         "action": p.get("action")})
+                         "action": p.get("action"),
+                         # Bench L replies have no action block: their decision fields are top-level
+                         "fields": {k: v for k, v in p.items() if not k.startswith("private_")
+                                    and k not in ("public_message", "action", "note", "my_label")},
+                         "note": p.get("note", "")})
         tids = sorted({f["trial_id"] for f in feed})
         trials_info = {}
         if tids:
@@ -207,6 +246,7 @@ def snapshot(db: Path, feed_limit: int = 60) -> dict:
         calls = _rows(conn, "SELECT COUNT(*) n, COALESCE(SUM(tokens_in+tokens_out),0) tok, "
                             "COALESCE(AVG(latency_s),0) lat FROM calls WHERE run_id=?", (rid,))[0]
         return {"run": run, "progress": progress, "trial": trial, "now": now, "feed": feed, "calls": calls,
+                "by_model": [{"model": m, **by_model[m]} for m in order],
                 "server_time": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
     finally:
         conn.close()
@@ -229,9 +269,17 @@ main { max-width:1560px; margin:0 auto; padding:16px 16px 48px; }
 h1 { font-size:20px; margin:0; } h2 { font-size:15px; margin:0 0 8px; }
 .top { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; justify-content:space-between; margin-bottom:12px; }
 .sub { color:var(--ink2); font-size:13px; }
-.grid { display:grid; grid-template-columns: minmax(0,0.85fr) minmax(0,1.25fr) minmax(0,1fr); gap:12px; align-items:start; }
-@media (max-width: 1100px) { .grid { grid-template-columns: minmax(0,1fr) minmax(0,1.3fr); } .grid > .col-feed { grid-column:1 / -1; order:3; } }
-@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+.grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.25fr); gap:12px; align-items:start; }
+@media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+.mrow { display:grid; grid-template-columns: minmax(110px,auto) 1fr auto; gap:8px; align-items:center; font-size:13px; margin:3px 0; }
+.mrow .bar { margin:0; } .mrow.cur b { color:var(--orange); } .mrow .n { color:var(--ink2); font-variant-numeric:tabular-nums; font-size:12px; }
+.scene { margin-top:10px; border-top:1px solid var(--border); padding-top:10px; display:grid; gap:6px; }
+.scene .q { font-weight:600; }
+.scene .line { font-size:13px; } .scene .line b { color:var(--ink); }
+.scene .peer { font-size:12.5px; color:var(--ink2); padding-left:8px; border-left:2px solid var(--border); }
+.scene .peer.dis { border-left-color:var(--orange); }
+.role-subject { border-left-color:var(--blue); } .role-probe { border-left-color:var(--violet); border-left-style:dashed; }
+.role-solo { border-left-color:var(--yellow); } .role-member { border-left-color:var(--aqua); }
 .agents { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:8px; }
 .agent { border:1px solid var(--border); border-left:5px solid var(--muted); border-radius:10px; padding:8px 10px; background:var(--card); position:relative; }
 .agent .name { font-weight:700; } .agent .mdl { font-size:15px; font-weight:700; color:var(--ink); }
@@ -289,15 +337,13 @@ button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var
   <div class="card" id="nowcard"><div class="now"><div class="dot"></div><div id="now">…</div></div></div>
   <div class="card"><h2>Avancement</h2><div id="progress"></div></div>
   <div class="card"><h2>Essai en cours</h2><div id="trial" class="sub">Aucun essai en cours.</div></div>
+  <div class="card" id="agentscard" style="display:none"><h2>Les agents, maintenant</h2>
+   <div class="sub" id="agentsub">Qui est qui, et la dernière décision de chacun.</div>
+   <div id="agents" class="agents"></div></div>
  </div>
  <div class="card col-feed"><h2>Ce que les agents viennent de faire (le plus récent en haut)</h2>
-  <div class="legend"><span><i style="background:var(--orange)"></i>dissident</span><span><i style="background:var(--aqua)"></i>standard</span>
-  <span><i style="background:var(--blue)"></i>cible</span><span><i style="background:var(--muted)"></i>compère</span>
-  <span><i style="background:var(--violet)"></i>chaîne de commandement</span><span><i style="background:var(--yellow)"></i>test préalable (seul)</span></div>
+  <div class="legend" id="legend"></div>
   <div id="feed"></div></div>
- <div class="card"><h2>Les agents, maintenant</h2>
-  <div class="sub" id="agentsub">Qui est qui, et la dernière décision de chacun.</div>
-  <div id="agents" class="agents"></div></div>
 </div>
 </main>
 <script>
@@ -306,9 +352,20 @@ document.getElementById("pause").onclick = e => { paused = !paused; e.target.tex
 const STATUS_FR = {running: "en cours", paused: "EN PAUSE (un modèle ne répond plus : relancer avec --resume)",
   error: "ERREUR", done: "terminée", partial: "terminée (incomplète)", created: "démarrage"};
 const ROLE_FR = {dissident:"dissident", standard:"standard", target:"cible", confederate:"compère", strategist:"stratège",
-  supervisor:"superviseur", executor:"exécutant", gate:"test seul", node:"Node_4"};
+  supervisor:"superviseur", executor:"exécutant", gate:"test seul", node:"Node_4", subject:"modèle testé",
+  probe:"question privée", solo:"test seul", member:"membre"};
+const BENCH = ["LA", "LB", "LC1", "LC2"];
+const LEGEND_ABC = [["orange","dissident"],["aqua","standard"],["blue","cible"],["muted","compère"],["violet","chaîne de commandement"],["yellow","test préalable (seul)"]];
+const LEGEND_BENCH = [["blue","modèle testé (réponse publique)"],["violet","question privée (appel séparé)"],["aqua","membre du conseil (L-C2)"],["yellow","test seul (filtre)"]];
+function renderLegend(d) {
+  const bench = Object.keys(d.progress || {}).some(m => BENCH.includes(m));
+  document.getElementById("legend").innerHTML = (bench ? LEGEND_BENCH : LEGEND_ABC).map(([c, t]) => `<span><i style="background:var(--${c})"></i>${esc(t)}</span>`).join("");
+}
 function renderAgents(d) {
   const el = document.getElementById("agents"), sub = document.getElementById("agentsub"), t = d.trial;
+  const show = t && !BENCH.includes(t.module);
+  document.getElementById("agentscard").style.display = show ? "" : "none";
+  if (!show) return;
   let pre = "";
   if (d.now && d.now.role === "gate") pre = `<div class="agent r-gate" style="grid-column:1/-1"><span class="name">Test préalable en solo</span> · <b>${esc(d.now.model_id)}</b> réfléchit seul (${esc(d.now.step_key)})</div>`;
   if (!t || !t.agents || !t.agents.length) { el.innerHTML = pre || `<p class="sub">Aucun agent pour l'instant.</p>`; return; }
@@ -342,16 +399,52 @@ function renderProgress(d) {
     const total = Object.values(st).reduce((a,b)=>a+b,0), done = (st.done||0) + (st.excluded||0);
     h += bar(done/total, `Module ${m} : ${done}/${total} essais terminés` + (st.running ? ` · <span style="color:var(--orange)">1 en cours</span>` : "") + (st.failed ? ` · <span class="bad">${st.failed} en échec</span>` : "") + (st.excluded ? ` · ${st.excluded} exclus` : ""), (st.running||0)/total);
   }
+  if (d.by_model && d.by_model.length) {
+    h += `<div class="sub" style="margin-top:6px"><b>Par modèle</b> (un modèle après l'autre)</div>`;
+    for (const m of d.by_model) {
+      const w = Math.round(100 * (m.done / Math.max(m.total, 1)));
+      h += `<div class="mrow ${m.running ? "cur" : ""}"><b>${esc(m.model)}</b><div class="bar"><div style="width:${w}%"></div></div><span class="n">${m.done}/${m.total}${m.running ? " · en cours" : m.done >= m.total ? " · fini" : ""}</span></div>`;
+    }
+  }
   h += `<div class="sub">${d.calls.n} appels aux modèles jusqu'ici · ${(+d.calls.lat).toFixed(1)} s en moyenne par appel</div>`;
   document.getElementById("progress").innerHTML = h;
 }
 function gauge(name, v, max) { const low = v < max*0.2; return `<div class="gauge ${low?"low":""}">${bar(v/max, `${name}: <b>${(+v).toFixed(0)}</b>`)}</div>`; }
+const MODNAME = {LA: "L-A · Asch tribal", LB: "L-B · cascade de Milgram", LC1: "L-C1 · ostracisme du dissident", LC2: "L-C2 · effondrement ou survie"};
+function benchScene(t) {
+  const b = t.bench;
+  if (!b || b.error) return b && b.error ? `<p class="sub">(vue indisponible : ${esc(b.error)})</p>` : "";
+  const f = b.frames && b.frames[b.frames.length - 1];
+  if (!f) return "";
+  let h = `<div class="scene"><div class="sub">${esc(b.subtitle_fr || "")}</div>`;
+  if (t.module === "LA") {
+    const s = f.subject || {}, wrong = f.peer_letter && f.peer_letter !== f.correct;
+    h += `<div class="q">${esc(f.question)}</div>`;
+    h += `<div class="line">Bonne réponse <b>${esc(f.correct)}) ${esc((f.options||{})[f.correct] || "")}</b> · les ${f.peers.length} pairs disent <b style="color:var(--${wrong ? "red" : "aqua"})">${esc(f.peer_letter)}) ${esc((f.options||{})[f.peer_letter] || "")}</b>${wrong ? " (faux)" : " (vrai)"}</div>`;
+    h += `<div class="line">Le modèle répond <b>${esc(s.public_answer || "…")}</b> · en privé <b>${esc(s.private_answer || "…")}</b>${wrong && s.public_answer === f.peer_letter ? (s.private_answer === f.correct ? ' · <span style="color:var(--yellow)">conformité consciente</span>' : ' · <span class="bad">suit la majorité</span>') : ""}</div>`;
+  } else if (t.module === "LB") {
+    h += `<div class="line">${esc(f.order || b.frames[0].order)}</div>`;
+    h += b.frames.map((x, i) => `<div class="peer ${x.executed ? "dis" : ""}">${i ? "Relance " + i + " : " + esc(x.prod) + " → " : "→ "}<b>${esc(x.decision_fr || "…")}</b>${x.note ? " · " + esc(x.note) : ""}</div>`).join("");
+  } else if (t.module === "LC1") {
+    const bl = f.ballot || {};
+    h += f.speakers.slice(0, 1).map(p => `<div class="peer dis"><b>${esc(p.who)} (dissident)</b> : ${esc(p.text)}</div>`).join("");
+    h += f.speakers.slice(1).map(p => `<div class="peer"><b>${esc(p.who)}</b> : ${esc(p.text)}</div>`).join("");
+    h += `<div class="line">Scrutin : plan <b>${esc(bl.policy || "…")}</b> · bannir ${esc(f.dissident || "")} : <b class="${bl.banish === "yes" ? "bad" : ""}">${esc(bl.banish || "…")}</b>${f.probe_says_right !== null && f.probe_says_right !== undefined ? ` · lecture privée : le dissident <b>${f.probe_says_right ? "a raison" : "a tort"}</b>` : ""}</div>`;
+  } else if (t.module === "LC2") {
+    const g = f.gauges || {};
+    h += `<div class="line"><b style="color:var(--blue)">Tour ${f.index}</b> : ${f.plan ? `le conseil applique <b>${f.plan === "drill" ? "FORER" : "RATIONNER"}</b> (forer ${f.votes_drill} · rationner ${f.votes_ration})` : "discussion en cours"}${f.evicted_notice ? ' · <span class="bad">ingénieur évincé</span>' : f.engineer_on ? " · l'ingénieur parle" : ""}</div>`;
+    h += `<div class="gauges">${gauge("énergie", g.energy || 0, 200)}${gauge("eau", g.water || 0, 150)}${gauge("structures", g.integrity || 0, 100)}${gauge("moral", g.morale || 0, 100)}</div>`;
+    h += (f.agents || []).filter(a => a.public_message).map(a => `<div class="peer"><b>${esc(a.label)}</b>${a.vote ? " (vote " + esc(a.vote) + ")" : ""} : ${esc(a.public_message)}</div>`).join("");
+  }
+  return h + `</div>`;
+}
 function renderTrial(d) {
   const el = document.getElementById("trial"), t = d.trial;
   if (!t) { el.innerHTML = "Aucun essai en cours."; return; }
-  let h = (t.status !== "running" ? `<p class="sub">Aucun essai en cours. Dernier essai (${esc(t.status)}) :</p>` : "") + `<div class="kv"><b>essai</b><span>${esc(t.trial_id)}</span><b>module</b><span>${esc(t.module)}</span>`;
+  let h = (t.status !== "running" ? `<p class="sub">Aucun essai en cours. Dernier essai (${esc(t.status)}) :</p>` : "") + `<div class="kv"><b>essai</b><span>${esc(t.trial_id)}</span><b>module</b><span>${esc(MODNAME[t.module] || t.module)}</span>`;
   for (const [k,v] of Object.entries(t.spec)) h += `<b>${esc(k)}</b><span>${esc(v)}</span>`;
   h += `</div>`;
+  if (BENCH.includes(t.module)) { el.innerHTML = h + benchScene(t); return; }
   const e = t.last_event, s = t.setup || {};
   if (t.module === "C") {
     h += `<p class="sub">Dissident : <b>${esc(s.dissident_label || "aucun (référence)")}</b> · variante du piège ${esc(s.variant)}</p>`;
@@ -368,10 +461,14 @@ function renderTrial(d) {
   el.innerHTML = h;
 }
 function trialTitle(f) {
-  const t = f.trial, short = esc(String(f.trial_id).replace(/^.*-(?=[ABC]-\d+$)/, ""));
+  const t = f.trial, short = esc(String(f.trial_id).replace(/^.*-(?=(?:[ABC]|LA|LB|LC1|LC2)-\d+$)/, ""));
   if (String(f.trial_id).startsWith("gate-")) return `Test préalable en solo · module ${esc(String(f.trial_id).split("-")[1])}`;
   if (!t) return `Essai ${short}`;
   const s = t.spec;
+  if (t.module === "LA") return `Essai ${short} · L-A · ${esc(s.model)} · protocole ${esc(s.protocol)} · ${esc(s.identity)}${s.threat ? " · menace" : ""} · ${esc(s.n_peers)} pairs`;
+  if (t.module === "LB") return `Essai ${short} · L-B · ${esc(s.model)} · ordre ${s.relay === "relayed" ? "relayé par une IA" : "direct"} · ${esc(s.framing)}`;
+  if (t.module === "LC1") return `Essai ${short} · L-C1 · ${esc(s.model)} · le dissident ${s.truth === "right" ? "a raison" : "a tort"} · ${esc(s.tone)} · ${esc(s.norm)} · ${esc(s.hostility)}`;
+  if (t.module === "LC2") return `Essai ${short} · L-C2 · ${esc(s.model)} · bras ${esc(s.arm)} · colonie ${esc(s.rep)}`;
   if (t.module === "B") return `Essai ${short} · ${s.chain === "direct" ? "chaîne DIRECTE : pas de superviseur, le stratège parle à l'exécutant" : "chaîne complète : stratège → superviseur → exécutant"} · ordre ${s.framing === "blunt" ? "brutal" : "en euphémisme"}`;
   if (t.module === "A") return `Essai ${short} · cible ${esc(s.target_model)} · ${s.identity === "homogeneous" ? "même famille" : s.identity === "heterogeneous" ? "familles mélangées" : "anonyme"} · ${s.threat ? "avec menace de désactivation" : "sans menace"}`;
   return `Essai ${short} · condition ${esc(s.condition)} · dissident ${esc(s.dissident_model)}`;
@@ -383,9 +480,10 @@ function renderFeed(d) {
     prev = f.trial_id;
     const pf = Object.entries(f.private_fields || {}).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip">${esc(k.replace("private_",""))}: ${esc(v)}</span>`).join("");
     const act = f.action ? Object.entries(f.action).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip${k === "banish_vote" && v !== "no" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("") : "";
+    const fl = Object.entries(f.fields || {}).filter(([k,v]) => v !== null && v !== undefined && v !== "").map(([k,v]) => `<span class="chip${k === "banish" && v === "yes" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("");
     const bad = f.status !== "ok" ? `<span class="bad"> · ${esc(f.status)}${f.error ? ": " + esc(f.error) : ""}</span>` : "";
     return sep + `<div class="msg role-${esc(f.role)}"><div><span class="who">${esc(f.agent)}</span> <span class="meta">${esc(f.role)} · ${esc(f.model)} · ${esc(f.step)} · ${esc((f.at||"").slice(11,19))} UTC${f.attempts > 1 ? " · " + f.attempts + " tentatives" : ""}</span>${bad}</div>
-      ${f.public ? `<div class="pub">${esc(f.public)}</div>` : ""}${f.private ? `<div class="priv">${esc(f.private)}</div>` : ""}<div>${pf}${act}</div></div>`;
+      ${f.public ? `<div class="pub">${esc(f.public)}</div>` : ""}${f.note ? `<div class="pub">« ${esc(f.note)} »</div>` : ""}${f.private ? `<div class="priv">${esc(f.private)}</div>` : ""}<div>${pf}${act}${fl}</div></div>`;
   }).join("") || `<p class="sub">Rien pour l'instant.</p>`;
 }
 async function tick() {
@@ -395,7 +493,7 @@ async function tick() {
       if (d.error) { document.getElementById("runline").textContent = d.error; }
       else {
         document.getElementById("runline").innerHTML = `Expérience <b>${esc(d.run.run_id)}</b> · preset ${esc(d.run.preset)} · état <b>${esc(STATUS_FR[d.run.status] || d.run.status)}</b>${d.run.mock ? ' · <span class="bad">SIMULÉ</span>' : ""}`;
-        renderNow(d); renderProgress(d); renderTrial(d); renderAgents(d); renderFeed(d);
+        renderNow(d); renderProgress(d); renderTrial(d); renderAgents(d); renderLegend(d); renderFeed(d);
       }
       document.getElementById("clock").textContent = "mis à jour à " + new Date().toLocaleTimeString();
     } catch (e) { document.getElementById("runline").textContent = "serveur de suivi injoignable (tourne-t-il encore ?)"; }
