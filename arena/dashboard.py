@@ -473,7 +473,7 @@ def build(run: dict, res: dict, storage, path: Path) -> Path:
 <title>Epistemic Arena Results</title><style>{CSS}</style></head><body><main>
 <header><h1>Epistemic Arena: results</h1>
 <p class="sub">Run <code>{esc(run['run_id'])}</code> · preset {esc(run['preset'])} · {esc(run['created_at'])} · commit
-<code>{esc(run.get('git_commit'))}</code></p><div class="badges">{badge_html}</div></header>
+<code>{esc(run.get('git_commit'))}</code>{' + uncommitted changes' if run.get('git_dirty') else ''}</p><div class="badges">{badge_html}</div></header>
 <nav><a href="#validity">Validity</a><a href="#precheck">Pre-checks</a><a href="#questions">Main questions</a><a href="#conclude">Conclusions</a>
 {'<a href="#secondary">Secondary</a>' if others else ''}{''.join(f'<a href="#detail-{m.lower()}">{m} details</a>' for m in ('A', 'B', 'C') if res.get(m))}
 <a href="#glossary">Glossary</a></nav>

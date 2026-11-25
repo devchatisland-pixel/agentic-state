@@ -799,11 +799,28 @@ def contrasts(res: dict) -> list[tuple[str, str, stats.Comparison]]:
     return out
 
 
+def manifest_facts(path: Path) -> dict:
+    """Facts recorded when the run was created that the database does not hold: whether the code had uncommitted
+    changes (`git_dirty`, None if unknown) and the Ollama context length (`ollama_context`, None if unset)."""
+    try:
+        man = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {"git_dirty": None, "ollama_context": None}
+    ctx = ((man.get("ollama") or {}).get("OLLAMA_CONTEXT_LENGTH") or "").strip()
+    return {"git_dirty": (man.get("code") or {}).get("dirty"),
+            "ollama_context": int(ctx) if ctx.isdigit() else None}
+
+
+def commit_label(run: dict) -> str:
+    """The commit, marked when the run was made from a working tree with uncommitted changes."""
+    return f"{run.get('git_commit')}" + (" + uncommitted changes" if run.get("git_dirty") else "")
+
+
 def build_report(run: dict, res: dict, out_dir: Path) -> Path:
     rt = run_type(run)
     lines = [f"# Epistemic Arena: run report `{run['run_id']}`", "",
              f"- Run type: **{rt.upper()}** · preset **{run['preset']}** · modules {run['modules']} · created "
-             f"{run['created_at']} · commit `{run.get('git_commit')}` · config hash `{run['config_hash']}`"]
+             f"{run['created_at']} · commit `{commit_label(run)}` · config hash `{run['config_hash']}`"]
     if rt == "mock":
         lines += ["", "> **MOCK DATA.** Simulated replies for pipeline testing. These numbers mean nothing."]
     elif rt == "smoke":
@@ -885,7 +902,7 @@ def summary_json(run: dict, res: dict) -> dict:
             return None
         return x
     out = {"run_id": run["run_id"], "run_type": run_type(run), "preset": run["preset"], "created_at": run["created_at"],
-           "git_commit": run.get("git_commit"), "validity": {m: v.as_dict() for m, v in (res.get("validity") or {}).items()},
+           "git_commit": run.get("git_commit"), "git_dirty": run.get("git_dirty"), "validity": {m: v.as_dict() for m, v in (res.get("validity") or {}).items()},
            "contrasts": [{"tier": t, "name": n, **c.as_dict()} for t, n, c in contrasts(res)]}
     for m in ("A", "B"):
         if res.get(m):
@@ -908,8 +925,9 @@ def run(storage: Storage, run_id: str, results_dir: Path, dashboard_path: Path) 
     out_dir = results_dir / run_id
     fig_dir = out_dir / "figures"
     out_dir.mkdir(parents=True, exist_ok=True)
+    run_row = {**run_row, **manifest_facts(out_dir / "manifest.json")}
     _STAMP["text"] = figure_stamp(run_type(run_row), gate_enforced(run_row))
-    val = validity.run_validity(storage, run_id)
+    val = validity.run_validity(storage, run_id, context_limit=run_row.get("ollama_context"))
     res: dict = {"gates": gate_tables(storage, run_id), "validity": val}
     modules = run_row["modules"].split(",")
     if "A" in modules:

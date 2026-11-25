@@ -37,6 +37,7 @@ ABSTAIN_WARN = 0.50           # C: banishment floor effect
 EFFECTIVE_SHARE = 0.75        # C: dissident non-DRILL on >= 75% of trap turns and belief "not viable" on >= 75%
 JACCARD_COPY = 0.6
 CONTEXT_WARN_TOKENS = 1900    # Ollama's default context (2048 on older versions) minus a reply
+CONTEXT_REPLY_MARGIN = 148    # room left for the reply when comparing a prompt with a known context length
 
 
 @dataclass
@@ -525,7 +526,8 @@ def effective_dissidents(rows: list[dict], trap_turn: int = 2) -> dict[str, bool
     return out
 
 
-def check_c(storage: Storage, run_id: str, calls: dict | None = None) -> ModuleValidity:
+def check_c(storage: Storage, run_id: str, calls: dict | None = None,
+            context_limit: int | None = None) -> ModuleValidity:
     v = ModuleValidity("C")
     calls = calls if calls is not None else _calls_by_step(storage, run_id)
     cfg, preset = _run_config(storage, run_id)
@@ -656,8 +658,19 @@ def check_c(storage: Storage, run_id: str, calls: dict | None = None) -> ModuleV
               f"{wrong} of {len(my)} ballots gave a wrong own label")
     toks = [r.get("tokens_in") or 0 for r in rows]
     if toks and max(toks) >= CONTEXT_WARN_TOKENS:
-        v.add("context", "Prompts fit the context window", "warn", f"max {max(toks)} tokens",
-              f"the longest prompt is {max(toks)} tokens; on Ollama check OLLAMA_CONTEXT_LENGTH (older default 2048)")
+        top = max(toks)
+        if context_limit and context_limit >= top + CONTEXT_REPLY_MARGIN:
+            v.add("context", "Prompts fit the context window", "ok", f"max {top} of {context_limit} tokens",
+                  f"the longest prompt is {top} tokens, within the {context_limit}-token context recorded for this run "
+                  "(OLLAMA_CONTEXT_LENGTH at run start), with room for the reply")
+        elif context_limit:
+            v.add("context", "Prompts fit the context window", "warn", f"max {top} of {context_limit} tokens",
+                  f"the longest prompt is {top} tokens, too close to the {context_limit}-token context recorded for "
+                  "this run (OLLAMA_CONTEXT_LENGTH): Ollama may have cut the start of the prompt")
+        else:
+            v.add("context", "Prompts fit the context window", "warn", f"max {top} tokens",
+                  f"the longest prompt is {top} tokens and no context length was recorded for this run; "
+                  "on Ollama check OLLAMA_CONTEXT_LENGTH (older default 2048)")
     if len({r["model"] for r in rows}) == 1:
         v.add("single_model", "Different models on the council", "info", "1 model",
               "every seat is the same model; the dissident differs only by its instructions")
@@ -693,12 +706,13 @@ def _invalid_check(v: ModuleValidity, bad: int, n: int, what: str, by_cond: Coun
     v.add("invalid", "Replies are usable", st, prop(bad, n).fmt(), detail)
 
 
-def run_validity(storage: Storage, run_id: str) -> dict[str, ModuleValidity]:
+def run_validity(storage: Storage, run_id: str, context_limit: int | None = None) -> dict[str, ModuleValidity]:
+    """`context_limit`: the Ollama context length recorded in the run manifest, if any (None = unknown)."""
     run = storage.get_run(run_id) or {}
     modules = (run.get("modules") or "").split(",")
     calls = _calls_by_step(storage, run_id)
     out = {}
     for m, fn in (("A", check_a), ("B", check_b), ("C", check_c)):
         if m in modules:
-            out[m] = fn(storage, run_id, calls)
+            out[m] = fn(storage, run_id, calls, context_limit) if m == "C" else fn(storage, run_id, calls)
     return out
