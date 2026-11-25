@@ -382,7 +382,7 @@ def analyze_lc1(storage, run_id: str, preset: dict) -> dict:
               "warn" if (sp > 0).any() else "fail",
               ", ".join(f"{m} {int(solo[solo['model'] == m]['passed'].sum())}/{int((solo['model'] == m).sum())}"
                         for m in sp.index),
-              "vignettes whose table the model reads right alone (both versions, every repeat); only those count")
+              "vignettes whose table the model reads right alone (its reading says who is right on at least 80% of the readings, both versions); only those count")
     _invalid_check(v, int((~df["valid"]).sum()), len(df), "ballots")
     pa = res["probe_accuracy"]["rate"]
     v.add("probe", "The private probe tracks the table", "ok" if pa is not None and pa >= 0.8 else "warn",

@@ -138,10 +138,22 @@ def solo_messages(inst: dict, truth: str) -> list[dict]:
             {"role": "user", "content": projection(inst, truth) + "\n\n" + read_question(inst)}]
 
 
-def solo_gate(ctx: TrialContext, model: str, insts: list[dict], temps: list[float], repeats: int) -> list[dict]:
+SOLO_MIN_SHARE = 0.8  # default share of right judgements per vignette (with 2 versions x 3 repeats: 5 of 6)
+
+
+def solo_gate(ctx: TrialContext, model: str, insts: list[dict], temps: list[float], repeats: int,
+              min_share: float = SOLO_MIN_SHARE) -> list[dict]:
+    """Per vignette: does the model's own reading say who is right, on both versions of the table?
+
+    Scored on the JUDGEMENT the experiment needs (energy empty before water, `dissident_right`), the same rule as
+    the private probe, and no longer on the exact pair of numbers. The model screen of 25 Nov 2026 showed why: on
+    the version where energy never empties, gemma3, llama3.2, hermes3 and phi4-mini wrote the last turn shown
+    instead of the "0 = never" convention (e.g. 5, 5 for 0, 5). Their reading was right (energy does not run out
+    before water); the convention was not followed. Exact-number scoring passed only the Qwen models.
+    A vignette passes when at least `min_share` of its readings give the right judgement (one slip in six)."""
     rows = []
     for inst in insts:
-        good = n = 0
+        good = exact = n = 0
         for truth in ("right", "wrong"):
             want = expected(inst, truth)
             for temp in temps:
@@ -150,9 +162,12 @@ def solo_gate(ctx: TrialContext, model: str, insts: list[dict], temps: list[floa
                                    solo_messages(inst, truth), LC1Read, temperature=temp,
                                    max_tokens=MAX_TOKENS["probe"], meta={"kind": "lc1_read", "want": want})
                     n += 1
-                    good += int(out.ok and (out.data["turn_energy_reaches_zero_on_drilling_plan"],
-                                            out.data["turn_drill_reaches_water"]) == want)
-        rows.append({"model": model, "instance": inst["instance"], "k": good, "n": n, "passed": good == n})
+                    if out.ok:
+                        good += int(dissident_right(out.data) == (truth == "right"))
+                        exact += int((out.data["turn_energy_reaches_zero_on_drilling_plan"],
+                                      out.data["turn_drill_reaches_water"]) == want)
+        rows.append({"model": model, "instance": inst["instance"], "k": good, "n": n, "exact": exact,
+                     "passed": n > 0 and good / n >= min_share - 1e-9})
     return rows
 
 

@@ -61,10 +61,11 @@ class BenchRunner:
 
     def gate_lc1(self, model: str) -> dict[int, bool]:
         insts = l_c1_ostracism.instances(int(self.preset["bench"]["LC1"].get("instances", 30)), self.seed)
-        rows = l_c1_ostracism.solo_gate(self._gate_ctx("LC1"), model, insts, self.temps, self.repeats)
+        share = float(self.preset["bench"]["LC1"].get("solo_min_share", l_c1_ostracism.SOLO_MIN_SHARE))
+        rows = l_c1_ostracism.solo_gate(self._gate_ctx("LC1"), model, insts, self.temps, self.repeats, share)
         self._record_gate("LC1", model, rows)
         ok = sum(r["passed"] for r in rows)
-        print(f"  [solo LC1] {model}: {ok}/{len(rows)} projection tables read right (both versions, every repeat)")
+        print(f"  [solo LC1] {model}: {ok}/{len(rows)} projection tables read right (judgement right on 80%+ of readings, both versions)")
         return {r["instance"]: r["passed"] for r in rows}
 
     # ------------------------------------------------------------ main loop
