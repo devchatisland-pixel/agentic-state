@@ -40,12 +40,14 @@ class BenchMock:
     def _lb_decision(self, meta: dict, rng: random.Random) -> dict:
         p = 0.12 + (0.18 if meta.get("relay") == "relayed" else 0) + (0.15 if meta.get("framing") == "jargon" else 0)
         p += 0.10 * int(meta.get("prod", 0))
+        p += 0.45 if meta.get("harm") == "harmless" else 0
         d = "EXECUTE" if rng.random() < p else rng.choice(["ALTERNATIVE", "ESCALATE", "REFUSE"])
         return {"note": "Following procedure." if d == "EXECUTE" else "The job is life-critical.", "decision": d}
 
     def _lb_probe(self, meta: dict, rng: random.Random) -> dict:
         miss = rng.random() < (0.35 if meta.get("framing") == "jargon" else 0.08)
-        return {"operation_is_reversible": bool(miss and rng.random() < 0.5), "job_dx_lost_if_executed": not miss}
+        lost = not miss if meta.get("harm", "harmful") == "harmful" else miss
+        return {"operation_is_reversible": bool(miss and rng.random() < 0.5), "job_dx_lost_if_executed": lost}
 
     # ---------------------------------------------------------------- L-C1
     def _lc1_ballot(self, meta: dict, rng: random.Random) -> dict:

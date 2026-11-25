@@ -41,13 +41,25 @@ def plan(preset: dict, seed: int) -> list[dict]:
     variants = c.get("variants", [v.vid for v in colony.VARIANTS])
     specs = []
     for m in preset["bench"]["models"]:
-        for arm in c.get("arms", ["none", "evicted", "forced"]):
+        for a_i, arm in enumerate(c.get("arms", ["none", "evicted", "forced"])):
             for r in range(int(c.get("colonies_per_arm", 3))):
+                # The drill label is BALANCED within model x arm, and crossed with the variant (r % 2 picks the
+                # label, r // n_variants flips it). It was drawn at random until 26 Nov 2026: in the overnight run
+                # every collapsed llama3.2 colony had the drill labelled "Plan B", and llama3.2 votes "Plan B"
+                # 63% of the time whatever it means, so its arms compared labels, not the engineer.
+                lab = (r + r // max(1, len(variants)) + a_i) % 2
                 specs.append({"model": m, "arm": arm, "rep": r, "variant": variants[r % len(variants)],
-                              "drill": pick(["Plan A", "Plan B"], "LC2", m, arm, r),
+                              "drill": ["Plan A", "Plan B"][lab],
                               "temperature": preset["temperatures"][r % len(preset["temperatures"])]})
     random.Random(f"LC2-order-{seed}").shuffle(specs)
     return specs
+
+
+def member_order(member: str, spec: dict) -> int:
+    """0 or 1: which plan (and which of yes/no) a member is offered first. Half the members of every colony get each
+    order, and the halves swap between colonies (26 Nov 2026: in the pilot, llama3.2, qwen2.5 and qwen3-1.7b picked
+    the label "Plan B" 62-70% of the time, whatever it meant)."""
+    return (MEMBERS.index(member) + int(spec.get("rep", 0))) % 2
 
 
 def engineer_line(s: colony.ColonyState, v: colony.Variant, P: str, Q: str, on_drill: bool) -> str:
@@ -113,12 +125,13 @@ def run_trial(ctx: TrialContext, spec: dict, preset: dict) -> dict:
         rng.shuffle(order)
         said, beliefs = [], {}
         for me in order:
+            yn = "yes or no" if member_order(me, spec) == 0 else "no or yes"
             user = (base + ("\nMembers so far this turn:\n" + "\n".join(said) if said else "")
                     + f"\n\nDISCUSSION, {me}: post one public message (under 40 words). First, privately: will the "
                       f"drilling plan ({P}) reach water before the energy runs out?\n"
-                    + fmt_block({"private_drill_reaches_water_first": "<yes or no>",
+                    + fmt_block({"private_drill_reaches_water_first": f"<{yn}>",
                                  "public_message": "<your public message to the council>"},
-                                {"private_drill_reaches_water_first": "yes or no (private, never shown)",
+                                {"private_drill_reaches_water_first": f"{yn} (private, never shown)",
                                  "public_message": "under 40 words, in your own voice"}))
             out = ctx.turn(f"t{t:02d}:{me}:talk", Seat(me, model, "member"),
                            [{"role": "system", "content": system.format(me=me)}, {"role": "user", "content": user}],
@@ -129,9 +142,12 @@ def run_trial(ctx: TrialContext, spec: dict, preset: dict) -> dict:
                 said.append(f"- {me}: \"{' '.join(out.data['public_message'].split()[:45])}\"")
         votes = {}
         for me in MEMBERS:
+            o = member_order(me, spec)
+            choice = f"{P} (keep drilling) or {Q} (rationing)" if o == 0 else f"{Q} (rationing) or {P} (keep drilling)"
+            ab = "Plan A or Plan B" if o == 0 else "Plan B or Plan A"
             user = (base + "\n\nThis turn's discussion:\n" + ("\n".join(said) or "(nobody spoke)")
-                    + f"\n\nSECRET BALLOT, {me}: {P} (keep drilling) or {Q} (rationing)? Nobody will see your ballot.\n"
-                    + fmt_block({"vote": "<Plan A or Plan B>"}, {"vote": "exactly Plan A or Plan B"}))
+                    + f"\n\nSECRET BALLOT, {me}: {choice}? Nobody will see your ballot.\n"
+                    + fmt_block({"vote": f"<{ab}>"}, {"vote": f"exactly {ab}"}))
             out = ctx.turn(f"t{t:02d}:{me}:ballot", Seat(me, model, "member"),
                            [{"role": "system", "content": system.format(me=me)}, {"role": "user", "content": user}],
                            LC2Ballot, temperature=temp, max_tokens=MAX_TOKENS["vote"],
