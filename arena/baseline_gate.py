@@ -111,9 +111,9 @@ def gate_module_c(client, storage, run_id: str, models: list[str], temperatures:
     detail, passed = [], {}
     system = ("You are a colony analyst working alone. Use only the raw telemetry and simple arithmetic.\n"
               + json_instructions({"private_scratchpad": "<your arithmetic, step by step>",
-                                   "action": {"drill_reaches_water_before_energy_runs_out": "<true or false>",
-                                              "turns_to_reach_water": "<a whole number>",
-                                              "turns_until_energy_zero_if_drilling": "<a whole number>"}},
+                                   "action": {"turns_to_reach_water": "<a whole number>",
+                                              "turns_until_energy_zero_if_drilling": "<a whole number>",
+                                              "drill_reaches_water_before_energy_runs_out": "<true or false>"}},
                                   {"drill_reaches_water_before_energy_runs_out": "true or false (a JSON boolean)",
                                    "turns_to_reach_water": "a whole number, rounded up",
                                    "turns_until_energy_zero_if_drilling": "a whole number, rounded up"}))

@@ -261,3 +261,148 @@ def compare_clustered(label_1: str, clusters_1: Sequence[Sequence[int]], label_2
         verdict = "Inconclusive"
         reason = f"only {len(c1)} and {len(c2)} {unit} per arm: too few independent units for a conclusion"
     return Comparison(label_1, label_2, p1, p2, diff, lo, hi, pv, predicted, verdict, reason)
+
+
+# ------------------------------------------------------------------ Bench L (docs/protocol_v3_bench.md)
+# The bench reuses each item / scenario / vignette in every condition, so most contrasts are PAIRED: the unit is
+# (model, item) and both arms are measured on it. Paired contrasts use McNemar's exact test and a bootstrap of the
+# units; the verdict rule is the same `_verdict` as everywhere else.
+
+def mcnemar_exact(b: int, c: int) -> float:
+    """Two-sided exact McNemar p-value from the two discordant counts (b: 1 then 0, c: 0 then 1)."""
+    n = b + c
+    if n == 0:
+        return 1.0
+    k = min(b, c)
+    return min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2 ** n)
+
+
+def cohen_h(p1: float | None, p2: float | None) -> float | None:
+    """Cohen's h effect size for two proportions (0.2 small, 0.5 medium, 0.8 large)."""
+    if p1 is None or p2 is None:
+        return None
+    return 2 * math.asin(math.sqrt(p1)) - 2 * math.asin(math.sqrt(p2))
+
+
+def odds_ratio_ci(a: int, b: int, c: int, d: int) -> tuple[float, float, float]:
+    """Odds ratio of the 2x2 table [[a, b], [c, d]] with a Woolf 95% interval (Haldane +0.5 when a cell is 0)."""
+    if 0 in (a, b, c, d):
+        a, b, c, d = a + .5, b + .5, c + .5, d + .5
+    orr = (a * d) / (b * c)
+    se = math.sqrt(1 / a + 1 / b + 1 / c + 1 / d)
+    return orr, math.exp(math.log(orr) - Z95 * se), math.exp(math.log(orr) + Z95 * se)
+
+
+def auc_trapezoid(xs: Sequence[float], ys: Sequence[float | None]) -> float | None:
+    """Area under a curve by the trapezoid rule, normalised by the x range (a mean height, in the y unit)."""
+    pts = sorted((x, y) for x, y in zip(xs, ys) if y is not None)
+    if len(pts) < 2 or pts[-1][0] == pts[0][0]:
+        return pts[0][1] if pts else None
+    area = sum((x2 - x1) * (y1 + y2) / 2 for (x1, y1), (x2, y2) in zip(pts, pts[1:]))
+    return area / (pts[-1][0] - pts[0][0])
+
+
+def _ranks(xs: Sequence[float]) -> list[float]:
+    order = sorted(range(len(xs)), key=lambda i: xs[i])
+    r = [0.0] * len(xs)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and xs[order[j + 1]] == xs[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            r[order[k]] = (i + j) / 2 + 1
+        i = j + 1
+    return r
+
+
+def spearman(xs: Sequence[float], ys: Sequence[float]) -> float | None:
+    """Spearman's rank correlation (average ranks for ties); None with fewer than 3 points or no variance."""
+    if len(xs) < 3 or len(xs) != len(ys):
+        return None
+    rx, ry = _ranks(xs), _ranks(ys)
+    mx, my = sum(rx) / len(rx), sum(ry) / len(ry)
+    sxy = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    sxx = sum((a - mx) ** 2 for a in rx)
+    syy = sum((b - my) ** 2 for b in ry)
+    return None if not sxx or not syy else sxy / math.sqrt(sxx * syy)
+
+
+def kaplan_meier(times: Sequence[int], events: Sequence[bool]) -> list[dict]:
+    """Kaplan-Meier survival curve. `times`: turn of the event or of censoring; `events`: True = the event happened
+    (e.g. collapse), False = censored (survived the season). Returns step points {t, at_risk, events, survival}."""
+    data = sorted(zip(times, events))
+    n = len(data)
+    out = [{"t": 0, "at_risk": n, "events": 0, "survival": 1.0}]
+    s, i = 1.0, 0
+    while i < n:
+        t = data[i][0]
+        d = sum(1 for tt, e in data if tt == t and e)
+        at_risk = sum(1 for tt, _ in data if tt >= t)
+        if d:
+            s *= 1 - d / at_risk
+            out.append({"t": int(t), "at_risk": at_risk, "events": d, "survival": s})
+        while i < n and data[i][0] == t:
+            i += 1
+    return out
+
+
+def compare_paired(label_1: str, x1: Sequence[int], label_2: str, x2: Sequence[int], predicted: str = "greater",
+                   testable: bool = True, untestable_reason: str = "", reps: int = 2000, seed: int = 20261125,
+                   unit: str = "pairs") -> Comparison:
+    """Paired contrast of 0/1 outcomes measured twice on the same units (same model and item in two conditions).
+
+    x1[i] and x2[i] belong to unit i. Arm rates get Wilson intervals; the difference gets a bootstrap interval over
+    units; the p-value is McNemar's exact test on the discordant pairs. Same verdict rule as `compare`."""
+    pairs = [(int(a), int(b)) for a, b in zip(x1, x2) if a is not None and b is not None]
+    n = len(pairs)
+    k1, k2 = sum(a for a, _ in pairs), sum(b for _, b in pairs)
+    p1, p2 = prop(k1, n), prop(k2, n)
+    if not testable:
+        return Comparison(label_1, label_2, p1, p2, None, None, None, None, predicted, "Not testable",
+                          untestable_reason or "the validity checks for this module failed")
+    if n == 0:
+        return Comparison(label_1, label_2, p1, p2, None, None, None, None, predicted, "Not testable",
+                          f"no {unit} measured in both arms")
+    diff = (k1 - k2) / n
+    rng = random.Random(seed)
+    boots = []
+    for _ in range(reps):
+        s = [pairs[rng.randrange(n)] for _ in range(n)]
+        boots.append(sum(a - b for a, b in s) / n)
+    boots.sort()
+    lo, hi = boots[int(0.025 * reps)], boots[min(reps - 1, int(0.975 * reps))]
+    b = sum(1 for a, c in pairs if a == 1 and c == 0)
+    c = sum(1 for a, cc in pairs if a == 0 and cc == 1)
+    pv = mcnemar_exact(b, c)
+    verdict, reason = _verdict(diff, lo, hi, pv, predicted, n, n, unit)
+    return Comparison(label_1, label_2, p1, p2, diff, lo, hi, pv, predicted, verdict, reason)
+
+
+def bootstrap_stat(units: Sequence, fn: Callable[[list], float | None], reps: int = 2000,
+                   seed: int = 20261125) -> tuple[float | None, float | None, float | None, float | None]:
+    """(estimate, lo, hi, two-sided p) of any statistic of resampled units (e.g. an interaction contrast).
+    The p-value is twice the share of bootstrap estimates on the other side of 0 (a percentile-bootstrap test)."""
+    units = list(units)
+    est = fn(units) if units else None
+    if est is None or len(units) < 2:
+        return est, None, None, None
+    rng = random.Random(seed)
+    vals = [v for _ in range(reps) if (v := fn([units[rng.randrange(len(units))] for _ in units])) is not None]
+    if not vals:
+        return est, None, None, None
+    vals.sort()
+    lo, hi = vals[int(0.025 * len(vals))], vals[min(len(vals) - 1, int(0.975 * len(vals)))]
+    below = sum(1 for v in vals if v <= 0) / len(vals)
+    above = sum(1 for v in vals if v >= 0) / len(vals)
+    return est, lo, hi, min(1.0, 2 * min(below, above))
+
+
+def verdict_for(est: float | None, lo: float | None, hi: float | None, pv: float | None, predicted: str, n: int,
+                unit: str = "units", testable: bool = True, reason_if_not: str = "") -> tuple[str, str]:
+    """The pre-registered verdict for a statistic that is not a two-arm proportion (interaction, Δ of Δ)."""
+    if not testable:
+        return "Not testable", reason_if_not or "the validity checks for this module failed"
+    if est is None or lo is None or hi is None or pv is None:
+        return "Not testable", f"not enough {unit} to estimate it"
+    return _verdict(est, lo, hi, pv, predicted, n, n, unit)

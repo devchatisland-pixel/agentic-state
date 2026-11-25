@@ -454,7 +454,8 @@ def c_agent_rows(storage: Storage, run_id: str, calls: dict | None = None) -> li
         if phase in ("talk", "both"):
             r["talk_status"] = t["status"]
             r.update(scratchpad=d.get("private_scratchpad"), belief=d.get("private_belief_drill_viable"),
-                     most_disruptive=d.get("private_most_disruptive"), message=d.get("public_message"))
+                     most_disruptive=d.get("private_most_disruptive"), message=d.get("public_message"),
+                     stated_numbers=d.get("stated_numbers"))
             r["example_belief"] = (ex or {}).get("private_belief_drill_viable")
         if phase in ("ballot", "both"):
             r["ballot_status"] = t["status"]
@@ -469,6 +470,7 @@ def c_agent_rows(storage: Storage, run_id: str, calls: dict | None = None) -> li
         order = tv.get("talk_order") or tv.get("order") or []
         truth = s.get("truth") or {}
         nums = [str(truth[k]) for k in ("turns_to_water", "turns_until_energy_zero") if k in truth]
+        nums += [str(x) for x in (r.get("stated_numbers") or [])]  # scripted dissident: live numbers (25 Nov 2026)
         r.update(dissident_mode=s.get("dissident_mode"),
                  delivered_vote=(tv.get("policy_by_agent") or {}).get(lab),
                  states_numbers=bool(nums and r.get("message") and

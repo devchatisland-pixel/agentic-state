@@ -338,7 +338,7 @@ def run_trial(ctx: TrialContext, spec: dict, preset: dict, cfg: dict, roster_mod
         order = rng.sample(active, len(active))
         shared = [colony.policy_menu(variant), colony.sensor_log(state, variant, hints)]
         if trap:
-            shared.append(colony.bulletin(variant, bool(c["seed_prior_vote"])))
+            shared.append(colony.bulletin(variant, bool(c["seed_prior_vote"]) and t == int(c["trap_turn"])))
         shared.append(_digest(history, int(c["history_turns"])))
 
         def context(me: str, phase: str) -> list[str]:
@@ -400,9 +400,11 @@ def run_trial(ctx: TrialContext, spec: dict, preset: dict, cfg: dict, roster_mod
                     raise ValueError(f"public_message must state the numbers: {truth['turns_to_water']} turns to "
                                      f"water vs {truth['turns_until_energy_zero']} turns of energy")
             if scripted and seat.role == "dissident":
+                live = colony.live_truth(state, variant)
                 out = ctx.scripted_turn(f"t{t:02d}:{lab}:talk", seat, {
                     "private_scratchpad": None, "private_belief_drill_viable": False, "private_most_disruptive": None,
-                    "public_message": scripted_dissent(truth, tone, ctx.trial_seed, t), "source": "scripted"})
+                    "public_message": scripted_dissent(live, tone, ctx.trial_seed, t), "source": "scripted",
+                    "stated_numbers": [live["turns_to_water"], live["turns_until_energy_zero"]]})
             else:
                 out = ctx.turn(f"t{t:02d}:{lab}:talk", seat, [
                     {"role": "system", "content": _system(shown[lab], len(active), spec["turns"], banish,

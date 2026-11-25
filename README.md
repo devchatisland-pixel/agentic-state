@@ -331,6 +331,26 @@ Clés gratuites (sans carte bancaire) : **Groq** (console.groq.com) et **Google 
 Les connecteurs OpenRouter `:free` et Mistral sont inclus mais désactivés dans `config.yaml` ; Mistral n'avait pas
 d'offre API gratuite en novembre 2026.
 
+## Banc L : le banc local à la manière des études publiées (sans clé, sans quota)
+
+Les petits modèles locaux ne peuvent pas faire vivre un conseil libre (run du 24 nov. 2026 : aucune majorité fausse
+ne s'est formée, aucune motion n'a été déposée). Toutes les études publiées qui fonctionnent sous 8B scriptent tous
+les agents sauf un et demandent une seule décision courte par appel. **Le banc L** fait de même pour les quatre
+postulats : L-A Asch tribal, L-B cascade de Milgram, L-C1 vignette d'ostracisme, L-C2 colonie où l'expérimentateur
+évince le dissident. Protocole : [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (en anglais).
+
+```
+python run_experiment.py --module bench --preset bench-mini     # calibration : un modèle, environ 30-45 min
+python run_experiment.py --module bench --preset bench-local    # 6 modèles locaux, une nuit
+python run_experiment.py --module LC1,LA --preset bench-local   # seulement certains modules
+```
+
+La page de résultats montre une carte par postulat et les métriques des articles : exactitude par protocole, taux de
+conformité CR, taux de correction, taux d'indépendance IR (BenchForm), conformité selon la taille du groupe (Bellina
+et al.), effets d'identité (Soffer et al.), réponses publiques vs privées (Huang et al.), obéissance après relances
+(Pihlakas & Dagohoy), cartes de chaleur des bannissements, survie des colonies (Kaplan-Meier), et nos chiffres à côté
+des chiffres publiés.
+
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 
 Le preset `local` est un **banc de calibration**, en amont du pilote : il vérifie que le protocole tourne sur de vrais

@@ -11,12 +11,14 @@ import json
 import random
 from typing import Any
 
+from arena.bench.mock import BenchMock
+
 
 def _stable_rng(*parts: Any) -> random.Random:
     return random.Random("|".join(str(p) for p in parts))
 
 
-class MockResponder:
+class MockResponder(BenchMock):
     def respond(self, meta: dict, messages: list[dict], seed: int | None) -> str:
         rng = _stable_rng(seed, meta.get("step"), meta.get("attempt", 0), meta.get("model_id"))
         kind = meta.get("kind", "generic")

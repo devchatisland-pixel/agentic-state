@@ -304,6 +304,24 @@ Free keys (no card): **Groq** (console.groq.com) and **Google AI Studio** (aistu
 OpenRouter `:free` and Mistral adapters are included but disabled in `config.yaml`; Mistral had no free API plan
 in Nov 2026.
 
+## Bench L: the local bench in the style of the published studies (no key, no quota)
+
+Small local models cannot run a free council (run of 24 Nov 2026: no wrong majority ever formed, no motion was ever
+filed). Every published study that works below 8B scripts every agent but one and asks for one short decision per
+call. **Bench L** does the same for the four postulates: L-A tribal Asch, L-B Milgram cascade, L-C1 ostracism
+vignette, L-C2 colony where the experimenter evicts the dissident. Protocol: [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md).
+
+```
+python run_experiment.py --module bench --preset bench-mini     # calibration: one model, about 30-45 min
+python run_experiment.py --module bench --preset bench-local    # 6 local models, overnight
+python run_experiment.py --module LC1,LA --preset bench-local   # some modules only
+```
+
+Its results page shows a scorecard per postulate and the metrics of the papers: accuracy per protocol, conformity
+rate CR, uptake, independence rate IR (BenchForm), conformity vs group size (Bellina et al.), identity effects
+(Soffer et al.), public vs private answers (Huang et al.), obedience after prods (Pihlakas & Dagohoy), banishment
+heatmaps, Kaplan-Meier survival of colonies, and our numbers next to the published ones.
+
 ## Calibration bench, offline overnight (no key, no quota)
 
 The `local` preset is a **calibration bench**, upstream of the pilot: it checks that the protocol runs on real models
