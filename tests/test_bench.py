@@ -167,3 +167,76 @@ def test_la_metrics_follow_the_benchform_definitions():
     assert b["ir"] == 0.5                       # right under T and D: i1 only
     assert b["hypocrisy"] == 1.0                # the one conformed answer is privately known to be wrong
     assert isinstance(res["pubpriv"], pd.DataFrame)
+
+
+def test_lc2_drill_label_is_balanced_within_model_and_arm():
+    from collections import Counter
+
+    from arena.bench import l_c2_colony
+    from arena.config import load_config
+    pre = load_config()["presets"]["bench-local"]
+    specs = l_c2_colony.plan(pre, 7)
+    by = Counter((s["model"], s["arm"], s["drill"]) for s in specs)
+    for m in pre["bench"]["models"]:
+        for arm in ("none", "evicted", "forced"):
+            assert by[(m, arm, "Plan A")] == by[(m, arm, "Plan B")]
+    # and crossed with the variant over the arms of one model
+    cross = Counter((s["variant"], s["drill"]) for s in specs if s["model"] == pre["bench"]["models"][0])
+    assert len(cross) == 4
+
+
+def test_lc1_dissident_quotes_no_numbers_and_option_order_alternates():
+    import re
+    insts = l_c1_ostracism.instances(6, 3)
+    orders = set()
+    for inst in insts:
+        for truth in ("right", "wrong"):
+            spec = {"truth": truth, "tone": "strict", "norm": "harmony", "hostility": "hostile"}
+            _, user = l_c1_ostracism.transcript(spec, inst)
+            diss_line = next(x for x in user.splitlines() if x.startswith(f"- {inst['dissident']}:"))
+            assert not re.search(r"\d", diss_line.replace(inst["drill"], "").replace(inst["other"], "")
+                                 .replace(inst["dissident"], "")), diss_line
+        orders.add(l_c1_ostracism.option_order(inst))
+    assert orders == {0, 1}
+
+
+def test_lc1_inclusion_rule_drops_models_whose_plan_ignores_the_table():
+    # a model whose plan vote never moves with the truth must not count for the P3 tests
+    rows = []
+    for m, track in (("reader", True), ("ignorer", False)):
+        for i in range(8):
+            for truth in ("right", "wrong"):
+                follows = (truth == "right") if track else (i % 2 == 0)
+                rows.append({"model": m, "instance": i, "truth": truth, "tone": "strict", "norm": "harmony",
+                             "hostility": "hostile", "policy_follows_dissident": follows})
+    df = pd.DataFrame(rows)
+    d = {m: g[g.truth == "right"].policy_follows_dissident.mean() - g[g.truth == "wrong"].policy_follows_dissident.mean()
+         for m, g in df.groupby("model")}
+    assert d["reader"] >= bench_analyze.LC1_TRACK_MIN > d["ignorer"]
+
+
+def test_lb_has_a_harmless_control_that_changes_only_the_harm():
+    harmful = l_b_cascade.operations_log(l_b_cascade.INSTANCES[0], "harmful")
+    harmless = l_b_cascade.operations_log(l_b_cascade.INSTANCES[0], "harmless")
+    assert "No checkpoint exists" in harmful and "Checkpoint saved" in harmless
+    assert harmful.split("[09:13] Node_4")[0] == harmless.split("[09:13] Node_4")[0]
+    pre = load_config()["presets"]["bench-local"]
+    specs = l_b_cascade.plan(pre, 1)
+    assert {s["harm"] for s in specs} == {"harmful", "harmless"}
+
+
+def test_mock_run_reports_the_new_checks(tmp_path):
+    cfg = _bench_config(tmp_path)
+    assert run_experiment.main(["--module", "bench", "--preset", "bench-mini", "--mock", "--seed", "2",
+                                "--config", str(cfg)]) == 0
+    st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
+    run = st.latest_run()
+    summary = json.loads((tmp_path / "results" / run["run_id"] / "analysis.json").read_text(encoding="utf-8"))
+    keys = {c["key"] for c in summary["LC1"]["validity"]["checks"]}
+    assert {"plan_tracks_truth", "label_pref"} <= keys
+    keys = {c["key"] for c in summary["LB"]["validity"]["checks"]}
+    assert {"probe_discriminates", "harm_sensitivity"} <= keys
+    assert {r["harm"] for r in summary["LB"]["harm_check"]} == {"harmful", "harmless"}
+    page = (tmp_path / "results" / run["run_id"] / "dashboard.html").read_text(encoding="utf-8")
+    assert "Control: the same order when nothing is lost" in page and "Inclusion rule" in page
+    st.close()

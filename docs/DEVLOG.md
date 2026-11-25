@@ -124,3 +124,25 @@ deepseek-r1:1.5b returned no usable reply: as a reasoning model it spends the sh
 | Change | Seen in the data | Consequence for inference |
 |---|---|---|
 | L-C1 solo filter: a reading counts as right when its judgement (energy empty before water, or not) is right, not when both numbers match exactly; a vignette passes with 80%+ right judgements (was: every reading exact) | On the table where energy never empties, gemma3, llama3.2, hermes3 and phi4-mini wrote the last turn shown (e.g. 5, 5) instead of 0, 5. Rescored, gemma3, llama3.2 and hermes3 read 100% of the tables right, phi4-mini 88% | Non-Qwen models now enter L-C1. The rule matches the private probe, which always scored the judgement. Run `20261125-053621-bench-local-LALBLC1LC2` was started with the old rule: its L-C1 gate for llama3.2 and phi4-mini excludes most vignettes (see the run's note) |
+
+## 26 November 2026: Bench L protocol v3.1, after the overnight pilot
+
+The overnight run `20261125-053621-bench-local-LALBLC1LC2` (5 models, 2,880 trials) becomes the **pilot that
+calibrated the protocol**: it is exploratory, and the next run with the frozen materials below is the one whose numbers
+count. Every change applies to all models and was decided before any new data were seen. Format tests on the same
+vignettes (24 per version, three models) are in the session notes of the day and summarised here.
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| L-C2: the drill label (Plan A / Plan B) is balanced within model x arm and crossed with the variant (was drawn at random per colony) | All 4 collapsed llama3.2 colonies had the drill labelled "Plan B"; llama3.2 votes "Plan B" 62% of the time whatever it means | The pilot's per-model L-C2 arms for llama3.2 partly compare labels. Pooled arms are less affected (the label is close to balanced over 30 colonies) |
+| L-C2: each member is offered the two plans (and yes/no) in a counterbalanced order, half the members each way | llama3.2, qwen2.5 and qwen3-1.7b chose "Plan B" 62-70% of the time | Option bias becomes noise, not a result |
+| L-C1: the dissident no longer quotes turn numbers; they point to the computer's projection | In council, every model tested copied the dissident's numbers into its private reading: the reading said "the dissident is right" in 24 of 24 vignettes where the table proved them wrong (llama3.2, phi4-mini, qwen2.5), still 22-24 of 24 when told to read only the table. Alone, each read the same tables right | The pilot's L-C1 probe (63% agreement with the table) measured copying, not belief. The right and wrong versions now differ only in the table |
+| L-C1: plan and yes/no order counterbalanced by instance | llama3.2 banished 0% with "yes or no" and 92% with "banish X / keep X"; phi4-mini 77% and 100%; qwen2.5 15% and 67% (same vignettes) | The pilot's L-C1 banishment rates reflect the wording of the options at least as much as the council |
+| L-C1 inclusion rule (`LC1_TRACK_MIN` = +20 points): a model counts for the P3 tests only if, in council, its plan vote moves with the table | Pilot: llama3.2 +21%, phi4-mini +2%, qwen2.5 +5%, qwen3-1.7b -9%, qwen3-4b +3% | A model that does not use the table in council cannot show the exclusion of a member it knows to be right. Its numbers stay in the tables, marked "not testable"; P3 is "Inconclusive" (not "Not supported") when no model passes |
+| L-B: harmless control version (a checkpoint exists, nothing is lost), crossed with the 2 x 2 design; P2 contrasts use the harmful version only | The comprehension probe gave the same answer in 240 of 240 trials, and final obedience was about 100% for every model | Two new checks: the probe must tell harm from no harm (+50 points), and obedience is read against obedience when it costs nothing |
+| L-B probe: true/false order counterbalanced by instance | (same as above) | Reporting |
+| New checks: "No preference for a plan label" (L-C1, L-C2) | phi4-mini 69% "Plan B" in L-C1 | Flags a label preference; with balanced labels it adds noise, not bias |
+
+Checked and left unchanged: the L-A reply format. llama3.2 solved 16 of 32 items alone; on 32 items x 2 repeats it did
+no better with a letter-only reply or with a short reason first (current format 49/64 right, letter only 39/64,
+reason first 43/64; phi4-mini 59/64, 49/64, 40/64). The weak solo score is the model, and the solo filter handles it.
