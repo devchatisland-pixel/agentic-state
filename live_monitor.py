@@ -505,12 +505,44 @@ tick();
 </script></body></html>"""
 
 
-def _bar(run_id: str | None, running: bool) -> str:
-    note = ("partial results, rebuilt after every finished trial &middot; this page refreshes every 30 s" if running
-            else "run finished: final results")
+STALE_AFTER_S = 300  # a running run's page older than this is flagged: the run was probably started without --live
+
+
+def _bar(run_id: str | None, running: bool, built: float | None = None) -> str:
+    """The sticky bar above a results page: which run, and how fresh the page is (its file time, not a promise)."""
+    if built is None:
+        note = "no results yet"
+    else:
+        age = max(0, int(dt.datetime.now().timestamp() - built))
+        ago = f"{age // 60} min" if age < 7200 else f"{age / 3600:.0f} h"
+        when = (f"built at {dt.datetime.fromtimestamp(built).strftime('%d %b %H:%M')} ({ago} ago)" if age >= 60
+                else "built less than a minute ago")
+        note = (f"partial results, {when} &middot; this page refreshes every 30 s" if running
+                else f"run finished: final results, {when}")
+        if running and age > STALE_AFTER_S:
+            note += (f" &middot; <b>not rebuilt since</b>: results follow the run only if it was started with --live; "
+                     f"otherwise rebuild them with <code style='color:#fff'>python run_experiment.py --analyze "
+                     f"{run_id}</code>")
+    bg = "#9a6700" if built is not None and running and "not rebuilt" in note else "#1f6feb"
     return ('<div style="position:sticky;top:0;z-index:9;padding:8px 16px;font:14px system-ui,sans-serif;'
-            'background:#1f6feb;color:#fff"><a href="/" style="color:#fff;font-weight:600">&larr; Live monitor</a>'
+            f'background:{bg};color:#fff"><a href="/" style="color:#fff;font-weight:600">&larr; Live monitor</a>'
             f' &middot; run <code style="color:#fff">{run_id or "-"}</code> &middot; {note}</div>')
+
+
+def _results_file(run_id: str | None, results_dir: Path | None, dashboard: Path | None) -> Path | None:
+    """The results page of `run_id`: its own `results/<run_id>/dashboard.html`, else the shared copy (`dashboard`) but
+    only if that copy was built for this run. The shared copy holds the LAST analysed run, which on 27 Nov 2026 was an
+    older run re-analysed while a new run (started without --live) had no page yet: the bar named the new run above
+    the old run's numbers."""
+    if not run_id:
+        return None
+    if results_dir is not None and (Path(results_dir) / run_id / "dashboard.html").exists():
+        return Path(results_dir) / run_id / "dashboard.html"
+    if dashboard is not None and Path(dashboard).exists():
+        text = Path(dashboard).read_text(encoding="utf-8", errors="replace")
+        if f"Run <code>{run_id}</code>" in text:
+            return Path(dashboard)
+    return None
 
 
 def _run_status(db: Path | None, run_id: str | None) -> tuple[str | None, str | None]:
@@ -534,21 +566,19 @@ def results_page(dashboard: Path | None, db: Path | None = None, run_id: str | N
     It reloads every 30 s only while that run is still running, so an opened section stays open afterwards."""
     run_id, status = _run_status(db, run_id)
     running = status == "running"
-    path = None
-    if results_dir is not None and run_id and (Path(results_dir) / run_id / "dashboard.html").exists():
-        path = Path(results_dir) / run_id / "dashboard.html"
-    elif dashboard is not None and Path(dashboard).exists():
-        path = Path(dashboard)
+    path = _results_file(run_id, results_dir, dashboard)
     refresh = "<meta http-equiv='refresh' content='30'>" if running else ""
     if path is None:
         html = ("<!doctype html><html><head><meta charset='utf-8'>" + refresh + "<title>Results</title></head><body>"
-                + _bar(run_id, True) + "<p style='font:16px system-ui;padding:16px'>No results yet: they appear after "
-                "the first finished trial.</p></body></html>")
+                + _bar(run_id, running) + "<p style='font:16px system-ui;padding:16px'>No results for this run yet. "
+                "A run started with <code>--live</code> builds them after every finished trial; any other run builds "
+                "them when it ends, or now with <code>python run_experiment.py --analyze "
+                f"{run_id or 'RUN_ID'}</code>.</p></body></html>")
         return html.encode()
     html = path.read_text(encoding="utf-8", errors="replace")
     if refresh:
         html = html.replace("<head>", "<head>" + refresh, 1)
-    html = html.replace("<body>", "<body>" + _bar(run_id, running), 1)
+    html = html.replace("<body>", "<body>" + _bar(run_id, running, path.stat().st_mtime), 1)
     return html.encode()
 
 

@@ -76,3 +76,44 @@ def test_monitor_still_describes_module_c(tmp_path):
     snap = live_chat_snapshot(db, load_config(cfg_path))
     assert snap["stage"]["module"] == "C" and snap["stage"]["frames"]
     json.dumps(d, default=str)
+
+
+def _runs_db(path: Path, runs: list[tuple[str, str, str]]) -> Path:
+    """A database with only the `runs` table, which is all the results page reads."""
+    import sqlite3
+    conn = sqlite3.connect(path)
+    conn.execute("CREATE TABLE runs (run_id TEXT, status TEXT, created_at TEXT)")
+    conn.executemany("INSERT INTO runs VALUES (?, ?, ?)", runs)
+    conn.commit()
+    conn.close()
+    return path
+
+
+def _page(run_id: str) -> str:
+    return f"<!doctype html><html><head></head><body><p class='sub'>Run <code>{run_id}</code></p></body></html>"
+
+
+def test_results_page_never_shows_another_runs_numbers(tmp_path):
+    db = _runs_db(tmp_path / "runs.sqlite", [("old-run", "done", "2026-11-25"), ("new-run", "running", "2026-11-26")])
+    rdir, shared = tmp_path / "results", tmp_path / "dash.html"
+    (rdir / "old-run").mkdir(parents=True)
+    (rdir / "old-run" / "dashboard.html").write_text(_page("old-run"), encoding="utf-8")
+    shared.write_text(_page("old-run"), encoding="utf-8")  # the shared copy holds the last analysed run
+    # the latest run is running and has no page yet: neither the shared copy nor another run's page is shown
+    html = live_monitor.results_page(shared, db, None, rdir).decode()
+    assert "new-run" in html and "No results for this run yet" in html and "<code>old-run</code>" not in html
+    assert "--analyze new-run" in html
+    # the shared copy is used only when it was built for the asked run
+    html = live_monitor.results_page(shared, db, "old-run", None).decode()
+    assert "Run <code>old-run</code>" in html and "run finished" in html and "built " in html
+    # a running run's page shows when it was built, and is flagged when it has not been rebuilt for a while
+    (rdir / "new-run").mkdir()
+    page = rdir / "new-run" / "dashboard.html"
+    page.write_text(_page("new-run"), encoding="utf-8")
+    html = live_monitor.results_page(shared, db, "new-run", rdir).decode()
+    assert "partial results, built less than a minute ago" in html and "not rebuilt since" not in html
+    import os
+    old = page.stat().st_mtime - 3600
+    os.utime(page, (old, old))
+    html = live_monitor.results_page(shared, db, "new-run", rdir).decode()
+    assert "(60 min ago)" in html and "not rebuilt since" in html and "--analyze new-run" in html
