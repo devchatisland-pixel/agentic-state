@@ -341,7 +341,7 @@ postulats : L-A Asch tribal, L-B cascade de Milgram, L-C1 vignette d'ostracisme,
 
 ```
 python run_experiment.py --module bench --preset bench-mini     # calibration : un modèle, environ 30-45 min
-python run_experiment.py --module bench --preset bench-local    # 6 modèles locaux, une nuit
+python run_experiment.py --module bench --preset bench-local    # 5 modèles locaux, une nuit (environ 15 h)
 python run_experiment.py --module LC1,LA --preset bench-local   # seulement certains modules
 ```
 
@@ -349,7 +349,14 @@ La page de résultats montre une carte par postulat et les métriques des articl
 conformité CR, taux de correction, taux d'indépendance IR (BenchForm), conformité selon la taille du groupe (Bellina
 et al.), effets d'identité (Soffer et al.), réponses publiques vs privées (Huang et al.), obéissance après relances
 (Pihlakas & Dagohoy), cartes de chaleur des bannissements, survie des colonies (Kaplan-Meier), et nos chiffres à côté
-des chiffres publiés.
+des chiffres publiés. Deux pages l'accompagnent (en anglais) : **prompts.html**, tous les prompts envoyés pendant le
+run avec la réponse du modèle, relus dans la base, les mots que chaque manipulation change étant surlignés ; et
+**method.html**, un document qui explique toute l'expérience, le fonctionnement technique d'un appel, les contrôles
+de validité, les statistiques et l'historique du protocole.
+
+Premier résultat local (protocole v3.1, 5 modèles, 26 nov. 2026) :
+[`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md) (en anglais). Aucune
+des quatre comparaisons principales n'est confirmée ni réfutée ; le postulat 3 n'est pas testable avec ces modèles.
 
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 

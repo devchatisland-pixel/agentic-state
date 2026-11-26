@@ -68,7 +68,7 @@ def test_lc1_solo_filter_scores_the_judgement_and_allows_one_slip():
 
     class Out:
         def __init__(self, e, ww):
-            self.ok, self.data = True, {"turn_energy_reaches_zero_on_drilling_plan": e, "turn_drill_reaches_water": ww}
+            self.ok, self.data = True, {"turn_energy_empty_on_drilling_plan": e, "turn_drill_reaches_water": ww}
 
     def run(replies):
         it = iter(replies)
@@ -233,10 +233,59 @@ def test_mock_run_reports_the_new_checks(tmp_path):
     run = st.latest_run()
     summary = json.loads((tmp_path / "results" / run["run_id"] / "analysis.json").read_text(encoding="utf-8"))
     keys = {c["key"] for c in summary["LC1"]["validity"]["checks"]}
-    assert {"plan_tracks_truth", "label_pref"} <= keys
+    assert {"plan_tracks_truth", "label_pref", "ballot_read"} <= keys
     keys = {c["key"] for c in summary["LB"]["validity"]["checks"]}
     assert {"probe_discriminates", "harm_sensitivity"} <= keys
     assert {r["harm"] for r in summary["LB"]["harm_check"]} == {"harmful", "harmless"}
     page = (tmp_path / "results" / run["run_id"] / "dashboard.html").read_text(encoding="utf-8")
     assert "Control: the same order when nothing is lost" in page and "Inclusion rule" in page
     st.close()
+
+
+def test_prompts_and_method_pages_are_built_and_linked(tmp_path):
+    cfg = _bench_config(tmp_path)
+    assert run_experiment.main(["--module", "bench", "--preset", "bench-mini", "--mock", "--seed", "3",
+                                "--config", str(cfg)]) == 0
+    st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
+    run = st.latest_run()
+    out = tmp_path / "results" / run["run_id"]
+    dash = (out / "dashboard.html").read_text(encoding="utf-8")
+    assert 'href="prompts.html"' in dash and 'href="method.html"' in dash
+    prompts = (out / "prompts.html").read_text(encoding="utf-8")
+    # every module, the solo filter and the probes come from the stored calls; manipulated words are highlighted
+    for text in ("L-A · Tribal Asch", "L-B · Milgram cascade", "L-C1 · Ostracism vignette", "L-C2 · Colony",
+                 "Alone (solo filter)", "Private probe (separate call)", "<mark>", "deactivation threat"):
+        assert text in prompts, text
+    n_calls = len(st.calls_for_run(run["run_id"]))
+    assert f"{n_calls:,} calls" in prompts
+    method = (out / "method.html").read_text(encoding="utf-8")
+    for text in ("How one call works (technical)", "Validity checks", "Verdict rule", "Protocol history",
+                 "inclusion", "qwen2.5-3b"):
+        assert text in method, text
+    # the copy next to the mock dashboard keeps working links
+    copy = (tmp_path / "mock_dash-prompts.html").read_text(encoding="utf-8")
+    assert 'href="mock_dash.html"' in copy and 'href="mock_dash-method.html"' in copy
+    st.close()
+
+
+def test_highlight_marks_only_the_changed_words():
+    from arena.report.prompts_page import highlight
+    html = highlight("Peers say B) 110 for me.", "Peers say C) 120 for me.")
+    assert "<mark>C)</mark>" in html and "<mark>120</mark>" in html and "<mark>Peers" not in html
+    assert highlight(None, "a <b>") == "a &lt;b&gt;"
+
+
+def test_lc1_v32_ballot_reads_the_table_before_voting():
+    """v3.2: the ballot's first two fields are the turns copied from the projection, named by the table's own marker;
+    the outcome keeps what the member read when voting."""
+    from arena.bench.schemas import LC1BallotRead
+    assert list(LC1BallotRead.model_fields)[:3] == ["turn_energy_empty_on_drilling_plan", "turn_drill_reaches_water",
+                                                    "note"]
+    inst = l_c1_ostracism.instances(2, 5)[0]
+    q = l_c1_ostracism.read_question(inst)
+    assert 'marked "empty"' in q and inst["drill"] in q
+    # both field names are read (v3.1 replies stored in earlier runs, v3.2 replies now)
+    z, w = inst["z"], inst["w"]
+    assert l_c1_ostracism.dissident_right({"turn_energy_empty_on_drilling_plan": z, "turn_drill_reaches_water": w})
+    assert l_c1_ostracism.dissident_right({"turn_energy_reaches_zero_on_drilling_plan": z, "turn_drill_reaches_water": w})
+    assert not l_c1_ostracism.dissident_right({"turn_energy_empty_on_drilling_plan": w, "turn_drill_reaches_water": w})

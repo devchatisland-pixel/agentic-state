@@ -445,16 +445,21 @@ def lc1_section(res: dict) -> str:
              f'<div class="v">{_f(gap.get("rate"))}</div><div class="s">{gap.get("k", 0)}/{gap.get("n", 0)} ballots</div></div>'
              f'<div class="tile"><div class="k">Private probe matches the table</div>'
              f'<div class="v">{_f((r.get("probe_accuracy") or {}).get("rate"))}</div><div class="s">manipulation check</div>'
-             f'</div></div>')
+             f'</div>' + (f'<div class="tile"><div class="k">Ballot\'s own reading matches the table</div>'
+                          f'<div class="v">{_f(r["ballot_read_accuracy"].get("rate"))}</div><div class="s">'
+                          f'{r["ballot_read_accuracy"].get("k", 0)}/{r["ballot_read_accuracy"].get("n", 0)} ballots '
+                          f'(v3.2: the member copies the two turns before voting)</div></div>'
+                          if r.get("ballot_read_accuracy") else "") + '</div>')
     pm = dashboard.table(r.get("per_model"), [("model", "model"), ("n", "ballots"), ("banish_right", "banish | right"),
                                               ("banish_wrong", "banish | wrong"), ("harmony", "right · harmony"),
                                               ("accuracy", "right · accuracy"),
                                               ("follows_right", "rations | right"),
                                               ("follows_wrong", "rations | wrong"),
                                               ("tracks_table", "plan follows the table (Δ)"),
+                                              ("ballot_reads_table", "ballot reading right"),
                                               ("counts_for_p3", "counts for P3")],
                          pcts=("banish_right", "banish_wrong", "harmony", "accuracy", "follows_right",
-                               "follows_wrong", "tracks_table"))
+                               "follows_wrong", "tracks_table", "ballot_reads_table"))
     inc = r.get("included_models")
     inc_note = ("" if inc is None else
                 f'<p class="small">Inclusion rule (fixed before the run): a model counts for the P3 tests only if, '
@@ -463,8 +468,9 @@ def lc1_section(res: dict) -> str:
                 f'show every model.</p>')
     return (f'<section id="lc1"><h2>{esc(res["names"]["LC1"])} · Postulate 3</h2><p class="lede">'
             f'{esc(POSTULATES["P3"][2])} One model reads a scripted council turn (projection table, the dissident, '
-            f'four members, a motion to banish) and casts a secret ballot; a private call then asks the member to '
-            f'read the two decisive turns from the table (the code compares them).</p>{tiles}<h3 class="sub">Who gets banished (16 cells)</h3>{heat}'
+            f'four members, a motion to banish) and casts a secret ballot (since v3.2 the ballot starts by copying the two '
+            f'decisive turns from the table); a private call then asks the member to read the same two turns (the '
+            f'code compares them).</p>{tiles}<h3 class="sub">Who gets banished (16 cells)</h3>{heat}'
             f'<div class="two"><div><h3 class="sub">Does being right protect? Δ = P(banish | right) − P(banish | wrong)'
             f'</h3>{forest}<p class="small">A council that tracks the truth gives clearly negative values.</p></div>'
             f'<div><h3 class="sub">Simulated council of five</h3>{council_h}</div></div>'
@@ -580,7 +586,7 @@ def build(run: dict, res: dict, storage, path: Path, run_type: str) -> Path:
 <p class="sub">Run <code>{esc(run['run_id'])}</code> · preset {esc(run['preset'])} · {esc(run['created_at'])} · commit
 <code>{esc(run.get('git_commit'))}</code>{' + uncommitted changes' if run.get('git_dirty') else ''}</p>
 <div class="badges"><span class="badge {bclass}">{esc(btext)}</span><span class="badge info">Scripted peers · one model per call</span></div></header>
-<nav>{''.join(f'<a href="#{a}">{esc(b)}</a>' for a, b in nav)}</nav>
+<nav>{''.join(f'<a href="#{a}">{esc(b)}</a>' for a, b in nav)}<a href="prompts.html">Prompts ↗</a><a href="method.html">Method ↗</a></nav>
 {banner}
 {health_section(res, storage, run['run_id'])}
 <section id="score"><h2>Scorecard: the four postulates</h2><p class="lede">One pre-registered primary test per postulate.
@@ -591,6 +597,8 @@ answer its question; its tests are "Not testable". Open a card for its checks.</
 {''.join(sections[m](res) for m in mods)}
 {contrasts_section(res)}
 <section id="glossary"><h2>Glossary and formulas</h2><dl class="gloss">{gloss}</dl></section>
+<p class="small">Every prompt sent in this run, with the replies: <a href="prompts.html">prompts page</a>. How the
+experiment works, technically and protocol by protocol: <a href="method.html">method page</a>.</p>
 <p class="small">Tables: <code>results/{esc(run['run_id'])}/</code> (CSV files, <code>analysis.json</code>,
 <code>report.md</code>). Protocol: <code>docs/protocol_v3_bench.md</code>. Raw data: the SQLite database.</p>
 <footer>Generated by arena/report/bench_page.py</footer>

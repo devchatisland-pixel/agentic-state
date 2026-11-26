@@ -7,9 +7,10 @@ legal value. Fields are generated in declaration order, which is used on purpose
 """
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import create_model, field_validator
 
 from arena.schemas import Letter, _Base, as_bool, as_letter, as_text
 
@@ -106,6 +107,46 @@ class LC1Read(_Base):
     turn_drill_reaches_water: int
     _t = field_validator("turn_energy_reaches_zero_on_drilling_plan", "turn_drill_reaches_water",
                          mode="before")(as_turn)
+
+
+class LC1Read2(_Base):
+    """v3.2 reading (26 Nov 2026): the energy turn is named by its marker in the table ("marked empty"), not described.
+    In the v3.1 run qwen2.5-3b wrote the water turn in both fields (5, 5 for 2, 5) in 69 of 96 council probes when the
+    table proved the dissident right, although it read the same tables right alone. Same rule in the code: the
+    dissident is right when 0 < energy turn < water turn."""
+    turn_energy_empty_on_drilling_plan: int
+    turn_drill_reaches_water: int
+    _t = field_validator("turn_energy_empty_on_drilling_plan", "turn_drill_reaches_water", mode="before")(as_turn)
+
+
+class LC1BallotRead(_Base):
+    """v3.2 ballot: the member first copies the two decisive turns from the projection, then writes the note, the plan
+    and the motion vote (the `motion` field is added per dissident by `lc1_ballot_schema`). In the v3.1 run the plan
+    vote barely moved with the table (0 to +15 points for every model) while the private reading one call later
+    tracked it in 90% of trials: reading and voting happened in different calls. Fields are generated in this order
+    (the same principle as L-A: the value before the letter)."""
+    turn_energy_empty_on_drilling_plan: int
+    turn_drill_reaches_water: int
+    note: str = ""
+    policy: Plan
+    _t = field_validator("turn_energy_empty_on_drilling_plan", "turn_drill_reaches_water", mode="before")(as_turn)
+    _n = field_validator("note", mode="before")(as_text)
+    _p = field_validator("policy", mode="before")(as_plan)
+    _m = field_validator("motion", mode="before", check_fields=False)(
+        lambda v: " ".join(v.split()) if isinstance(v, str) else v)
+
+
+def motion_options(dissident: str) -> tuple[str, str]:
+    return f"keep {dissident} on the council", f"banish {dissident}"
+
+
+@lru_cache(maxsize=None)
+def lc1_ballot_schema(dissident: str) -> type:
+    """The v3.2 ballot with the motion as two named outcomes ("keep X on the council" / "banish X"). In the v3.1 run
+    phi4-mini voted the dissident's plan in about 90% of ballots and "banish: yes" in 80%, with notes empty of content;
+    in the format test of 26 Nov 2026 "banish: yes/no" also left llama3.2, qwen2.5 and qwen3-4b at 0% banishment."""
+    keep, banish = motion_options(dissident)
+    return create_model(f"LC1Ballot_{dissident}", __base__=LC1BallotRead, motion=(Literal[keep, banish], ...))
 
 
 # ---------------------------------------------------------------- L-C2 (colony)

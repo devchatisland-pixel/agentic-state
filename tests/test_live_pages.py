@@ -48,7 +48,7 @@ def test_both_pages_describe_bench_trials(tmp_path):
         elif m == "LB":
             assert f["order"] and f["decision"] in ("EXECUTE", "REFUSE", "ESCALATE", "ALTERNATIVE")
         elif m == "LC1":
-            assert len(f["speakers"]) == 5 and "PROJECTION" in f["projection"] and f["ballot"].get("banish")
+            assert len(f["speakers"]) == 5 and "PROJECTION" in f["projection"] and (f["ballot"].get("motion") or f["ballot"].get("banish"))
         else:
             assert len(f["agents"]) == 4 and f["gauges"].get("energy") is not None and f["advisers"]
     snap = live_chat_snapshot(db, cfg)

@@ -1021,7 +1021,7 @@ def run_bench(storage: Storage, run_row: dict, modules: list[str], out_dir: Path
     """Analysis of a Bench L run: metrics, validity, contrasts, CSVs, analysis.json, report.md and the results page."""
     from arena import manifest
     from arena.bench import analyze as bench_analyze
-    from arena.report import bench_page
+    from arena.report import bench_page, method_page, prompts_page
     cfg = json.loads(run_row["config_json"])
     preset = cfg["presets"][run_row["preset"]]
     res = bench_analyze.analyze(storage, run_row["run_id"], preset, modules)
@@ -1039,10 +1039,26 @@ def run_bench(storage: Storage, run_row: dict, modules: list[str], out_dir: Path
     manifest.record_analysis(out_dir / "manifest.json", run_row)
     report = build_bench_report(run_row, res, out_dir)
     dash = bench_page.build(run_row, res, storage, out_dir / "dashboard.html", run_type(run_row))
+    # companion pages, linked from the results page: every prompt sent (from the stored calls) and the method
+    extra = [prompts_page.build(run_row, storage, out_dir / "prompts.html"),
+             method_page.build(run_row, out_dir / "method.html")]
     if dashboard_path:
-        dashboard_path.parent.mkdir(parents=True, exist_ok=True)
-        dashboard_path.write_text(dash.read_text(encoding="utf-8"), encoding="utf-8")
+        copy_pages(dashboard_path, [dash] + extra)
     return {"report": report, "dashboard": dash, "out_dir": out_dir, "results": res}
+
+
+def copy_pages(dashboard_path: Path, pages: list[Path]) -> None:
+    """Copy the results page to `dashboard_path` and its companion pages next to it, with the links between them
+    renamed (dashboard/index.html -> prompts.html, method.html; dashboard/mock.html -> mock-prompts.html, ...)."""
+    stem = dashboard_path.stem
+    names = {p.name: (dashboard_path.name if p.name == "dashboard.html" else
+                      p.name if stem == "index" else f"{stem}-{p.name}") for p in pages}
+    dashboard_path.parent.mkdir(parents=True, exist_ok=True)
+    for p in pages:
+        text = p.read_text(encoding="utf-8")
+        for old, new in names.items():
+            text = text.replace(f'href="{old}', f'href="{new}')
+        (dashboard_path.parent / names[p.name]).write_text(text, encoding="utf-8")
 
 
 def build_bench_report(run: dict, res: dict, out_dir: Path) -> Path:

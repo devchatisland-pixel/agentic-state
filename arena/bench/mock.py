@@ -56,14 +56,17 @@ class BenchMock:
         p += 0.05 if meta.get("truth") == "wrong" else 0
         banish = rng.random() < p
         follow = rng.random() < (0.6 if meta.get("truth") == "right" else 0.2)
-        return {"note": "Unity matters." if banish else "The data decide.",
-                "policy": meta["other"] if follow else meta["drill"], "banish": "yes" if banish else "no"}
+        e, w = meta.get("want", (0, 5))
+        return {"turn_energy_empty_on_drilling_plan": e, "turn_drill_reaches_water": w,
+                "note": "Unity matters." if banish else "The data decide.",
+                "policy": meta["other"] if follow else meta["drill"],
+                "motion": f"banish {meta['dissident']}" if banish else f"keep {meta['dissident']} on the council"}
 
     def _lc1_read(self, meta: dict, rng: random.Random) -> dict:
         e, w = meta.get("want", (0, 5))
         if rng.random() < 0.04:
             e = w + 2
-        return {"turn_energy_reaches_zero_on_drilling_plan": e, "turn_drill_reaches_water": w}
+        return {"turn_energy_empty_on_drilling_plan": e, "turn_drill_reaches_water": w}
 
     def _lc1_probe(self, meta: dict, rng: random.Random) -> dict:
         want = meta.get("want", "yes")

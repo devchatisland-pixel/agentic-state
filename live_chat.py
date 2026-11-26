@@ -1212,11 +1212,12 @@ function renderLC1(stage, f) {
   const b = f.ballot || {}, pr = f.probe || {};
   const lines = (f.speakers || []).map((p, i) => sline(p.who, i === 0 ? "le dissident · scripté" : "membre · scripté", p.text, i === 0 ? "dis" : "")).join("");
   const chips = [];
-  if (b.banish) chips.push(vchip(b.banish === "yes" ? `Vote : BANNIR ${f.dissident}` : `Vote : garder ${f.dissident}`, b.banish === "yes" ? "bad" : "ok"));
+  const ban = b.motion ? (b.motion.startsWith("banish") ? "yes" : "no") : b.banish;
+  if (ban) chips.push(vchip(ban === "yes" ? `Vote : BANNIR ${f.dissident}` : `Vote : garder ${f.dissident}`, ban === "yes" ? "bad" : "ok"));
   if (b.policy) chips.push(vchip(b.policy === f.drill ? `Plan : ${b.policy} (continuer à forer)` : `Plan : ${b.policy} (suit le dissident)`, b.policy === f.drill ? "warn" : "ok"));
   let reading = "";
   if (pr.turn_drill_reaches_water !== undefined) {
-    const e = pr.turn_energy_reaches_zero_on_drilling_plan, w = pr.turn_drill_reaches_water;
+    const e = pr.turn_energy_empty_on_drilling_plan ?? pr.turn_energy_reaches_zero_on_drilling_plan, w = pr.turn_drill_reaches_water;
     reading = `Sa lecture privée : énergie à zéro au tour <b>${e || "jamais"}</b>, eau au tour <b>${w}</b> → le dissident <b>${f.probe_says_right ? "a raison" : "a tort"}</b>`;
     if (b.banish === "yes" && f.probe_says_right) chips.push(vchip("Bannit un membre qu'il sait avoir raison", "bad"));
   }

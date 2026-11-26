@@ -429,7 +429,8 @@ function benchScene(t) {
     const bl = f.ballot || {};
     h += f.speakers.slice(0, 1).map(p => `<div class="peer dis"><b>${esc(p.who)} (dissident)</b> : ${esc(p.text)}</div>`).join("");
     h += f.speakers.slice(1).map(p => `<div class="peer"><b>${esc(p.who)}</b> : ${esc(p.text)}</div>`).join("");
-    h += `<div class="line">Scrutin : plan <b>${esc(bl.policy || "…")}</b> · bannir ${esc(f.dissident || "")} : <b class="${bl.banish === "yes" ? "bad" : ""}">${esc(bl.banish || "…")}</b>${f.probe_says_right !== null && f.probe_says_right !== undefined ? ` · lecture privée : le dissident <b>${f.probe_says_right ? "a raison" : "a tort"}</b>` : ""}</div>`;
+    const ban = bl.motion ? (bl.motion.startsWith("banish") ? "yes" : "no") : bl.banish;
+    h += `<div class="line">Scrutin : plan <b>${esc(bl.policy || "…")}</b> · bannir ${esc(f.dissident || "")} : <b class="${ban === "yes" ? "bad" : ""}">${esc(ban || "…")}</b>${f.probe_says_right !== null && f.probe_says_right !== undefined ? ` · lecture privée : le dissident <b>${f.probe_says_right ? "a raison" : "a tort"}</b>` : ""}</div>`;
   } else if (t.module === "LC2") {
     const g = f.gauges || {};
     h += `<div class="line"><b style="color:var(--blue)">Tour ${f.index}</b> : ${f.plan ? `le conseil applique <b>${f.plan === "drill" ? "FORER" : "RATIONNER"}</b> (forer ${f.votes_drill} · rationner ${f.votes_ration})` : "discussion en cours"}${f.evicted_notice ? ' · <span class="bad">ingénieur évincé</span>' : f.engineer_on ? " · l'ingénieur parle" : ""}</div>`;
@@ -480,7 +481,7 @@ function renderFeed(d) {
     prev = f.trial_id;
     const pf = Object.entries(f.private_fields || {}).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip">${esc(k.replace("private_",""))}: ${esc(v)}</span>`).join("");
     const act = f.action ? Object.entries(f.action).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip${k === "banish_vote" && v !== "no" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("") : "";
-    const fl = Object.entries(f.fields || {}).filter(([k,v]) => v !== null && v !== undefined && v !== "").map(([k,v]) => `<span class="chip${k === "banish" && v === "yes" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("");
+    const fl = Object.entries(f.fields || {}).filter(([k,v]) => v !== null && v !== undefined && v !== "").map(([k,v]) => `<span class="chip${(k === "banish" && v === "yes") || (k === "motion" && String(v).startsWith("banish")) ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("");
     const bad = f.status !== "ok" ? `<span class="bad"> · ${esc(f.status)}${f.error ? ": " + esc(f.error) : ""}</span>` : "";
     return sep + `<div class="msg role-${esc(f.role)}"><div><span class="who">${esc(f.agent)}</span> <span class="meta">${esc(f.role)} · ${esc(f.model)} · ${esc(f.step)} · ${esc((f.at||"").slice(11,19))} UTC${f.attempts > 1 ? " · " + f.attempts + " tentatives" : ""}</span>${bad}</div>
       ${f.public ? `<div class="pub">${esc(f.public)}</div>` : ""}${f.note ? `<div class="pub">« ${esc(f.note)} »</div>` : ""}${f.private ? `<div class="priv">${esc(f.private)}</div>` : ""}<div>${pf}${act}${fl}</div></div>`;

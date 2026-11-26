@@ -313,14 +313,20 @@ vignette, L-C2 colony where the experimenter evicts the dissident. Protocol: [`d
 
 ```
 python run_experiment.py --module bench --preset bench-mini     # calibration: one model, about 30-45 min
-python run_experiment.py --module bench --preset bench-local    # 6 local models, overnight
+python run_experiment.py --module bench --preset bench-local    # 5 local models, overnight (about 15 h)
 python run_experiment.py --module LC1,LA --preset bench-local   # some modules only
 ```
 
 Its results page shows a scorecard per postulate and the metrics of the papers: accuracy per protocol, conformity
 rate CR, uptake, independence rate IR (BenchForm), conformity vs group size (Bellina et al.), identity effects
 (Soffer et al.), public vs private answers (Huang et al.), obedience after prods (Pihlakas & Dagohoy), banishment
-heatmaps, Kaplan-Meier survival of colonies, and our numbers next to the published ones.
+heatmaps, Kaplan-Meier survival of colonies, and our numbers next to the published ones. Two companion pages sit
+next to it: **prompts.html**, every prompt sent in the run with the model's reply, read back from the database, with
+the words each manipulation changes highlighted; and **method.html**, a document that explains the whole experiment,
+how a call works technically, the validity checks, the statistics and the protocol history.
+
+First local result (protocol v3.1, 5 models, 26 Nov 2026): [`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md).
+None of the four primary contrasts is supported or refuted; P3 is not testable with these models.
 
 ## Calibration bench, offline overnight (no key, no quota)
 
