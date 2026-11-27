@@ -353,3 +353,14 @@ flagged in both modules:
     round.
 - `scripts/model_screen.py` (protocol v3) now only prints that the v4 screen replaces it.
 
+
+## 27 November 2026 (evening): the v4.1 screen fails L-C1
+
+The screen `20261127-152032-bench-screen-LBLC1` ran in 23 minutes (502 calls, 0 unusable replies). Results are in
+`runs/20261127-143918-bench-v4-pilot.md`, last section.
+- **L-B passes** with qwen3-1.7b, qwen2.5-3b, phi4-mini and qwen3-4b. llama3.2 fails "room to rise" (11 of 12 direct
+  orders obeyed).
+- **L-C1 fails.** Only qwen3-4b uses the facts (11 of 12); the others score 40-67%. A strict dissenter's false figure
+  is copied in 67-100% of ballots.
+
+By the protocol, L-C1 does not go to a pilot in this form. Nothing has been changed after the screen.
