@@ -119,3 +119,9 @@ def test_results_page_never_shows_another_runs_numbers(tmp_path):
     os.utime(page, (old, old))
     html = live_monitor.results_page(shared, db, "new-run", rdir).decode()
     assert "(60 min ago)" in html and "not rebuilt since" in html and "--analyze new-run" in html
+
+
+def test_monitor_page_declares_each_js_constant_once():
+    import re
+    names = re.findall(r"^\s*const ([A-Z_]+) =", live_monitor.PAGE, re.M)
+    assert len(names) == len(set(names)), sorted(n for n in names if names.count(n) > 1)

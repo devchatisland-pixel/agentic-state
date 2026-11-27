@@ -566,3 +566,56 @@ def test_confirmatory_run_needs_a_five_repeat_solo_filter(tmp_path):
     assert any("solo filter needs at least 5" in x for x in run_experiment.confirmatory_problems(pre, str(prereg), [], False))
     probs = run_experiment.confirmatory_problems(pre, None, [], True)
     assert any("--prereg" in x for x in probs) and any("clean commit" in x for x in probs)
+
+
+def test_a_reasoning_model_gets_a_reply_floor():
+    from arena.llm_client import LLMClient
+    cfg = load_config()
+    cfg["models"]["gpt-oss-20b"]["min_reply_tokens"] = 1000
+    sent = []
+
+    class Resp:
+        status_code = 200
+        headers = {}
+
+        def json(self):
+            return {"choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}], "usage": {}}
+
+    class Http:
+        def post(self, url, headers=None, json=None, timeout=None):
+            sent.append(json)
+            return Resp()
+
+    import os
+    os.environ.setdefault("GROQ_API_KEY", "test")
+    client = LLMClient(cfg, mock=False)
+    client.http = Http()
+    client.chat("gpt-oss-20b", [{"role": "user", "content": "x"}], temperature=0.7, max_tokens=80)
+    assert sent[0]["max_tokens"] == 1000
+
+
+def test_cloud_requests_use_32_bit_seeds_and_survive_a_rejected_generation():
+    from arena.llm_client import LLMClient, OpenAICompatAdapter
+    _, _, payload = OpenAICompatAdapter("http://x/v1", None).request("m", [], 0.7, 4208158759, 10, True, {})
+    assert payload["seed"] < 2**31
+    cfg = load_config()
+    calls = []
+
+    class Resp:
+        def __init__(self, code, body):
+            self.status_code, self.text, self.headers, self._b = code, body, {}, body
+
+        def json(self):
+            return json.loads(self._b)
+
+    class Http:
+        def post(self, url, headers=None, json=None, timeout=None):
+            calls.append(json)
+            return Resp(400, '{"error":{"code":"tool_use_failed","message":"Tool choice is none, but model called a tool"}}')
+
+    import os
+    os.environ.setdefault("GROQ_API_KEY", "test")
+    client = LLMClient(cfg, mock=False)
+    client.http = Http()
+    r = client.chat("gpt-oss-20b", [{"role": "user", "content": "x"}], temperature=0.7, seed=1, max_tokens=80)
+    assert r.text == "" and r.finish_reason == "invalid_generation" and len(calls) == 1

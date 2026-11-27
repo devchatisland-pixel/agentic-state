@@ -128,6 +128,9 @@ class RateLimiter:
             entry[1] = max(int(actual_tokens), 0)
 
 
+GENERATION_RE = re.compile(r"tool_use_failed|json_validate_failed|failed_generation")
+
+
 class OpenAICompatAdapter:
     def __init__(self, base_url: str, api_key: str | None):
         self.base_url = base_url.rstrip("/")
@@ -139,7 +142,7 @@ class OpenAICompatAdapter:
         payload: dict[str, Any] = {"model": model_name, "messages": messages,
                                    "temperature": temperature, "max_tokens": max_tokens}
         if seed is not None:
-            payload["seed"] = seed
+            payload["seed"] = seed % 2**31  # Google (also behind OpenRouter) accepts only 32-bit signed seeds
         if json_schema is not None:  # grammar-constrained decoding (Ollama): keys, types and enums are enforced
             payload["response_format"] = {"type": "json_schema",
                                           "json_schema": {"name": "turn", "strict": True, "schema": json_schema}}
@@ -221,7 +224,7 @@ class GeminiAdapter:
                      "parts": [{"text": m["content"]}]} for m in messages if m["role"] != "system"]
         gen: dict[str, Any] = {"temperature": temperature, "maxOutputTokens": max_tokens}
         if seed is not None:
-            gen["seed"] = seed
+            gen["seed"] = seed % 2**31
         if json_mode:
             gen["responseMimeType"] = "application/json"
         gen.update((params or {}).get("generationConfig", {}))
@@ -317,6 +320,9 @@ class LLMClient:
         else:
             adapter = (GeminiAdapter if p["kind"] == "gemini" else OpenAICompatAdapter)(p["base_url"], key)
         max_tokens = int(max_tokens or m.get("max_tokens", 900))
+        # a reasoning model spends tokens thinking before its answer: a model may set a floor so the short step
+        # budgets of Bench L (80-160 tokens) do not cut it off (gpt-oss on Groq, 27 Nov 2026)
+        max_tokens = max(max_tokens, int(m.get("min_reply_tokens") or 0))
         if m.get("system_suffix"):  # e.g. " /no_think" for Qwen3: appended to the system prompt, never logged as content
             messages = [dict(x) for x in messages]
             for x in messages:
@@ -355,6 +361,11 @@ class LLMClient:
                     raise QuotaExhausted(f"{pname}/{model_id}: daily quota reached ({body[:200]})")
                 if status in (400, 403) and SAFETY_RE.search(body):
                     raise ProviderBlocked(f"HTTP {status}: {body[:300]}")
+                if status == 400 and GENERATION_RE.search(body):
+                    # the provider rejected what the MODEL generated (e.g. Groq: gpt-oss answered as a tool call, or
+                    # ran out of tokens before valid JSON): an unusable reply, repaired like any other
+                    return ChatResult("", None, model_id, pname, m["model"], 0, 0, time.perf_counter() - t0,
+                                      "invalid_generation")
                 if status != 429 and status not in RETRYABLE:
                     raise LLMError(f"{pname}/{model_id} HTTP {status}: {body[:500]}")
                 err = f"HTTP {status}: {body[:300]}"

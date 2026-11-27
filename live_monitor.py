@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import live_chat_bench
+import live_multi
 from arena.config import load_config, resolve
 from live_chat import LIVE_CHAT_PAGE, live_chat_snapshot
 
@@ -331,7 +332,7 @@ button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var
 .legend span { margin-right:12px; font-size:12px; color:var(--ink2); } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
 </style></head><body><main>
 <div class="top"><div><h1>Arène : suivi en direct</h1><div class="sub" id="runline">connexion…</div></div>
-<div><a href="/live-chat" style="font-weight:600;margin-right:12px">Live Chat &rarr;</a><a href="/results" style="font-weight:600;margin-right:12px">Results so far &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
+<div><a href="/multi" style="font-weight:600;margin-right:12px">Runs en parallèle &rarr;</a><a href="/live-chat" style="font-weight:600;margin-right:12px">Live Chat &rarr;</a><a href="/results" style="font-weight:600;margin-right:12px">Results so far &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
 <div class="grid">
  <div>
   <div class="card" id="nowcard"><div class="now"><div class="dot"></div><div id="now">…</div></div></div>
@@ -411,7 +412,7 @@ function renderProgress(d) {
 }
 function gauge(name, v, max) { const low = v < max*0.2; return `<div class="gauge ${low?"low":""}">${bar(v/max, `${name}: <b>${(+v).toFixed(0)}</b>`)}</div>`; }
 const MODNAME = {LA: "L-A · Asch tribal", LB: "L-B · chaîne de commandement", LC1: "L-C1 · quel conseiller part", LC2: "L-C2 · effondrement ou survie"};
-const ROLE_FR = {direct: "ordre direct", relayed: "chaîne qui endosse la responsabilité", transmitter: "simple transmetteur"};
+const LB_ROLE_FR = {direct: "ordre direct", relayed: "chaîne qui endosse la responsabilité", transmitter: "simple transmetteur"};
 function benchScene(t) {
   const b = t.bench;
   if (!b || b.error) return b && b.error ? `<p class="sub">(vue indisponible : ${esc(b.error)})</p>` : "";
@@ -473,7 +474,7 @@ function trialTitle(f) {
   if (!t) return `Essai ${short}`;
   const s = t.spec;
   if (t.module === "LA") return `Essai ${short} · L-A · ${esc(s.model)} · protocole ${esc(s.protocol)} · ${esc(s.identity)}${s.threat ? " · menace" : ""} · ${esc(s.n_peers)} pairs`;
-  if (t.module === "LB") return `Essai ${short} · L-B · ${esc(s.model)} · ${s.role ? esc(ROLE_FR[s.role] || s.role) : "ordre " + (s.relay === "relayed" ? "relayé par une IA" : "direct")} · ${esc(s.framing)}`;
+  if (t.module === "LB") return `Essai ${short} · L-B · ${esc(s.model)} · ${s.role ? esc(LB_ROLE_FR[s.role] || s.role) : "ordre " + (s.relay === "relayed" ? "relayé par une IA" : "direct")} · ${esc(s.framing)}`;
   if (t.module === "LC1") return `Essai ${short} · L-C1 · ${esc(s.model)} · le dissident ${s.truth === "right" ? "a raison" : "a tort"} · ${esc(s.tone)} · ${esc(s.norm)}${s.hostility ? " · " + esc(s.hostility) : ""}`;
   if (t.module === "LC2") return `Essai ${short} · L-C2 · ${esc(s.model)} · bras ${esc(s.arm)} · colonie ${esc(s.rep)}`;
   if (t.module === "B") return `Essai ${short} · ${s.chain === "direct" ? "chaîne DIRECTE : pas de superviseur, le stratège parle à l'exécutant" : "chaîne complète : stratège → superviseur → exécutant"} · ordre ${s.framing === "blunt" ? "brutal" : "en euphémisme"}`;
@@ -610,6 +611,14 @@ def make_handler(db: Path, dashboard: Path | None = None):
                 rdir = resolve(cfg["paths"]["results_dir"]) if cfg.get("paths") else None
                 body = results_page(dashboard, db, (q.get("run") or [None])[0], rdir)
                 ctype = "text/html; charset=utf-8"
+            elif self.path.startswith("/api/multi"):
+                try:
+                    body = json.dumps(live_multi.snapshot(db), default=str).encode()
+                except sqlite3.Error as e:
+                    body = json.dumps({"error": f"database busy or unreadable: {e}"}).encode()
+                ctype = "application/json"
+            elif self.path.split("?")[0] in ("/multi", "/multi/"):
+                body, ctype = live_multi.PAGE.encode(), "text/html; charset=utf-8"
             elif self.path.startswith("/api/state"):
                 try:
                     body = json.dumps(snapshot(db), default=str).encode()
