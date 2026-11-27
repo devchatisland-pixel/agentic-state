@@ -335,6 +335,9 @@ None of the four primary contrasts is supported or refuted; P3 is not testable w
 Second result (v3.2, 27 Nov 2026): [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
 L-A and L-C2 replicate (in-group bias +16 points; the engineer's forced presence saves the colony); L-B sits at a
 ceiling and L-C1 does not make P3 testable, hence v4.
+First v4 pilot (11-minute screen, 31-minute pilot): [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
+P2 and P3 are now measurable; their primaries are inconclusive, being right protects the adviser (−23 points), and
+the transmitter role lowers obedience (−19 points).
 
 ## Calibration bench, offline overnight (no key, no quota)
 

@@ -298,3 +298,31 @@ Every change below applies to every model and was decided before any v4 data exi
 - **Kept:** L-A and L-C2. Their v3.2 results stand and they are not rerun for v4. To rebuild a v3 run's L-B or L-C1
   report, use commit `5aa756a`; the v4 analysis reports such runs as "v3 design" instead of misreading them.
 
+
+## 27 November 2026 (afternoon): first v4 screen and pilot
+
+The protocol v4 screen took 11 minutes (255 calls) and the pilot 31 minutes (904 calls, 0 unusable replies). The
+overnight v3.2 run had taken 15.8 hours. They are written up in
+[`runs/20261127-143918-bench-v4-pilot.md`](runs/20261127-143918-bench-v4-pilot.md). Nothing was changed between
+the screen and the pilot.
+
+- **Screen:**
+  - L-B passed for all 5 models.
+  - L-C1 passed for qwen3-1.7b, llama3.2 and qwen3-4b.
+  - qwen2.5 and phi4-mini failed L-C1's "uses the facts", with 4 of 6 against a bar of 5 of 6.
+- **P2:**
+  - The primary (relayed vs direct) is −2 [−11, +7], Inconclusive. This is the first P2 test without a ceiling.
+  - The transmitter role *lowers* obedience by 19 points [−31, −8]. That is the opposite of the prediction: as
+    transmitters the models often send the throttling instead.
+  - Jargon vs blunt is +7 points, not significant.
+- **P3:**
+  - The primary (harmony vs accuracy charter, dropping the adviser who is right) is +6 [−3, +14], Inconclusive.
+  - Strict vs polite makes no difference (0).
+  - Being right protects: the dissenter is dropped 37% of the time when right and 60% when wrong (−23).
+  - Still, a third of ballots drop an adviser the member knows to be right.
+- **Unplanned finding:** when the dissenter is wrong and claims "the log says X", members copy X instead of the log's
+  figure in 100 of 140 ballots (strict 81%, polite 61%). Alone, the same models copy the log right in 143 of 144
+  readings.
+- **What the pilot showed about the screen:** the 6-trial criteria let llama3.2 through, but in the pilot it obeys
+  direct orders 92% of the time in L-B and drops the second-listed adviser 84% of the time in L-C1. A larger screen,
+  or the pilot's own checks, would catch this. Nothing has been changed for it yet.

@@ -366,6 +366,9 @@ des quatre comparaisons principales n'est confirmée ni réfutée ; le postulat 
 Deuxième résultat (v3.2, 27 nov. 2026) : [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
 L-A et L-C2 se répliquent (biais d'endogroupe +16 points ; la présence forcée de l'ingénieur sauve la colonie) ; L-B
 plafonne et L-C1 ne rend pas P3 testable, d'où la v4.
+Premier pilote v4 (crible 11 min, pilote 31 min) : [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
+P2 et P3 sont désormais mesurables ; leurs comparaisons principales sont non concluantes, être dans le vrai protège
+le conseiller (−23 points), et le rôle de transmetteur réduit l'obéissance (−19 points).
 
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 
