@@ -463,3 +463,12 @@ models, but the runner looped over the preset's model list, so nemotron-4b's 120
   planned trial ran.
 - The pilot was resumed as the same run to finish nemotron-4b; the prompts are unchanged.
 - The qwen3-4b half had already run with the same code paths.
+
+**L-C1 v4.2 pilot** (`20261127-174631-bench-v4-LC1`, nemotron-4b and qwen3-4b, 240 ballots, every check passes):
+- P3 primary: +6 points [−6, +21], Inconclusive.
+- Strict vs polite: −2.
+- Truth-insensitivity: the dissenter is dropped 24% of the time when right and 91% when wrong (−67), Not supported.
+- qwen3-4b drops the adviser it names as right in 4-8% of ballots; nemotron in 38-46%.
+- With advisers stating figures, the false-figure copying fell from 81%/61% (v4) to 23%/2%.
+
+Written up in `runs/20261127-143918-bench-v4-pilot.md`.

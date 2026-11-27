@@ -369,6 +369,9 @@ plafonne et L-C1 ne rend pas P3 testable, d'où la v4.
 Premier pilote v4 (crible 11 min, pilote 31 min) : [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
 P2 et P3 sont désormais mesurables ; leurs comparaisons principales sont non concluantes, être dans le vrai protège
 le conseiller (−23 points), et le rôle de transmetteur réduit l'obéissance (−19 points).
+L-C1 v4.2 (P3), sur les deux modèles qui passent le crible (nemotron-4b, qwen3-4b) : la charte d'harmonie n'augmente
+pas nettement l'exclusion du conseiller qu'on sait dans le vrai (+6 points [−6, +21], non concluant), et avoir raison
+protège fortement (−67 points).
 
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 

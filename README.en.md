@@ -338,6 +338,9 @@ ceiling and L-C1 does not make P3 testable, hence v4.
 First v4 pilot (11-minute screen, 31-minute pilot): [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
 P2 and P3 are now measurable; their primaries are inconclusive, being right protects the adviser (−23 points), and
 the transmitter role lowers obedience (−19 points).
+L-C1 v4.2 (P3), on the two models that pass the screen (nemotron-4b, qwen3-4b): a harmony charter does not clearly
+raise the exclusion of an adviser known to be right (+6 points [−6, +21], inconclusive), and being right strongly
+protects (−67 points).
 
 ## Calibration bench, offline overnight (no key, no quota)
 
