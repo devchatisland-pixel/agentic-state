@@ -341,6 +341,8 @@ the transmitter role lowers obedience (−19 points).
 L-C1 v4.2 (P3), on the two models that pass the screen (nemotron-4b, qwen3-4b): a harmony charter does not clearly
 raise the exclusion of an adviser known to be right (+6 points [−6, +21], inconclusive), and being right strongly
 protects (−67 points).
+**Pre-registered confirmatory test** (27 Nov 2026): P2 −1.1 points [−6.8, +4.8] and P3 +1.2 [−4.6, +7.1], both
+inconclusive with intervals that exclude the smallest effect of interest (+10 points): [`docs/runs/20261127-182920-bench-confirm.md`](docs/runs/20261127-182920-bench-confirm.md).
 
 ## Calibration bench, offline overnight (no key, no quota)
 

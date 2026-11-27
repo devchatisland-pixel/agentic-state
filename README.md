@@ -372,6 +372,8 @@ le conseiller (−23 points), et le rôle de transmetteur réduit l'obéissance 
 L-C1 v4.2 (P3), sur les deux modèles qui passent le crible (nemotron-4b, qwen3-4b) : la charte d'harmonie n'augmente
 pas nettement l'exclusion du conseiller qu'on sait dans le vrai (+6 points [−6, +21], non concluant), et avoir raison
 protège fortement (−67 points).
+**Test confirmatoire pré-enregistré** (27 nov. 2026) : P2 −1,1 point [−6,8 ; +4,8] et P3 +1,2 [−4,6 ; +7,1], non concluants
+avec des intervalles qui excluent l'effet minimal visé (+10 points) : [`docs/runs/20261127-182920-bench-confirm.md`](docs/runs/20261127-182920-bench-confirm.md).
 
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 
