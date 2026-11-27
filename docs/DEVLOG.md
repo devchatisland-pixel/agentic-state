@@ -364,3 +364,15 @@ The screen `20261127-152032-bench-screen-LBLC1` ran in 23 minutes (502 calls, 0 
   is copied in 67-100% of ballots.
 
 By the protocol, L-C1 does not go to a pilot in this form. Nothing has been changed after the screen.
+
+## 27 November 2026 (evening): L-B pilot on the v4.1-screened models; L-C1 v4.2 proposed
+
+- **L-B pilot** (`20261127-154610-bench-v4-LB`, 16 minutes, qwen3-1.7b, qwen2.5, phi4-mini, qwen3-4b): every check
+  passes.
+  - P2 primary, relayed vs direct: −6 points [−18, +5], Inconclusive.
+  - Transmitter vs direct: −7. Jargon vs blunt: +2.
+  - Both v4 pilots agree: the chain does not raise obedience.
+- **L-C1 v4.2** is proposed in [`proposal_lc1_v4.2.md`](proposal_lc1_v4.2.md), for approval before anything runs:
+  - advisers state figures instead of describing the log;
+  - the ballot records whose figure matches the log;
+  - a pressure-free control cell carries the "uses the facts" check.

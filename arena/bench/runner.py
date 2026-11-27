@@ -155,6 +155,8 @@ class BenchRunner:
         for model in models:
             if self._over_time():
                 break
+            if not any((module, model) in planned for module in modules):  # screened out of every module
+                continue
             print(f"Bench L: model {model}")
             for module in modules:
                 if (module, model) not in planned:  # not planned for this module (e.g. failed its screen)
