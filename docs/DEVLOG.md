@@ -456,3 +456,10 @@ and marked `aborted`; its data are not used. Now:
 - `--screen` runs exactly the models the screen passed, in the screen's order;
 - `--screen` drops a module that has fewer than the screen's `min_models` passing models;
 - a test covers both.
+
+**Second bug of the same kind, fixed before resuming.** The pilot `20261127-174631-bench-v4-LC1` planned both
+models, but the runner looped over the preset's model list, so nemotron-4b's 120 trials stayed pending.
+- The runner now runs every model with planned trials (`BenchRunner.run_models`), and a test checks that every
+  planned trial ran.
+- The pilot was resumed as the same run to finish nemotron-4b; the prompts are unchanged.
+- The qwen3-4b half had already run with the same code paths.

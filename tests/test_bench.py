@@ -342,10 +342,13 @@ def test_pilot_runs_each_module_only_on_the_models_that_passed_its_screen(tmp_pa
                                                 "criteria": {"min_models": 2}, "modules": {
         "LC1": {"decision": "pass", "passed": ["nemotron-4b", "qwen3-4b"], "rows": {}}}}), encoding="utf-8")
     assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--config", str(cfg),
-                                "--screen", "screen-two", "--no-analyze"]) == 0
+                                "--screen", "screen-two", "--seed", "6", "--no-analyze"]) == 0
     st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
     run = st.latest_run()
     assert {json.loads(t["spec_json"])["model"] for t in st.trials(run["run_id"])} == {"nemotron-4b", "qwen3-4b"}
+    # and every planned trial ran, also for the model the preset does not list
+    assert {t["status"] for t in st.trials(run["run_id"])} <= {"done", "excluded"}
+    assert run["status"] == "done"
     st.close()
     d3 = tmp_path / "results" / "screen-one"
     d3.mkdir()
@@ -353,7 +356,7 @@ def test_pilot_runs_each_module_only_on_the_models_that_passed_its_screen(tmp_pa
                                                 "criteria": {"min_models": 2}, "modules": {
         "LC1": {"decision": "pass", "passed": ["qwen3-4b"], "rows": {}}}}), encoding="utf-8")
     assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--config", str(cfg),
-                                "--screen", "screen-one", "--no-analyze"]) == run_experiment.EXIT_ERROR
+                                "--screen", "screen-one", "--seed", "6", "--no-analyze"]) == run_experiment.EXIT_ERROR
 
 
 def test_screen_time_cap_stops_the_run_and_fails_unfinished_models(tmp_path):

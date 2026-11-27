@@ -123,10 +123,17 @@ class BenchRunner:
         return {r["instance"]: r["passed"] for r in rows}
 
     # ------------------------------------------------------------ main loop
+    def run_models(self, modules: list[str]) -> list[str]:
+        """Every model with trials planned in this run: the preset's models first, then any other planned model in
+        trial order. A pilot started with --screen plans the models the screen passed, which the preset may not list
+        (27 Nov 2026: nemotron-4b's trials were planned but never run because the loop read the preset's list)."""
+        planned = [json.loads(t["spec_json"])["model"] for m in modules for t in self.storage.trials(self.run_id, m)]
+        return list(dict.fromkeys([m for m in self.preset["bench"]["models"] if m in planned] + planned))
+
     def print_estimate(self, modules: list[str]) -> None:
         lat = recent_latency(self.storage) if not self.mock else {}
         total, parts = 0.0, []
-        for model in dict.fromkeys(self.preset["bench"]["models"]):
+        for model in self.run_models(modules):
             calls = 0
             for module in modules:
                 n = sum(1 for t in self.storage.trials(self.run_id, module)
@@ -143,7 +150,7 @@ class BenchRunner:
                   "they can differ with this run's request settings.")
 
     def run(self, modules: list[str], gate_only: bool = False, max_trials: int | None = None) -> None:
-        models = list(dict.fromkeys(self.preset["bench"]["models"]))
+        models = self.run_models(modules)
         items = ({it["item_id"]: it for it in l_a_asch.candidate_items(self.preset, self.seed)}
                  if "LA" in self.preset["bench"] else {})
         pool = list(items.values())
