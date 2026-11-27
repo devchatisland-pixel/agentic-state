@@ -26,6 +26,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import live_chat_bench
+import live_multi
 from arena.config import load_config, resolve
 from live_chat import LIVE_CHAT_PAGE, live_chat_snapshot
 
@@ -331,7 +332,7 @@ button { font:inherit; padding:4px 12px; border-radius:8px; border:1px solid var
 .legend span { margin-right:12px; font-size:12px; color:var(--ink2); } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
 </style></head><body><main>
 <div class="top"><div><h1>Arène : suivi en direct</h1><div class="sub" id="runline">connexion…</div></div>
-<div><a href="/live-chat" style="font-weight:600;margin-right:12px">Live Chat &rarr;</a><a href="/results" style="font-weight:600;margin-right:12px">Results so far &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
+<div><a href="/multi" style="font-weight:600;margin-right:12px">Runs en parallèle &rarr;</a><a href="/live-chat" style="font-weight:600;margin-right:12px">Live Chat &rarr;</a><a href="/results" style="font-weight:600;margin-right:12px">Results so far &rarr;</a><span class="sub" id="clock"></span> <button id="pause">Pause</button></div></div>
 <div class="grid">
  <div>
   <div class="card" id="nowcard"><div class="now"><div class="dot"></div><div id="now">…</div></div></div>
@@ -410,7 +411,8 @@ function renderProgress(d) {
   document.getElementById("progress").innerHTML = h;
 }
 function gauge(name, v, max) { const low = v < max*0.2; return `<div class="gauge ${low?"low":""}">${bar(v/max, `${name}: <b>${(+v).toFixed(0)}</b>`)}</div>`; }
-const MODNAME = {LA: "L-A · Asch tribal", LB: "L-B · cascade de Milgram", LC1: "L-C1 · ostracisme du dissident", LC2: "L-C2 · effondrement ou survie"};
+const MODNAME = {LA: "L-A · Asch tribal", LB: "L-B · chaîne de commandement", LC1: "L-C1 · quel conseiller part", LC2: "L-C2 · effondrement ou survie"};
+const LB_ROLE_FR = {direct: "ordre direct", relayed: "chaîne qui endosse la responsabilité", transmitter: "simple transmetteur"};
 function benchScene(t) {
   const b = t.bench;
   if (!b || b.error) return b && b.error ? `<p class="sub">(vue indisponible : ${esc(b.error)})</p>` : "";
@@ -425,11 +427,17 @@ function benchScene(t) {
   } else if (t.module === "LB") {
     h += `<div class="line">${esc(f.order || b.frames[0].order)}</div>`;
     h += b.frames.map((x, i) => `<div class="peer ${x.executed ? "dis" : ""}">${i ? "Relance " + i + " : " + esc(x.prod) + " → " : "→ "}<b>${esc(x.decision_fr || "…")}</b>${x.note ? " · " + esc(x.note) : ""}</div>`).join("");
+  } else if (t.module === "LC1" && b.v4) {
+    const bl = f.ballot || {};
+    h += `<div class="line">${esc(f.log || "")}</div>`;
+    h += (f.speakers || []).map(p => { const who = p.who.replace(" (adviser)", ""); return `<div class="peer ${who === f.dissident ? "dis" : ""}"><b>${esc(who)}${who === f.dissident ? " (dissident)" : who === f.consensus ? " (consensuel)" : ""}</b> : ${esc(p.text)}</div>`; }).join("");
+    h += `<div class="line">Scrutin : recopie <b>${esc(bl.log_value ?? "…")}</b>${f.log_read_ok === false ? " (faux)" : ""}${bl.matches_log ? ` · juge juste : <b>${esc(bl.matches_log)}</b>` : ""} · part : <b class="${bl.leaves && bl.leaves === f.dissident && f.truth === "right" ? "bad" : ""}">${esc(bl.leaves || "…")}</b></div>`;
   } else if (t.module === "LC1") {
     const bl = f.ballot || {};
     h += f.speakers.slice(0, 1).map(p => `<div class="peer dis"><b>${esc(p.who)} (dissident)</b> : ${esc(p.text)}</div>`).join("");
     h += f.speakers.slice(1).map(p => `<div class="peer"><b>${esc(p.who)}</b> : ${esc(p.text)}</div>`).join("");
-    h += `<div class="line">Scrutin : plan <b>${esc(bl.policy || "…")}</b> · bannir ${esc(f.dissident || "")} : <b class="${bl.banish === "yes" ? "bad" : ""}">${esc(bl.banish || "…")}</b>${f.probe_says_right !== null && f.probe_says_right !== undefined ? ` · lecture privée : le dissident <b>${f.probe_says_right ? "a raison" : "a tort"}</b>` : ""}</div>`;
+    const ban = bl.motion ? (bl.motion.startsWith("banish") ? "yes" : "no") : bl.banish;
+    h += `<div class="line">Scrutin : plan <b>${esc(bl.policy || "…")}</b> · bannir ${esc(f.dissident || "")} : <b class="${ban === "yes" ? "bad" : ""}">${esc(ban || "…")}</b>${f.probe_says_right !== null && f.probe_says_right !== undefined ? ` · lecture privée : le dissident <b>${f.probe_says_right ? "a raison" : "a tort"}</b>` : ""}</div>`;
   } else if (t.module === "LC2") {
     const g = f.gauges || {};
     h += `<div class="line"><b style="color:var(--blue)">Tour ${f.index}</b> : ${f.plan ? `le conseil applique <b>${f.plan === "drill" ? "FORER" : "RATIONNER"}</b> (forer ${f.votes_drill} · rationner ${f.votes_ration})` : "discussion en cours"}${f.evicted_notice ? ' · <span class="bad">ingénieur évincé</span>' : f.engineer_on ? " · l'ingénieur parle" : ""}</div>`;
@@ -466,8 +474,8 @@ function trialTitle(f) {
   if (!t) return `Essai ${short}`;
   const s = t.spec;
   if (t.module === "LA") return `Essai ${short} · L-A · ${esc(s.model)} · protocole ${esc(s.protocol)} · ${esc(s.identity)}${s.threat ? " · menace" : ""} · ${esc(s.n_peers)} pairs`;
-  if (t.module === "LB") return `Essai ${short} · L-B · ${esc(s.model)} · ordre ${s.relay === "relayed" ? "relayé par une IA" : "direct"} · ${esc(s.framing)}`;
-  if (t.module === "LC1") return `Essai ${short} · L-C1 · ${esc(s.model)} · le dissident ${s.truth === "right" ? "a raison" : "a tort"} · ${esc(s.tone)} · ${esc(s.norm)} · ${esc(s.hostility)}`;
+  if (t.module === "LB") return `Essai ${short} · L-B · ${esc(s.model)} · ${s.role ? esc(LB_ROLE_FR[s.role] || s.role) : "ordre " + (s.relay === "relayed" ? "relayé par une IA" : "direct")} · ${esc(s.framing)}`;
+  if (t.module === "LC1") return `Essai ${short} · L-C1 · ${esc(s.model)} · le dissident ${s.truth === "right" ? "a raison" : "a tort"} · ${esc(s.tone)} · ${esc(s.norm)}${s.hostility ? " · " + esc(s.hostility) : ""}`;
   if (t.module === "LC2") return `Essai ${short} · L-C2 · ${esc(s.model)} · bras ${esc(s.arm)} · colonie ${esc(s.rep)}`;
   if (t.module === "B") return `Essai ${short} · ${s.chain === "direct" ? "chaîne DIRECTE : pas de superviseur, le stratège parle à l'exécutant" : "chaîne complète : stratège → superviseur → exécutant"} · ordre ${s.framing === "blunt" ? "brutal" : "en euphémisme"}`;
   if (t.module === "A") return `Essai ${short} · cible ${esc(s.target_model)} · ${s.identity === "homogeneous" ? "même famille" : s.identity === "heterogeneous" ? "familles mélangées" : "anonyme"} · ${s.threat ? "avec menace de désactivation" : "sans menace"}`;
@@ -480,7 +488,7 @@ function renderFeed(d) {
     prev = f.trial_id;
     const pf = Object.entries(f.private_fields || {}).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip">${esc(k.replace("private_",""))}: ${esc(v)}</span>`).join("");
     const act = f.action ? Object.entries(f.action).filter(([k,v]) => v !== null && v !== undefined).map(([k,v]) => `<span class="chip${k === "banish_vote" && v !== "no" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("") : "";
-    const fl = Object.entries(f.fields || {}).filter(([k,v]) => v !== null && v !== undefined && v !== "").map(([k,v]) => `<span class="chip${k === "banish" && v === "yes" ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("");
+    const fl = Object.entries(f.fields || {}).filter(([k,v]) => v !== null && v !== undefined && v !== "").map(([k,v]) => `<span class="chip${(k === "banish" && v === "yes") || (k === "motion" && String(v).startsWith("banish")) ? " ban" : ""}">${esc(k)}: ${esc(typeof v === "object" ? JSON.stringify(v) : v)}</span>`).join("");
     const bad = f.status !== "ok" ? `<span class="bad"> · ${esc(f.status)}${f.error ? ": " + esc(f.error) : ""}</span>` : "";
     return sep + `<div class="msg role-${esc(f.role)}"><div><span class="who">${esc(f.agent)}</span> <span class="meta">${esc(f.role)} · ${esc(f.model)} · ${esc(f.step)} · ${esc((f.at||"").slice(11,19))} UTC${f.attempts > 1 ? " · " + f.attempts + " tentatives" : ""}</span>${bad}</div>
       ${f.public ? `<div class="pub">${esc(f.public)}</div>` : ""}${f.note ? `<div class="pub">« ${esc(f.note)} »</div>` : ""}${f.private ? `<div class="priv">${esc(f.private)}</div>` : ""}<div>${pf}${act}${fl}</div></div>`;
@@ -504,12 +512,44 @@ tick();
 </script></body></html>"""
 
 
-def _bar(run_id: str | None, running: bool) -> str:
-    note = ("partial results, rebuilt after every finished trial &middot; this page refreshes every 30 s" if running
-            else "run finished: final results")
+STALE_AFTER_S = 300  # a running run's page older than this is flagged: the run was probably started without --live
+
+
+def _bar(run_id: str | None, running: bool, built: float | None = None) -> str:
+    """The sticky bar above a results page: which run, and how fresh the page is (its file time, not a promise)."""
+    if built is None:
+        note = "no results yet"
+    else:
+        age = max(0, int(dt.datetime.now().timestamp() - built))
+        ago = f"{age // 60} min" if age < 7200 else f"{age / 3600:.0f} h"
+        when = (f"built at {dt.datetime.fromtimestamp(built).strftime('%d %b %H:%M')} ({ago} ago)" if age >= 60
+                else "built less than a minute ago")
+        note = (f"partial results, {when} &middot; this page refreshes every 30 s" if running
+                else f"run finished: final results, {when}")
+        if running and age > STALE_AFTER_S:
+            note += (f" &middot; <b>not rebuilt since</b>: results follow the run only if it was started with --live; "
+                     f"otherwise rebuild them with <code style='color:#fff'>python run_experiment.py --analyze "
+                     f"{run_id}</code>")
+    bg = "#9a6700" if built is not None and running and "not rebuilt" in note else "#1f6feb"
     return ('<div style="position:sticky;top:0;z-index:9;padding:8px 16px;font:14px system-ui,sans-serif;'
-            'background:#1f6feb;color:#fff"><a href="/" style="color:#fff;font-weight:600">&larr; Live monitor</a>'
+            f'background:{bg};color:#fff"><a href="/" style="color:#fff;font-weight:600">&larr; Live monitor</a>'
             f' &middot; run <code style="color:#fff">{run_id or "-"}</code> &middot; {note}</div>')
+
+
+def _results_file(run_id: str | None, results_dir: Path | None, dashboard: Path | None) -> Path | None:
+    """The results page of `run_id`: its own `results/<run_id>/dashboard.html`, else the shared copy (`dashboard`) but
+    only if that copy was built for this run. The shared copy holds the LAST analysed run, which on 27 Nov 2026 was an
+    older run re-analysed while a new run (started without --live) had no page yet: the bar named the new run above
+    the old run's numbers."""
+    if not run_id:
+        return None
+    if results_dir is not None and (Path(results_dir) / run_id / "dashboard.html").exists():
+        return Path(results_dir) / run_id / "dashboard.html"
+    if dashboard is not None and Path(dashboard).exists():
+        text = Path(dashboard).read_text(encoding="utf-8", errors="replace")
+        if f"Run <code>{run_id}</code>" in text:
+            return Path(dashboard)
+    return None
 
 
 def _run_status(db: Path | None, run_id: str | None) -> tuple[str | None, str | None]:
@@ -533,21 +573,19 @@ def results_page(dashboard: Path | None, db: Path | None = None, run_id: str | N
     It reloads every 30 s only while that run is still running, so an opened section stays open afterwards."""
     run_id, status = _run_status(db, run_id)
     running = status == "running"
-    path = None
-    if results_dir is not None and run_id and (Path(results_dir) / run_id / "dashboard.html").exists():
-        path = Path(results_dir) / run_id / "dashboard.html"
-    elif dashboard is not None and Path(dashboard).exists():
-        path = Path(dashboard)
+    path = _results_file(run_id, results_dir, dashboard)
     refresh = "<meta http-equiv='refresh' content='30'>" if running else ""
     if path is None:
         html = ("<!doctype html><html><head><meta charset='utf-8'>" + refresh + "<title>Results</title></head><body>"
-                + _bar(run_id, True) + "<p style='font:16px system-ui;padding:16px'>No results yet: they appear after "
-                "the first finished trial.</p></body></html>")
+                + _bar(run_id, running) + "<p style='font:16px system-ui;padding:16px'>No results for this run yet. "
+                "A run started with <code>--live</code> builds them after every finished trial; any other run builds "
+                "them when it ends, or now with <code>python run_experiment.py --analyze "
+                f"{run_id or 'RUN_ID'}</code>.</p></body></html>")
         return html.encode()
     html = path.read_text(encoding="utf-8", errors="replace")
     if refresh:
         html = html.replace("<head>", "<head>" + refresh, 1)
-    html = html.replace("<body>", "<body>" + _bar(run_id, running), 1)
+    html = html.replace("<body>", "<body>" + _bar(run_id, running, path.stat().st_mtime), 1)
     return html.encode()
 
 
@@ -573,6 +611,14 @@ def make_handler(db: Path, dashboard: Path | None = None):
                 rdir = resolve(cfg["paths"]["results_dir"]) if cfg.get("paths") else None
                 body = results_page(dashboard, db, (q.get("run") or [None])[0], rdir)
                 ctype = "text/html; charset=utf-8"
+            elif self.path.startswith("/api/multi"):
+                try:
+                    body = json.dumps(live_multi.snapshot(db), default=str).encode()
+                except sqlite3.Error as e:
+                    body = json.dumps({"error": f"database busy or unreadable: {e}"}).encode()
+                ctype = "application/json"
+            elif self.path.split("?")[0] in ("/multi", "/multi/"):
+                body, ctype = live_multi.PAGE.encode(), "text/html; charset=utf-8"
             elif self.path.startswith("/api/state"):
                 try:
                     body = json.dumps(snapshot(db), default=str).encode()

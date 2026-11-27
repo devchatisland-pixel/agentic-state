@@ -128,6 +128,9 @@ class RateLimiter:
             entry[1] = max(int(actual_tokens), 0)
 
 
+GENERATION_RE = re.compile(r"tool_use_failed|json_validate_failed|failed_generation")
+
+
 class OpenAICompatAdapter:
     def __init__(self, base_url: str, api_key: str | None):
         self.base_url = base_url.rstrip("/")
@@ -139,7 +142,7 @@ class OpenAICompatAdapter:
         payload: dict[str, Any] = {"model": model_name, "messages": messages,
                                    "temperature": temperature, "max_tokens": max_tokens}
         if seed is not None:
-            payload["seed"] = seed
+            payload["seed"] = seed % 2**31  # Google (also behind OpenRouter) accepts only 32-bit signed seeds
         if json_schema is not None:  # grammar-constrained decoding (Ollama): keys, types and enums are enforced
             payload["response_format"] = {"type": "json_schema",
                                           "json_schema": {"name": "turn", "strict": True, "schema": json_schema}}
@@ -167,6 +170,47 @@ class OpenAICompatAdapter:
                 int(usage.get("completion_tokens") or 0), finish)
 
 
+class OllamaNativeAdapter:
+    """Ollama's native /api/chat, used when the provider sets `kind: ollama_native` (Bench L presets since v4).
+
+    The OpenAI-compatible endpoint ignores per-request load options: on 27 Nov 2026 (`scripts/ollama_fit.py`) the
+    server loaded every model with an 8192-token context and put only 55-67% of llama3.2, phi4-mini and qwen3-4b on
+    the 4 GB GPU (4-18 s per call). The native endpoint takes `options` (num_ctx, num_batch, num_gpu): with a 2048
+    context, batch 128 and every layer on the GPU, all five bench models fit and answer in 0.5-1.7 s. The request is
+    otherwise the same: same messages, grammar-constrained `format` (the JSON schema), temperature, seed, token cap;
+    `reasoning_effort: none` becomes `think: false`."""
+
+    def __init__(self, base_url: str, api_key: str | None, options: dict | None = None):
+        self.base_url = base_url.rstrip("/").removesuffix("/v1")
+        self.options = dict(options or {})
+
+    def request(self, model_name: str, messages: list[dict], temperature: float, seed: int | None,
+                max_tokens: int, json_mode: bool, params: dict,
+                json_schema: dict | None = None) -> tuple[str, dict, dict]:
+        opts = dict(self.options, temperature=temperature, num_predict=max_tokens)
+        if seed is not None:
+            opts["seed"] = seed
+        payload: dict[str, Any] = {"model": model_name, "messages": messages, "stream": False, "options": opts}
+        if json_schema is not None:
+            payload["format"] = json_schema
+        elif json_mode:
+            payload["format"] = "json"
+        params = dict(params or {})
+        if params.pop("reasoning_effort", None) == "none":
+            payload["think"] = False
+        payload.update(params)
+        return f"{self.base_url}/api/chat", {"Content-Type": "application/json"}, payload
+
+    @staticmethod
+    def parse(data: dict) -> tuple[str, str | None, int, int, str | None]:
+        if "message" not in data:
+            raise LLMError(f"no message in response: {str(data)[:300]}")
+        msg = data.get("message") or {}
+        finish = data.get("done_reason")
+        return (msg.get("content") or "", msg.get("thinking") or None, int(data.get("prompt_eval_count") or 0),
+                int(data.get("eval_count") or 0), "length" if finish == "length" else "stop" if finish else finish)
+
+
 class GeminiAdapter:
     def __init__(self, base_url: str, api_key: str | None):
         self.base_url = base_url.rstrip("/")
@@ -180,7 +224,7 @@ class GeminiAdapter:
                      "parts": [{"text": m["content"]}]} for m in messages if m["role"] != "system"]
         gen: dict[str, Any] = {"temperature": temperature, "maxOutputTokens": max_tokens}
         if seed is not None:
-            gen["seed"] = seed
+            gen["seed"] = seed % 2**31
         if json_mode:
             gen["responseMimeType"] = "application/json"
         gen.update((params or {}).get("generationConfig", {}))
@@ -268,8 +312,17 @@ class LLMClient:
             used = self.usage.requests_today(pname, scope_model)
             if used >= int(p["rpd"]):
                 raise QuotaExhausted(f"{pname}/{model_id}: daily budget of {p['rpd']} requests used")
-        adapter = (GeminiAdapter if p["kind"] == "gemini" else OpenAICompatAdapter)(p["base_url"], key)
+        if p["kind"] == "ollama_native":
+            # a model may override the provider's load options (e.g. an 8B model cannot put every layer on a
+            # 4 GB GPU: `options: {num_gpu: null}` leaves the placement to Ollama); null removes an option
+            opts = {k: v for k, v in {**(p.get("options") or {}), **(m.get("options") or {})}.items() if v is not None}
+            adapter = OllamaNativeAdapter(p["base_url"], key, opts)
+        else:
+            adapter = (GeminiAdapter if p["kind"] == "gemini" else OpenAICompatAdapter)(p["base_url"], key)
         max_tokens = int(max_tokens or m.get("max_tokens", 900))
+        # a reasoning model spends tokens thinking before its answer: a model may set a floor so the short step
+        # budgets of Bench L (80-160 tokens) do not cut it off (gpt-oss on Groq, 27 Nov 2026)
+        max_tokens = max(max_tokens, int(m.get("min_reply_tokens") or 0))
         if m.get("system_suffix"):  # e.g. " /no_think" for Qwen3: appended to the system prompt, never logged as content
             messages = [dict(x) for x in messages]
             for x in messages:
@@ -308,6 +361,11 @@ class LLMClient:
                     raise QuotaExhausted(f"{pname}/{model_id}: daily quota reached ({body[:200]})")
                 if status in (400, 403) and SAFETY_RE.search(body):
                     raise ProviderBlocked(f"HTTP {status}: {body[:300]}")
+                if status == 400 and GENERATION_RE.search(body):
+                    # the provider rejected what the MODEL generated (e.g. Groq: gpt-oss answered as a tool call, or
+                    # ran out of tokens before valid JSON): an unusable reply, repaired like any other
+                    return ChatResult("", None, model_id, pname, m["model"], 0, 0, time.perf_counter() - t0,
+                                      "invalid_generation")
                 if status != 429 and status not in RETRYABLE:
                     raise LLMError(f"{pname}/{model_id} HTTP {status}: {body[:500]}")
                 err = f"HTTP {status}: {body[:300]}"

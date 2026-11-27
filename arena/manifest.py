@@ -85,7 +85,10 @@ def build(run: dict, cfg: dict, preset: dict, mock: bool) -> dict:
                                        # set in THIS (client) process; the server may run with another value
                                        "OLLAMA_CONTEXT_LENGTH": os.environ.get("OLLAMA_CONTEXT_LENGTH"),
                                        "client_env_only": True,
-                                       "server_context_length": server_ctx},
+                                       "server_context_length": server_ctx,
+                                       # how the requests are sent (Bench L v4: native /api/chat with load options)
+                                       "request_kind": (cfg["providers"].get("ollama") or {}).get("kind"),
+                                       "request_options": (cfg["providers"].get("ollama") or {}).get("options")},
             "models": models, "analyses": []}
 
 

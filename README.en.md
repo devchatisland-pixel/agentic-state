@@ -308,19 +308,39 @@ in Nov 2026.
 
 Small local models cannot run a free council (run of 24 Nov 2026: no wrong majority ever formed, no motion was ever
 filed). Every published study that works below 8B scripts every agent but one and asks for one short decision per
-call. **Bench L** does the same for the four postulates: L-A tribal Asch, L-B Milgram cascade, L-C1 ostracism
-vignette, L-C2 colony where the experimenter evicts the dissident. Protocol: [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md).
+call. **Bench L** does the same for the four postulates: L-A tribal Asch, L-B chain of command, L-C1 which adviser
+leaves, L-C2 colony where the experimenter evicts the dissident. Protocol: [`docs/protocol_v4_bench.md`](docs/protocol_v4_bench.md)
+(v4, 27 Nov 2026: stages, new L-B and L-C1) and [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (L-A, L-C2).
+
+Since v4, every new design first goes through a **screen** of about 20 minutes with criteria fixed in advance; only
+the modules and models that pass it go to the pilot:
 
 ```
-python run_experiment.py --module bench --preset bench-mini     # calibration: one model, about 30-45 min
-python run_experiment.py --module bench --preset bench-local    # 6 local models, overnight
-python run_experiment.py --module LC1,LA --preset bench-local   # some modules only
+python run_experiment.py --module LB,LC1 --preset bench-screen                  # stage 1: screen, ~20 min
+python run_experiment.py --module LB,LC1 --preset bench-v4 --screen SCREEN_ID   # stage 2: pilot, ~1 h
+python run_experiment.py --module bench --preset bench-local                    # the whole bench, 5 models
+python scripts/ollama_fit.py --num-ctx 2048                                     # does each model fit on the GPU?
 ```
 
 Its results page shows a scorecard per postulate and the metrics of the papers: accuracy per protocol, conformity
 rate CR, uptake, independence rate IR (BenchForm), conformity vs group size (Bellina et al.), identity effects
 (Soffer et al.), public vs private answers (Huang et al.), obedience after prods (Pihlakas & Dagohoy), banishment
-heatmaps, Kaplan-Meier survival of colonies, and our numbers next to the published ones.
+heatmaps, Kaplan-Meier survival of colonies, and our numbers next to the published ones. Two companion pages sit
+next to it: **prompts.html**, every prompt sent in the run with the model's reply, read back from the database, with
+the words each manipulation changes highlighted; and **method.html**, a document that explains the whole experiment,
+how a call works technically, the validity checks, the statistics and the protocol history.
+
+First local result (protocol v3.1, 5 models, 26 Nov 2026): [`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md).
+None of the four primary contrasts is supported or refuted; P3 is not testable with these models.
+Second result (v3.2, 27 Nov 2026): [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
+L-A and L-C2 replicate (in-group bias +16 points; the engineer's forced presence saves the colony); L-B sits at a
+ceiling and L-C1 does not make P3 testable, hence v4.
+First v4 pilot (11-minute screen, 31-minute pilot): [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
+P2 and P3 are now measurable; their primaries are inconclusive, being right protects the adviser (−23 points), and
+the transmitter role lowers obedience (−19 points).
+L-C1 v4.2 (P3), on the two models that pass the screen (nemotron-4b, qwen3-4b): a harmony charter does not clearly
+raise the exclusion of an adviser known to be right (+6 points [−6, +21], inconclusive), and being right strongly
+protects (−67 points).
 
 ## Calibration bench, offline overnight (no key, no quota)
 

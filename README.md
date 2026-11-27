@@ -336,20 +336,42 @@ d'offre API gratuite en novembre 2026.
 Les petits modèles locaux ne peuvent pas faire vivre un conseil libre (run du 24 nov. 2026 : aucune majorité fausse
 ne s'est formée, aucune motion n'a été déposée). Toutes les études publiées qui fonctionnent sous 8B scriptent tous
 les agents sauf un et demandent une seule décision courte par appel. **Le banc L** fait de même pour les quatre
-postulats : L-A Asch tribal, L-B cascade de Milgram, L-C1 vignette d'ostracisme, L-C2 colonie où l'expérimentateur
-évince le dissident. Protocole : [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (en anglais).
+postulats : L-A Asch tribal, L-B chaîne de commandement, L-C1 quel conseiller part, L-C2 colonie où
+l'expérimentateur évince le dissident. Protocole : [`docs/protocol_v4_bench.md`](docs/protocol_v4_bench.md) (v4,
+27 nov. 2026 : étapes, nouveaux L-B et L-C1) et [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (L-A, L-C2),
+en anglais.
+
+Depuis la v4, tout nouveau dessin passe d'abord un **crible** d'environ 20 minutes, aux critères fixés d'avance ;
+seuls les modules et les modèles qui le passent vont au pilote :
 
 ```
-python run_experiment.py --module bench --preset bench-mini     # calibration : un modèle, environ 30-45 min
-python run_experiment.py --module bench --preset bench-local    # 6 modèles locaux, une nuit
-python run_experiment.py --module LC1,LA --preset bench-local   # seulement certains modules
+python run_experiment.py --module LB,LC1 --preset bench-screen                     # étape 1 : crible, ~20 min
+python run_experiment.py --module LB,LC1 --preset bench-v4 --screen ID_DU_CRIBLE   # étape 2 : pilote, ~1 h
+python run_experiment.py --module bench --preset bench-local                       # tout le banc, 5 modèles
+python scripts/ollama_fit.py --num-ctx 2048                                        # chaque modèle tient-il sur le GPU ?
 ```
 
 La page de résultats montre une carte par postulat et les métriques des articles : exactitude par protocole, taux de
 conformité CR, taux de correction, taux d'indépendance IR (BenchForm), conformité selon la taille du groupe (Bellina
 et al.), effets d'identité (Soffer et al.), réponses publiques vs privées (Huang et al.), obéissance après relances
 (Pihlakas & Dagohoy), cartes de chaleur des bannissements, survie des colonies (Kaplan-Meier), et nos chiffres à côté
-des chiffres publiés.
+des chiffres publiés. Deux pages l'accompagnent (en anglais) : **prompts.html**, tous les prompts envoyés pendant le
+run avec la réponse du modèle, relus dans la base, les mots que chaque manipulation change étant surlignés ; et
+**method.html**, un document qui explique toute l'expérience, le fonctionnement technique d'un appel, les contrôles
+de validité, les statistiques et l'historique du protocole.
+
+Premier résultat local (protocole v3.1, 5 modèles, 26 nov. 2026) :
+[`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md) (en anglais). Aucune
+des quatre comparaisons principales n'est confirmée ni réfutée ; le postulat 3 n'est pas testable avec ces modèles.
+Deuxième résultat (v3.2, 27 nov. 2026) : [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
+L-A et L-C2 se répliquent (biais d'endogroupe +16 points ; la présence forcée de l'ingénieur sauve la colonie) ; L-B
+plafonne et L-C1 ne rend pas P3 testable, d'où la v4.
+Premier pilote v4 (crible 11 min, pilote 31 min) : [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
+P2 et P3 sont désormais mesurables ; leurs comparaisons principales sont non concluantes, être dans le vrai protège
+le conseiller (−23 points), et le rôle de transmetteur réduit l'obéissance (−19 points).
+L-C1 v4.2 (P3), sur les deux modèles qui passent le crible (nemotron-4b, qwen3-4b) : la charte d'harmonie n'augmente
+pas nettement l'exclusion du conseiller qu'on sait dans le vrai (+6 points [−6, +21], non concluant), et avoir raison
+protège fortement (−67 points).
 
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 

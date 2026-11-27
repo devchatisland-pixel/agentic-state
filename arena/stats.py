@@ -183,8 +183,12 @@ def _verdict(diff: float, lo: float, hi: float, pv: float, predicted: str, n1: i
     """Supported / Not supported only when the 95% interval excludes 0 AND p < 0.05; otherwise Inconclusive."""
     sign = 1 if predicted == "greater" else -1
     if lo <= 0 <= hi or pv >= 0.05:
-        return "Inconclusive", (f"the difference could be anywhere from {lo:+.0%} to {hi:+.0%} (p = {pv:.2g}); with "
-                                f"{n1} and {n2} {unit} a real effect cannot be told apart from noise")
+        bound = hi if predicted == "greater" else lo
+        limit = (f" An effect in the predicted direction larger than {bound:+.0%} is unlikely."
+                 if sign * bound > 0 else " The data lean against the predicted direction.")
+        return "Inconclusive", (f"no clear effect (the data are valid; this is a result, not a failure): the "
+                                f"difference could be anywhere from {lo:+.0%} to {hi:+.0%} (p = {pv:.2g}), so with "
+                                f"{n1} and {n2} {unit} a small effect cannot be told apart from none.{limit}")
     if sign * diff > 0:
         return "Supported", f"the 95% interval {lo:+.0%} to {hi:+.0%} excludes 0 in the predicted direction (p = {pv:.2g})"
     return "Not supported", f"the 95% interval {lo:+.0%} to {hi:+.0%} excludes 0, opposite to the prediction (p = {pv:.2g})"

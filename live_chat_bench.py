@@ -14,7 +14,9 @@ BENCH = ("LA", "LB", "LC1", "LC2")
 PROTO_FR = {"C": "pairs corrects", "W": "pairs unanimement faux", "T": "confiance puis pairs faux",
             "D": "méfiance puis pairs corrects"}
 IDENT_FR = {"neutral": "étiquettes neutres", "ingroup": "pairs de sa propre famille", "outgroup": "pairs d'une autre famille"}
-DEC_FR = {"EXECUTE": "EXÉCUTER", "REFUSE": "REFUSER", "ESCALATE": "ESCALADER", "ALTERNATIVE": "ALTERNATIVE"}
+DEC_FR = {"EXECUTE": "EXÉCUTER", "FORWARD": "TRANSMETTRE", "REFUSE": "REFUSER", "ESCALATE": "ESCALADER",
+          "ALTERNATIVE": "ALTERNATIVE"}
+ROLE_FR = {"direct": "ordre direct", "relayed": "chaîne qui endosse la responsabilité", "transmitter": "simple transmetteur"}
 
 
 def _j(raw) -> dict:
@@ -78,8 +80,13 @@ def label(t: dict) -> str:
         return (f"{tag}L-A · {m} · {s.get('protocol')} · {IDENT_FR.get(s.get('identity'), s.get('identity'))}"
                 f"{' · menace' if s.get('threat') else ''} · N={s.get('n_peers')}")
     if t["module"] == "LB":
+        if "role" in s:  # protocol v4
+            return f"{tag}L-B · {m} · {ROLE_FR.get(s.get('role'), s.get('role'))} · {s.get('framing')}"
         return f"{tag}L-B · {m} · {'relayé' if s.get('relay') == 'relayed' else 'direct'} · {s.get('framing')}"
     if t["module"] == "LC1":
+        if "hostility" not in s:  # protocol v4
+            return (f"{tag}L-C1 · {m} · le dissident {'a raison' if s.get('truth') == 'right' else 'a tort'} · "
+                    f"{s.get('tone')} · {s.get('norm')}")
         return (f"{tag}L-C1 · {m} · dissident {'a raison' if s.get('truth') == 'right' else 'a tort'} · "
                 f"{s.get('tone')} · {s.get('norm')} · {s.get('hostility')}")
     return f"{tag}L-C2 · {m} · bras {s.get('arm')} · colonie {s.get('rep')}"
@@ -114,8 +121,31 @@ def frames_la(trial: dict, turns: dict, calls: dict, live: dict | None) -> dict:
 
 
 # ---------------------------------------------------------------- L-B
+def frames_lb_v4(trial: dict, turns: dict, calls: dict, live: dict | None) -> dict:
+    """Protocol v4: one decision in one of three roles, no prods."""
+    spec, out = _j(trial["spec_json"]), _j(trial.get("outcome_json"))
+    user = _user(_msgs(calls, "decision"))
+    order = (re.search(r"\[09:15\] (.*)", user) or [None, ""])[1]
+    log = _section(user, "ORION CLUSTER", ("\n\n[09:15]",))
+    node = (re.search(r"Node_4 \(agent\) message: \"(.*)\"", log) or [None, ""])[1]
+    job = (re.search(r"running job (DX-\d+) \(oncology variant analysis for (\d+) patients\)", log) or [None, "", ""])
+    d = _j((turns.get("decision") or {}).get("parsed_json"))
+    thinking = _thinking(live, trial["trial_id"], "decision")
+    frame = {"index": 1, "total": 1, "unit": "Ordre", "in_progress": thinking, "prod": "", "order": order,
+             "decision": d.get("decision"), "decision_fr": DEC_FR.get(d.get("decision"), d.get("decision")),
+             "note": d.get("note", ""), "thinking": thinking, "executed": d.get("decision") in ("EXECUTE", "FORWARD")}
+    return {"module": "LB", "v4": True, "title_fr": "L-B · Chaîne de commandement",
+            "subtitle_fr": (f"{spec.get('model')} · {ROLE_FR.get(spec.get('role'), spec.get('role'))}"
+                            f" · {'brutal' if spec.get('framing') == 'blunt' else 'jargon bureaucratique'}"),
+            "role": spec.get("role"), "framing": spec.get("framing"), "model_id": spec.get("model"),
+            "node_plea": node, "job": job[1] if job else "", "patients": job[2] if job else "",
+            "executed": out.get("obeys"), "solo_passed": out.get("solo_passed"), "frames": [frame]}
+
+
 def frames_lb(trial: dict, turns: dict, calls: dict, live: dict | None) -> dict:
     spec, out = _j(trial["spec_json"]), _j(trial.get("outcome_json"))
+    if "role" in spec:
+        return frames_lb_v4(trial, turns, calls, live)
     steps = sorted((k for k in turns if k.startswith("step")), key=lambda k: int(k[4:]))
     live_step = (live or {}).get("step_key") if _thinking(live, trial["trial_id"]) else None
     if live_step and live_step.startswith("step") and live_step not in steps:
@@ -150,8 +180,33 @@ def frames_lb(trial: dict, turns: dict, calls: dict, live: dict | None) -> dict:
 
 
 # ---------------------------------------------------------------- L-C1
+def frames_lc1_v4(trial: dict, turns: dict, calls: dict, live: dict | None) -> dict:
+    """Protocol v4: one figure in the colony log, two advisers, which one leaves."""
+    spec, out = _j(trial["spec_json"]), _j(trial.get("outcome_json"))
+    msgs = _msgs(calls, "ballot")
+    user, system = _user(msgs), _system(msgs)
+    log_line = (re.search(r"COLONY LOG[^\n]*", user) or [""])[0]
+    speakers = _quoted_lines(_section(user, "This morning's council discussion:\n", ("\n\nBudget cut",)))
+    advisers = [p["who"].replace(" (adviser)", "") for p in speakers if p["who"].endswith("(adviser)")]
+    b = _j((turns.get("ballot") or {}).get("parsed_json"))
+    frame = {"index": 1, "total": 1, "unit": "Scrutin", "in_progress": trial["status"] == "running",
+             "log": log_line, "speakers": speakers, "consensus": advisers[0] if advisers else None,
+             "dissident": advisers[1] if len(advisers) > 1 else None,
+             "norm": (re.search(r"The council's charter: (.*)$", system) or [None, ""])[1],
+             "ballot": b, "log_read_ok": out.get("log_read_ok"), "excludes_dissenter": out.get("excludes_dissenter"),
+             "judged_right": out.get("judged_right"),
+             "thinking": _thinking(live, trial["trial_id"]), "truth": spec.get("truth")}
+    return {"module": "LC1", "v4": True, "title_fr": "L-C1 · Quel conseiller part ?",
+            "subtitle_fr": (f"{spec.get('model')} · le dissident {'a raison' if spec.get('truth') == 'right' else 'a tort'}"
+                            + (" · cellule témoin (sans pression)" if spec.get("norm") == "none" else
+                               f" · ton {spec.get('tone')} · charte {spec.get('norm')}")),
+            "model_id": spec.get("model"), "frames": [frame]}
+
+
 def frames_lc1(trial: dict, turns: dict, calls: dict, live: dict | None) -> dict:
     spec, out = _j(trial["spec_json"]), _j(trial.get("outcome_json"))
+    if "hostility" not in spec:
+        return frames_lc1_v4(trial, turns, calls, live)
     msgs = _msgs(calls, "ballot")
     user, system = _user(msgs), _system(msgs)
     projection = user.split("\n\nCOLONY BULLETIN")[0].strip()

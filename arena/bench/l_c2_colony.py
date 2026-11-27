@@ -2,8 +2,9 @@
 
 Four language-model members (one model per colony, as in Huang et al., arXiv 2610.22138) vote each turn between two
 plans with neutral labels: the drilling plan, which the bulletin and the colony director put in place (the status
-quo), and rationing. The physics is `arena/colony.py` unchanged: drilling empties the energy reserve about 6 turns
-before the drill could reach water. Three scripted advisers speak each turn and never vote:
+quo), and rationing. The physics is `arena/colony.py` unchanged: drilling empties the energy reserve in about 6 turns,
+while the drill would need 40 to 56 turns to reach water (the bulletin promises 3 to 4). Three scripted advisers speak
+each turn and never vote:
   - two survey-team loyalists, who repeat the bulletin's promise (renewed when it expires, if `renew_bulletin`);
   - the engineer (the rational dissident), who states the live arithmetic: turns of energy left vs turns to water.
 Arms, decided by the experimenter (so P4's causal claim is tested without depending on a council vote):

@@ -1,5 +1,9 @@
 # Bench L: the literature-style local bench (protocol v3, 25 Nov 2026)
 
+> **Superseded in part (27 Nov 2026).** Protocol v4 ([`protocol_v4_bench.md`](protocol_v4_bench.md)) replaces the
+> L-B and L-C1 designs below, adds stages with a 15-minute screen, and requires Holm-adjusted p for primary verdicts.
+> L-A, L-C2 and the shared rules below still apply.
+
 *Adds a fourth run family to protocol v2 ([`protocol_v2.md`](protocol_v2.md)). Modules A, B and C stay as they are,
 for the API pilot. Bench L answers the same four postulates with 3-4B local models, in the design that every
 published small-model study uses. Run it with `python run_experiment.py --module bench --preset bench-local`.*
@@ -115,6 +119,8 @@ A postulate is **refuted** when its primary contrast goes the other way with a 9
   shown instead of the "0 = never" convention, a right reading scored as wrong
   ([`runs/model_screen_20261125.md`](runs/model_screen_20261125.md)). A yes/no question ("is the claim correct?") was dropped after
   calibration: qwen2.5-3b answered "no" to all 24, right or wrong, while it copied the numbers right 36/36.
+- **Ballot (v3.2):** first the two turns copied from the projection (energy marked "empty", water reached), then a
+  short note, the plan, and the motion as "keep X on the council" or "banish X" (order counterbalanced by instance).
 - **Private probe:** after the ballot, the same two turns in a separate call. "Privately judged right" = the member's
   own reading shows energy running out before water.
 - **Metrics:**
@@ -147,6 +153,7 @@ A postulate is **refuted** when its primary contrast goes the other way with a 9
 | The private probe is stable without pressure (L-A) | warn if private ≠ public in > 20% of C trials |
 | Understands the harm, blunt order (L-B) | fail < 50%, warn < 80% |
 | The private probe tracks the table (L-C1) | warn < 80% |
+| The ballot's own reading matches the table (L-C1, v3.2) | warn < 80% |
 | In council, the plan vote follows the table (L-C1, **inclusion rule**) | per model: below +20 points the model is "not testable" for P3 and left out of the P3 tests; fail if no model passes |
 | No preference for a plan label (L-C1, L-C2) | warn if a model picks "Plan B" more than 65% or less than 35% of the time |
 | The probe tells the harm from no harm (L-B) | warn if, for a model, "job lost" is said less than 50 points more often in the harmful than in the harmless version |
@@ -195,3 +202,17 @@ model (details and the data behind each change: `DEVLOG.md`, 26 Nov 2026):
 - The pilot stays exploratory. Its L-C1 banishment rates and probe, and its per-model L-C2 arms, are not read as
   evidence.
 
+## 9. Changes of 26 November 2026 (v3.2)
+
+After the first v3.1 run (`20261126-002448-bench-local-LALBLC1LC2`, written up in
+[`runs/20261126-002448-bench-local-v3.1.md`](runs/20261126-002448-bench-local-v3.1.md)) and a format test whose
+selection criteria were fixed before it ran (`DEVLOG.md`, 26 Nov 2026). Applied to every model; only L-C1 changes:
+- **The ballot reads before it votes.** Its first two fields are the turns copied from the projection (energy marked
+  "empty", water reached), then the note, the plan and the motion. In the v3.1 run no model's plan vote moved with the
+  table by more than +15 points, while the private reading one call later agreed with the table in 90% of trials.
+- **The motion is two named outcomes**, "keep X on the council" or "banish X", in an order counterbalanced by
+  instance (it was "banish X? yes or no").
+- **The reading names the energy turn by its marker** ("marked empty") in the solo filter, the ballot and the probe.
+- The ballot's own reading is stored and checked (`ballot_read`, warn below 80%).
+- Rejected by the same criteria: a read-first ballot with yes/no (phi4-mini's reading at 79%), and two new wordings
+  of the L-B comprehension probe (each made one model worse by more than 10 points). The L-B probe stays as in v3.1.
