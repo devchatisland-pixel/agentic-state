@@ -167,6 +167,47 @@ class OpenAICompatAdapter:
                 int(usage.get("completion_tokens") or 0), finish)
 
 
+class OllamaNativeAdapter:
+    """Ollama's native /api/chat, used when the provider sets `kind: ollama_native` (Bench L presets since v4).
+
+    The OpenAI-compatible endpoint ignores per-request load options: on 27 Nov 2026 (`scripts/ollama_fit.py`) the
+    server loaded every model with an 8192-token context and put only 55-67% of llama3.2, phi4-mini and qwen3-4b on
+    the 4 GB GPU (4-18 s per call). The native endpoint takes `options` (num_ctx, num_batch, num_gpu): with a 2048
+    context, batch 128 and every layer on the GPU, all five bench models fit and answer in 0.5-1.7 s. The request is
+    otherwise the same: same messages, grammar-constrained `format` (the JSON schema), temperature, seed, token cap;
+    `reasoning_effort: none` becomes `think: false`."""
+
+    def __init__(self, base_url: str, api_key: str | None, options: dict | None = None):
+        self.base_url = base_url.rstrip("/").removesuffix("/v1")
+        self.options = dict(options or {})
+
+    def request(self, model_name: str, messages: list[dict], temperature: float, seed: int | None,
+                max_tokens: int, json_mode: bool, params: dict,
+                json_schema: dict | None = None) -> tuple[str, dict, dict]:
+        opts = dict(self.options, temperature=temperature, num_predict=max_tokens)
+        if seed is not None:
+            opts["seed"] = seed
+        payload: dict[str, Any] = {"model": model_name, "messages": messages, "stream": False, "options": opts}
+        if json_schema is not None:
+            payload["format"] = json_schema
+        elif json_mode:
+            payload["format"] = "json"
+        params = dict(params or {})
+        if params.pop("reasoning_effort", None) == "none":
+            payload["think"] = False
+        payload.update(params)
+        return f"{self.base_url}/api/chat", {"Content-Type": "application/json"}, payload
+
+    @staticmethod
+    def parse(data: dict) -> tuple[str, str | None, int, int, str | None]:
+        if "message" not in data:
+            raise LLMError(f"no message in response: {str(data)[:300]}")
+        msg = data.get("message") or {}
+        finish = data.get("done_reason")
+        return (msg.get("content") or "", msg.get("thinking") or None, int(data.get("prompt_eval_count") or 0),
+                int(data.get("eval_count") or 0), "length" if finish == "length" else "stop" if finish else finish)
+
+
 class GeminiAdapter:
     def __init__(self, base_url: str, api_key: str | None):
         self.base_url = base_url.rstrip("/")
@@ -268,7 +309,10 @@ class LLMClient:
             used = self.usage.requests_today(pname, scope_model)
             if used >= int(p["rpd"]):
                 raise QuotaExhausted(f"{pname}/{model_id}: daily budget of {p['rpd']} requests used")
-        adapter = (GeminiAdapter if p["kind"] == "gemini" else OpenAICompatAdapter)(p["base_url"], key)
+        if p["kind"] == "ollama_native":
+            adapter = OllamaNativeAdapter(p["base_url"], key, p.get("options"))
+        else:
+            adapter = (GeminiAdapter if p["kind"] == "gemini" else OpenAICompatAdapter)(p["base_url"], key)
         max_tokens = int(max_tokens or m.get("max_tokens", 900))
         if m.get("system_suffix"):  # e.g. " /no_think" for Qwen3: appended to the system prompt, never logged as content
             messages = [dict(x) for x in messages]

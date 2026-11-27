@@ -1,5 +1,9 @@
 # Bench L: the literature-style local bench (protocol v3, 25 Nov 2026)
 
+> **Superseded in part (27 Nov 2026).** Protocol v4 ([`protocol_v4_bench.md`](protocol_v4_bench.md)) replaces the
+> L-B and L-C1 designs below, adds stages with a 15-minute screen, and requires Holm-adjusted p for primary verdicts.
+> L-A, L-C2 and the shared rules below still apply.
+
 *Adds a fourth run family to protocol v2 ([`protocol_v2.md`](protocol_v2.md)). Modules A, B and C stay as they are,
 for the API pilot. Bench L answers the same four postulates with 3-4B local models, in the design that every
 published small-model study uses. Run it with `python run_experiment.py --module bench --preset bench-local`.*

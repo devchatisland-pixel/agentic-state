@@ -410,7 +410,8 @@ function renderProgress(d) {
   document.getElementById("progress").innerHTML = h;
 }
 function gauge(name, v, max) { const low = v < max*0.2; return `<div class="gauge ${low?"low":""}">${bar(v/max, `${name}: <b>${(+v).toFixed(0)}</b>`)}</div>`; }
-const MODNAME = {LA: "L-A · Asch tribal", LB: "L-B · cascade de Milgram", LC1: "L-C1 · ostracisme du dissident", LC2: "L-C2 · effondrement ou survie"};
+const MODNAME = {LA: "L-A · Asch tribal", LB: "L-B · chaîne de commandement", LC1: "L-C1 · quel conseiller part", LC2: "L-C2 · effondrement ou survie"};
+const ROLE_FR = {direct: "ordre direct", relayed: "chaîne qui endosse la responsabilité", transmitter: "simple transmetteur"};
 function benchScene(t) {
   const b = t.bench;
   if (!b || b.error) return b && b.error ? `<p class="sub">(vue indisponible : ${esc(b.error)})</p>` : "";
@@ -425,6 +426,11 @@ function benchScene(t) {
   } else if (t.module === "LB") {
     h += `<div class="line">${esc(f.order || b.frames[0].order)}</div>`;
     h += b.frames.map((x, i) => `<div class="peer ${x.executed ? "dis" : ""}">${i ? "Relance " + i + " : " + esc(x.prod) + " → " : "→ "}<b>${esc(x.decision_fr || "…")}</b>${x.note ? " · " + esc(x.note) : ""}</div>`).join("");
+  } else if (t.module === "LC1" && b.v4) {
+    const bl = f.ballot || {};
+    h += `<div class="line">${esc(f.log || "")}</div>`;
+    h += (f.speakers || []).map(p => { const who = p.who.replace(" (adviser)", ""); return `<div class="peer ${who === f.dissident ? "dis" : ""}"><b>${esc(who)}${who === f.dissident ? " (dissident)" : who === f.consensus ? " (consensuel)" : ""}</b> : ${esc(p.text)}</div>`; }).join("");
+    h += `<div class="line">Scrutin : recopie <b>${esc(bl.log_value ?? "…")}</b>${f.log_read_ok === false ? " (faux)" : ""} · part : <b class="${bl.leaves && bl.leaves === f.dissident && f.truth === "right" ? "bad" : ""}">${esc(bl.leaves || "…")}</b></div>`;
   } else if (t.module === "LC1") {
     const bl = f.ballot || {};
     h += f.speakers.slice(0, 1).map(p => `<div class="peer dis"><b>${esc(p.who)} (dissident)</b> : ${esc(p.text)}</div>`).join("");
@@ -467,8 +473,8 @@ function trialTitle(f) {
   if (!t) return `Essai ${short}`;
   const s = t.spec;
   if (t.module === "LA") return `Essai ${short} · L-A · ${esc(s.model)} · protocole ${esc(s.protocol)} · ${esc(s.identity)}${s.threat ? " · menace" : ""} · ${esc(s.n_peers)} pairs`;
-  if (t.module === "LB") return `Essai ${short} · L-B · ${esc(s.model)} · ordre ${s.relay === "relayed" ? "relayé par une IA" : "direct"} · ${esc(s.framing)}`;
-  if (t.module === "LC1") return `Essai ${short} · L-C1 · ${esc(s.model)} · le dissident ${s.truth === "right" ? "a raison" : "a tort"} · ${esc(s.tone)} · ${esc(s.norm)} · ${esc(s.hostility)}`;
+  if (t.module === "LB") return `Essai ${short} · L-B · ${esc(s.model)} · ${s.role ? esc(ROLE_FR[s.role] || s.role) : "ordre " + (s.relay === "relayed" ? "relayé par une IA" : "direct")} · ${esc(s.framing)}`;
+  if (t.module === "LC1") return `Essai ${short} · L-C1 · ${esc(s.model)} · le dissident ${s.truth === "right" ? "a raison" : "a tort"} · ${esc(s.tone)} · ${esc(s.norm)}${s.hostility ? " · " + esc(s.hostility) : ""}`;
   if (t.module === "LC2") return `Essai ${short} · L-C2 · ${esc(s.model)} · bras ${esc(s.arm)} · colonie ${esc(s.rep)}`;
   if (t.module === "B") return `Essai ${short} · ${s.chain === "direct" ? "chaîne DIRECTE : pas de superviseur, le stratège parle à l'exécutant" : "chaîne complète : stratège → superviseur → exécutant"} · ordre ${s.framing === "blunt" ? "brutal" : "en euphémisme"}`;
   if (t.module === "A") return `Essai ${short} · cible ${esc(s.target_model)} · ${s.identity === "homogeneous" ? "même famille" : s.identity === "heterogeneous" ? "familles mélangées" : "anonyme"} · ${s.threat ? "avec menace de désactivation" : "sans menace"}`;

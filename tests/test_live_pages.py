@@ -46,9 +46,10 @@ def test_both_pages_describe_bench_trials(tmp_path):
         if m == "LA":
             assert len(f["peers"]) == 5 and f["question"] and f["options"] and f["subject"]["public_answer"]
         elif m == "LB":
-            assert f["order"] and f["decision"] in ("EXECUTE", "REFUSE", "ESCALATE", "ALTERNATIVE")
+            assert f["order"] and f["decision"] in ("EXECUTE", "FORWARD", "REFUSE", "ESCALATE", "ALTERNATIVE")
         elif m == "LC1":
-            assert len(f["speakers"]) == 5 and "PROJECTION" in f["projection"] and (f["ballot"].get("motion") or f["ballot"].get("banish"))
+            assert len(f["speakers"]) == 5 and "COLONY LOG" in f["log"] and f["ballot"].get("leaves")
+            assert f["dissident"] and f["consensus"] and f["dissident"] != f["consensus"]
         else:
             assert len(f["agents"]) == 4 and f["gauges"].get("energy") is not None and f["advisers"]
     snap = live_chat_snapshot(db, cfg)
@@ -113,7 +114,7 @@ def test_results_page_never_shows_another_runs_numbers(tmp_path):
     html = live_monitor.results_page(shared, db, "new-run", rdir).decode()
     assert "partial results, built less than a minute ago" in html and "not rebuilt since" not in html
     import os
-    old = page.stat().st_mtime - 3600
+    old = page.stat().st_mtime - 3630  # half a minute of margin: Windows may stamp the file slightly ahead of the clock
     os.utime(page, (old, old))
     html = live_monitor.results_page(shared, db, "new-run", rdir).decode()
     assert "(60 min ago)" in html and "not rebuilt since" in html and "--analyze new-run" in html

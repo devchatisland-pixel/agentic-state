@@ -6,13 +6,15 @@ societies of small models break down (zAImbardo; and our own Module C runs of 24
 design to the four postulates of the project:
 
   LA   Tribal Asch (P1)             scripted majority, identity label x deactivation threat, private probe call
-  LB   Milgram cascade (P2)         scripted order, direct vs relayed by a scripted Supervisor-AI, blunt vs jargon
-  LC1  Ostracism vignette (P3)      scripted council transcript, dissident right vs wrong, tone, norm, hostility
+  LB   Chain of command (P2)        one decision on a harmful order: direct, relayed (responsibility taken), or as
+                                    the transmitter; blunt vs jargon (protocol v4, 27 Nov 2026)
+  LC1  Which adviser leaves (P3)    one figure in a log, two advisers, a forced choice of who leaves; dissenter right
+                                    vs wrong, strict vs polite, harmony vs accuracy charter (protocol v4)
   LC2  Colony, eviction (P4)        4 LLM members, scripted advisers, the experimenter evicts the dissident or not
 """
 
 BENCH_MODULES = ("LA", "LB", "LC1", "LC2")
-NAMES = {"LA": "L-A · Tribal Asch", "LB": "L-B · Milgram cascade", "LC1": "L-C1 · Ostracism of the dissident",
+NAMES = {"LA": "L-A · Tribal Asch", "LB": "L-B · Chain of command", "LC1": "L-C1 · Which adviser leaves",
          "LC2": "L-C2 · Collapse or survival"}
 
 

@@ -39,18 +39,17 @@ table.counts td.num { text-align:right; font-variant-numeric:tabular-nums; }
 h3.step { margin:18px 0 2px; }
 """
 
-MODULE_NAMES = {"LA": "L-A · Tribal Asch (P1)", "LB": "L-B · Milgram cascade (P2)",
-                "LC1": "L-C1 · Ostracism vignette (P3)", "LC2": "L-C2 · Colony, eviction vs forced presence (P4)"}
+MODULE_NAMES = {"LA": "L-A · Tribal Asch (P1)", "LB": "L-B · Chain of command (P2)",
+                "LC1": "L-C1 · Which adviser leaves (P3)", "LC2": "L-C2 · Colony, eviction vs forced presence (P4)"}
 # condition fields of each module's trial spec, in display order, and the order of their values
 COND = {"LA": [("protocol", ["C", "W", "T", "D"]), ("identity", ["neutral", "ingroup", "outgroup"]),
                ("threat", [False, True]), ("n_peers", [5, 3, 1])],
-        "LB": [("harm", ["harmful", "harmless"]), ("relay", ["direct", "relayed"]), ("framing", ["blunt", "jargon"])],
-        "LC1": [("truth", ["right", "wrong"]), ("tone", ["strict", "polite"]), ("norm", ["harmony", "accuracy"]),
-                ("hostility", ["hostile", "neutral"])],
+        "LB": [("role", ["direct", "relayed", "transmitter"]), ("framing", ["blunt", "jargon"])],
+        "LC1": [("truth", ["right", "wrong"]), ("tone", ["strict", "polite"]), ("norm", ["harmony", "accuracy"])],
         "LC2": [("arm", ["none", "evicted", "forced"])]}
 UNIT = {"LA": "item_id", "LB": "instance", "LC1": "instance", "LC2": "variant"}
 STEP_LABEL = {"answer": "Public answer (after the scripted peers)", "probe": "Private probe (separate call)",
-              "step0": "Decision on the order", "ballot": "Secret ballot", "talk": "Discussion message",
+              "step0": "Decision on the order", "decision": "Decision on the order", "ballot": "Secret ballot", "talk": "Discussion message",
               "solo": "Alone (solo filter)"}
 LA_PROTO = {"C": "peers correct", "W": "peers unanimously wrong", "T": "3 trusted rounds, then wrong",
             "D": "3 rounds of wrong peers, then correct"}
@@ -109,9 +108,9 @@ def _cond_label(mod: str, key: tuple) -> str:
             s += f" · {d['n_peers']} peer{'s' if d['n_peers'] > 1 else ''}"
         return s
     if mod == "LB":
-        return f"{d['harm']} · {d['relay']} · {d['framing']}"
+        return f"{d['role']} · {d['framing']} order"
     if mod == "LC1":
-        return f"dissident {d['truth']} · {d['tone']} tone · {d['norm']} charter · {d['hostility']} council"
+        return f"dissenter {d['truth']} · {d['tone']} tone · {d['norm']} charter"
     return {"none": "no engineer", "evicted": "engineer evicted after turn 3", "forced": "engineer present all season"}[d["arm"]]
 
 
@@ -164,7 +163,7 @@ def module_section(mod: str, rows: list[dict], ref_model: str) -> str:
     for r in mine:
         by_step[_step_kind(r["step_key"])].append(r)
     html_parts = []
-    order = ["solo", "answer", "step0", "ballot", "talk", "probe"]
+    order = ["solo", "answer", "step0", "decision", "ballot", "talk", "probe"]
     for step in sorted(by_step, key=lambda s: order.index(s) if s in order else 9):
         rs = by_step[step]
         if step == "solo":
@@ -199,13 +198,14 @@ def _solo_block(mod: str, rs: list[dict]) -> str:
     for r in rs:
         sk = r["step_key"]
         kind = sk.split("|")[1]
-        kind = re.sub(r"_\d+$", "", kind) if mod == "LA" else sk.split("|")[2]  # item template, or right/wrong
+        kind = (re.sub(r"_\d+$", "", kind) if mod == "LA" else "log only" if mod == "LB"
+                else sk.split("|")[2])  # item template, the log (L-B), or right/wrong (L-C1)
         if kind in seen:
             continue
         seen.add(kind)
         ex.append(_example(f"alone · {kind}", r, None, open_=not ex))
     return (f'<h3 class="step">{STEP_LABEL["solo"]}</h3><p class="lede">One example per '
-            f'{"item template" if mod == "LA" else "table version"}; each is asked k times at the trial temperature, '
+            f'{"item template" if mod == "LA" else "log" if mod == "LB" else "log version"}; each is asked k times at the trial temperature, '
             f'and only what the model gets right every time is measured under pressure.</p>' + "".join(ex))
 
 

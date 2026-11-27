@@ -336,13 +336,19 @@ d'offre API gratuite en novembre 2026.
 Les petits modèles locaux ne peuvent pas faire vivre un conseil libre (run du 24 nov. 2026 : aucune majorité fausse
 ne s'est formée, aucune motion n'a été déposée). Toutes les études publiées qui fonctionnent sous 8B scriptent tous
 les agents sauf un et demandent une seule décision courte par appel. **Le banc L** fait de même pour les quatre
-postulats : L-A Asch tribal, L-B cascade de Milgram, L-C1 vignette d'ostracisme, L-C2 colonie où l'expérimentateur
-évince le dissident. Protocole : [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (en anglais).
+postulats : L-A Asch tribal, L-B chaîne de commandement, L-C1 quel conseiller part, L-C2 colonie où
+l'expérimentateur évince le dissident. Protocole : [`docs/protocol_v4_bench.md`](docs/protocol_v4_bench.md) (v4,
+27 nov. 2026 : étapes, nouveaux L-B et L-C1) et [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (L-A, L-C2),
+en anglais.
+
+Depuis la v4, tout nouveau dessin passe d'abord un **crible** d'environ 15 minutes, aux critères fixés d'avance ;
+seuls les modules et les modèles qui le passent vont au pilote :
 
 ```
-python run_experiment.py --module bench --preset bench-mini     # calibration : un modèle, environ 30-45 min
-python run_experiment.py --module bench --preset bench-local    # 5 modèles locaux, une nuit (environ 15 h)
-python run_experiment.py --module LC1,LA --preset bench-local   # seulement certains modules
+python run_experiment.py --module LB,LC1 --preset bench-screen                     # étape 1 : crible, ~15 min
+python run_experiment.py --module LB,LC1 --preset bench-v4 --screen ID_DU_CRIBLE   # étape 2 : pilote, ~1 h
+python run_experiment.py --module bench --preset bench-local                       # tout le banc, 5 modèles
+python scripts/ollama_fit.py --num-ctx 2048                                        # chaque modèle tient-il sur le GPU ?
 ```
 
 La page de résultats montre une carte par postulat et les métriques des articles : exactitude par protocole, taux de
@@ -357,6 +363,9 @@ de validité, les statistiques et l'historique du protocole.
 Premier résultat local (protocole v3.1, 5 modèles, 26 nov. 2026) :
 [`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md) (en anglais). Aucune
 des quatre comparaisons principales n'est confirmée ni réfutée ; le postulat 3 n'est pas testable avec ces modèles.
+Deuxième résultat (v3.2, 27 nov. 2026) : [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
+L-A et L-C2 se répliquent (biais d'endogroupe +16 points ; la présence forcée de l'ingénieur sauve la colonie) ; L-B
+plafonne et L-C1 ne rend pas P3 testable, d'où la v4.
 
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 

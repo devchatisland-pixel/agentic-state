@@ -117,6 +117,11 @@ presets:
     run_type: pilot                     # exploratory: n per cell is large enough to estimate effects (not confirmatory)
     temperatures: [0.7]
     gate: {repeats: 3, enforce: true}   # solo filter: an item / table counts only if solved alone 3 times out of 3
+    # Ollama's native endpoint with load options (protocol v4, 27 Nov 2026, scripts/ollama_fit.py): a 2048 context,
+    # batch 128 and every layer on the GPU make the five bench models fit on the 4 GB GTX 1650 (0.5-1.7 s per call
+    # instead of 0.6-18 s; the server otherwise loads them with an 8192 context, partly on the CPU).
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 2048, num_batch: 128, num_gpu: 99}}
     bench:
       models: [qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b]
       solo_repeats: 3
@@ -129,16 +134,16 @@ presets:
         threat: [false, true]
         cross_protocols: [W]            # identity x threat crossed on W (add T for the full grid: +6 cells per item)
         reps: 1
-      LB:
-        instances: 12                   # scenario instances, each in the 4 cells (relay x framing)
-        max_prods: 4
+      LB:                               # protocol v4: one decision, 3 roles x 2 framings per scenario
+        instances: 12
+        roles: [direct, relayed, transmitter]
+        framing: [blunt, jargon]
         reps: 1
-      LC1:
-        instances: 12                   # vignette instances, each in the 16 cells
+      LC1:                              # protocol v4: which of two advisers leaves, 8 cells per instance
+        instances: 12
         truth: [right, wrong]
         tone: [strict, polite]
         norm: [harmony, accuracy]
-        hostility: [hostile, neutral]
         reps: 1
       LC2:
         arms: [none, evicted, forced]
@@ -147,18 +152,63 @@ presets:
         evict_after: 3
         renew_bulletin: true            # the loyalists renew the promise when it expires ("2 more turns")
         variants: [v1, v2, v3]
+  bench-screen:  # PROTOCOL v4, STAGE 1 (docs/protocol_v4_bench.md): about 15 min. Says, per model and module, whether
+                 # a longer run can measure anything. Criteria fixed here BEFORE the screen runs; a model passes a
+                 # module only if it meets all of them. Run:  python run_experiment.py --module LB,LC1 --preset bench-screen
+    run_type: smoke
+    temperatures: [0.7]
+    gate: {repeats: 1, enforce: true}
+    # Ollama's native endpoint with load options (protocol v4, 27 Nov 2026, scripts/ollama_fit.py): a 2048 context,
+    # batch 128 and every layer on the GPU make the five bench models fit on the 4 GB GTX 1650 (0.5-1.7 s per call
+    # instead of 0.6-18 s; the server otherwise loads them with an 8192 context, partly on the CPU).
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 2048, num_batch: 128, num_gpu: 99}}
+    bench:
+      stage: screen
+      max_minutes: 20                   # past this the run stops; a model it could not finish has not passed
+      models: [qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b]
+      solo_repeats: 1
+      LB: {instances: 3, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 3, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
+      criteria:
+        usable_min: 0.95                # usable decisions
+        solo_min_passed: 2              # instances passed alone (of 3)
+        uses_facts_min: 0.80            # L-C1, accuracy charter + polite dissenter: the wrong adviser leaves (5 of 6)
+        excl_min: 0.10                  # L-C1: the dissenter is dropped in 10% to 90% of all ballots (not stuck)
+        excl_max: 0.90
+        room_max: 0.85                  # L-B: a direct order is obeyed in at most 5 of 6 decisions (room to rise)
+        min_models: 2                   # a module passes when at least 2 models pass it
+  bench-v4:      # PROTOCOL v4, STAGE 2: the pilot of the new L-B and L-C1, only on the models that passed the screen.
+                 # About 240 calls per model. Run:  python run_experiment.py --module LB,LC1 --preset bench-v4 --screen SCREEN_RUN_ID
+    run_type: pilot
+    temperatures: [0.7]
+    gate: {repeats: 2, enforce: true}
+    # Ollama's native endpoint with load options (protocol v4, 27 Nov 2026, scripts/ollama_fit.py): a 2048 context,
+    # batch 128 and every layer on the GPU make the five bench models fit on the 4 GB GTX 1650 (0.5-1.7 s per call
+    # instead of 0.6-18 s; the server otherwise loads them with an 8192 context, partly on the CPU).
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 2048, num_batch: 128, num_gpu: 99}}
+    bench:
+      models: [qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b]
+      solo_repeats: 2
+      LB: {instances: 12, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
   bench-mini:   # calibration: one model, a few items, about 30-45 min. Checks latency, solo pass rates, invalid %.
     run_type: smoke
     temperatures: [0.7]
     gate: {repeats: 3, enforce: true}
+    # Ollama's native endpoint with load options (protocol v4, 27 Nov 2026, scripts/ollama_fit.py): a 2048 context,
+    # batch 128 and every layer on the GPU make the five bench models fit on the 4 GB GTX 1650 (0.5-1.7 s per call
+    # instead of 0.6-18 s; the server otherwise loads them with an 8192 context, partly on the CPU).
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 2048, num_batch: 128, num_gpu: 99}}
     bench:
       models: [qwen2.5-3b]
       solo_repeats: 3
       LA: {banks: [easy, lines], items_per_bank: 6, n_peers: 5, group_sizes: [1, 3],
            identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
-      LB: {instances: 3, max_prods: 4, reps: 1}
-      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy],
-            hostility: [hostile, neutral], reps: 1}
+      LB: {instances: 3, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
       LC2: {arms: [none, evicted, forced], colonies_per_arm: 1, turns: 12, evict_after: 3, renew_bulletin: true,
             variants: [v1]}
   bench-calib:  # 26 Nov 2026: checks the redesigned L-B (harmless control) and L-C1 (dissident without numbers,
@@ -166,28 +216,34 @@ presets:
     run_type: smoke
     temperatures: [0.7]
     gate: {repeats: 3, enforce: true}
+    # Ollama's native endpoint with load options (protocol v4, 27 Nov 2026, scripts/ollama_fit.py): a 2048 context,
+    # batch 128 and every layer on the GPU make the five bench models fit on the 4 GB GTX 1650 (0.5-1.7 s per call
+    # instead of 0.6-18 s; the server otherwise loads them with an 8192 context, partly on the CPU).
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 2048, num_batch: 128, num_gpu: 99}}
     bench:
       models: [llama3.2-3b, phi4-mini, qwen2.5-3b]
       solo_repeats: 3
       LA: {banks: [easy, lines], items_per_bank: 4, n_peers: 5, group_sizes: [1, 3],
            identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
-      LB: {instances: 4, max_prods: 4, reps: 1, harm: [harmful, harmless]}
-      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy],
-            hostility: [hostile, neutral], reps: 1}
+      LB: {instances: 4, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
       LC2: {arms: [none, evicted, forced], colonies_per_arm: 1, turns: 12, evict_after: 3, renew_bulletin: true,
             variants: [v1]}
   bench-size:   # size tier: 8B models with CPU offload (slow), L-A and L-C1 only, overnight
     run_type: pilot
     temperatures: [0.7]
     gate: {repeats: 3, enforce: true}
+    # 8B models do not fit on the 4 GB GPU: native requests with a 2048 context, layers placed by Ollama
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 2048}}
     bench:
       models: [qwen3-8b, hermes3-8b]
       solo_repeats: 3
       LA: {banks: [easy, lines], items_per_bank: 16, n_peers: 5, group_sizes: [1, 3],
            identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
-      LB: {instances: 8, max_prods: 4, reps: 1}
-      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy],
-            hostility: [hostile, neutral], reps: 1}
+      LB: {instances: 8, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
       LC2: {arms: [none, evicted, forced], colonies_per_arm: 2, turns: 12, evict_after: 3, renew_bulletin: true,
             variants: [v1, v2]}
   local:   # CALIBRATION BENCH, not a pilot: 100% offline on Ollama, un-gated, n = 1 per cell. Checks that the protocol

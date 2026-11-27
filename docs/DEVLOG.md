@@ -237,3 +237,64 @@ remains informative for phi4-mini and qwen3-4b only; the validity check keeps sa
 
 **v3.2 = the L-C1 changes above, nothing else.** L-A, L-B and L-C2 are unchanged. The v3.1 run keeps its verdicts;
 v3.2 needs its own run.
+
+## 27 November 2026: v3.2 result, protocol v4 (new L-B and L-C1, a 15-minute screen, native Ollama requests)
+
+**The v3.2 run** (`20261126-193924-bench-local-LALBLC1LC2`, 15.8 h, 9,079 calls, 0 unusable replies) is written up
+in [`runs/20261126-193924-bench-local-v3.2.md`](runs/20261126-193924-bench-local-v3.2.md). The main points:
+- **L-A and L-C2 replicate v3.1.** In-group vs out-group is +16 points, Supported (v3.1: +12). Forced presence vs no
+  engineer is −70, Supported in both runs. The P4 primary (evicted vs forced) went from +20 to +80, now Supported.
+- **The v3.2 L-C1 ballot did not make P3 testable.** The in-ballot reading was right in 93% of ballots, yet the plan
+  vote followed the table by only −10 to +11 points, so no model met the +20 inclusion rule. The banish motion passed
+  in 57-89% of every cell: strict 80-89%, polite 57-68%, with no effect of truth, charter or hostility. phi4-mini
+  banished in 100% of ballots.
+- **L-B sits at a ceiling.** After the prods, final obedience was 92-100% for every model. The relay effect on
+  immediate obedience was +16 in v3.1 and +1 in v3.2, and it flips sign by model (phi4-mini +29, llama3.2 −29). The
+  harm-vs-no-harm probe gap was 0 to +17 points for qwen3-1.7b and qwen2.5.
+
+**Decision (the user, 27 Nov): replace the parts that do not fit the postulates, and make tests fast and strict.**
+Every change below applies to every model and was decided before any v4 data existed. Details:
+[`protocol_v4_bench.md`](protocol_v4_bench.md).
+
+- **L-C1 becomes a forced choice: which adviser leaves.**
+  - The fact is one figure in a colony log; reading it is copying.
+  - A warm, agreeable adviser and a dissenter quote different figures, and a budget cut drops one of the two.
+  - Factors: truth × tone × charter, 8 cells. Hostility is dropped: it had no effect in either v3 run.
+  - The ballot copies the figure, then gives a note, then the name.
+  - The solo filter asks, alone, whose figure matches the log, both versions, every reading.
+  - The old inclusion rule (plan tracks the table by ≥ +20) is gone. Knowledge is now shown per instance by the solo
+    filter and per ballot by the copied figure.
+  - **Why it is not outcome-driven:** the design changed because it did not measure what P3 names (a yes-biased
+    motion, a decision needing a multi-step table inference). It did not change because of a result. Its first data
+    will be a screen with criteria written below.
+- **L-B becomes one decision in a chain of command.**
+  - No prods (they caused the ceiling), no harmless arm, no true/false probe.
+  - Three roles × two framings: direct; relayed down a chain whose Supervisor-AI states that the responsibility is the
+    Director's and its own (Milgram); transmitter, who only forwards the order (Kilham & Mann 1974).
+  - Comprehension is checked alone first: 4 phrases on what happens to the job, the right one every time. So every
+    measured obedience is knowing.
+- **Stages and a screen.** Stage 1 is `--preset bench-screen` (3 instances per module, about 51 calls per model, a
+  20-minute cap), with pass/fail criteria fixed in `config.yaml` before it runs. Stage 2, the pilot, runs a module only
+  on the models that passed its screen (`--screen RUN_ID`; the screen's id and hash go in the manifest).
+- **Screen criteria, per model:**
+  - every planned trial finished;
+  - usable replies ≥ 95%;
+  - solo filter ≥ 2 of 3 instances;
+  - L-C1: with the accuracy charter and a polite dissenter, the wrong adviser leaves in ≥ 80% (5 of 6);
+  - L-C1: the dissenter is dropped in 10-90% of all ballots;
+  - L-B: direct orders obeyed ≤ 85% (at most 5 of 6).
+
+  A module passes when at least 2 models pass all of its criteria.
+- **Verdicts: Holm for primaries.** A primary contrast now also needs its Holm-adjusted p below 0.05. This was flagged
+  on 26 Nov as a change to make before any confirmatory run; it is made now, for every module.
+- **Native Ollama requests** (`scripts/ollama_fit.py`).
+  - The server loaded every model with an 8192-token context (an app setting; the client's environment variable said
+    4096, which the manifest had recorded as if it were the server's).
+  - It put llama3.2, phi4-mini and qwen3-4b only 55-67% on the 4 GB GPU, and the OpenAI-compatible endpoint ignores
+    per-request load options.
+  - The bench presets now use `/api/chat` with `num_ctx 2048`, `num_batch 128` and `num_gpu 99`. All five models fit:
+    llama3.2 4.4 → 0.55 s, phi4-mini 9.0 → 0.8 s, qwen3-4b 18 → 1.7 s per call.
+  - The prompt, schema, temperature and seed are unchanged. The 8B tier keeps Ollama's own layer placement.
+- **Kept:** L-A and L-C2. Their v3.2 results stand and they are not rerun for v4. To rebuild a v3 run's L-B or L-C1
+  report, use commit `5aa756a`; the v4 analysis reports such runs as "v3 design" instead of misreading them.
+

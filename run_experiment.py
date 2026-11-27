@@ -10,6 +10,7 @@ Examples
 from __future__ import annotations
 
 import argparse
+import copy
 import os
 import datetime as dt
 import json
@@ -24,13 +25,14 @@ from arena.config import get_preset, git_commit, git_dirty, load_config, load_en
 from arena.engine import PromptMismatch, TrialContext
 from arena.bench import BENCH_MODULES
 from arena.bench import runner as bench_runner
+from arena.bench import screen as bench_screen
 from arena.items import item_banks, module_a_items
 from arena.llm_client import LLMClient, LLMError, ProviderUnavailable, QuotaExhausted
 from arena.schemas import extract_json
 from arena.storage import Storage
 
 PLANNERS = {"A": mod_a.plan, "B": mod_b.plan, "C": mod_c.plan}
-EXIT_QUOTA, EXIT_UNAVAILABLE, EXIT_ERROR = 3, 4, 2
+EXIT_QUOTA, EXIT_UNAVAILABLE, EXIT_ERROR, EXIT_SCREEN_FAIL = 3, 4, 2, 5
 
 
 class Runner:
@@ -217,6 +219,39 @@ def check_providers(cfg: dict, storage: Storage) -> int:
     return worst
 
 
+def apply_preset_providers(cfg: dict, preset: dict) -> dict:
+    """A preset may override provider settings (`providers: {ollama: {kind: ollama_native, options: ...}}`): Bench L v4
+    sends Ollama requests to the native endpoint with load options (scripts/ollama_fit.py, 27 Nov 2026). The
+    merged settings go into the stored configuration and the manifest of the run."""
+    over = preset.get("providers") or {}
+    if not over:
+        return cfg
+    cfg = copy.deepcopy(cfg)
+    for name, settings in over.items():
+        cfg["providers"].setdefault(name, {}).update(settings)
+    return cfg
+
+
+def screen_models(results_dir, screen_id: str, modules: list[str], preset: dict) -> tuple[dict, list[str], dict]:
+    """Per-module model lists from a screen run (protocol v4): {module: models}, the modules kept, and the record
+    stored in the manifest. A module the screen did not pass is dropped; a module it did not cover keeps the
+    preset's models."""
+    res, sha = bench_screen.load(results_dir, screen_id)
+    per, kept = {}, []
+    for m in modules:
+        sm = res["modules"].get(m)
+        if sm is None:
+            per[m] = list(preset["bench"]["models"])
+            kept.append(m)
+        elif sm["decision"] == "pass":
+            per[m] = [x for x in preset["bench"]["models"] if x in sm["passed"]]
+            kept.append(m)
+        else:
+            print(f"  {m}: the screen {screen_id} did not pass this module ({len(sm['passed'])} models passed): "
+                  "it is not run.")
+    return per, kept, {"run_id": screen_id, "sha256": sha, "models": per}
+
+
 def _modules_arg(text: str):
     if text.strip().lower() == "all":
         return "all"
@@ -257,6 +292,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=None,
                     help="run-level seed mixed into every trial seed (default: derived from the run id, so two runs "
                          "never reuse the same seeds)")
+    ap.add_argument("--screen", default=None, metavar="RUN_ID",
+                    help="Bench L v4: run each module only on the models that passed this screen run")
     ap.add_argument("--force-resume", action="store_true",
                     help="resume even if the code now builds different prompts than the stored ones")
     args = ap.parse_args(argv)
@@ -290,9 +327,21 @@ def main(argv: list[str] | None = None) -> int:
         if any(m in BENCH_MODULES for m in modules) and "bench" not in get_preset(cfg, preset_name):
             preset_name = "bench-local"  # Bench L needs a preset with a `bench` block
             print("Bench L modules: using the 'bench-local' preset (pass --preset to choose another bench preset).")
+        preset = get_preset(cfg, preset_name)
+        cfg = apply_preset_providers(cfg, preset)
+        per_module, screen_rec = {}, None
+        if args.screen:
+            try:
+                per_module, modules, screen_rec = screen_models(resolve(paths["results_dir"]), args.screen,
+                                                                modules, preset)
+            except FileNotFoundError as e:
+                print(f"Refusing the run: {e}")
+                return EXIT_ERROR
+            if not modules:
+                print(f"Refusing the run: no module passed the screen {args.screen}.")
+                return EXIT_ERROR
         stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         run_id = f"{'mock-' if args.mock else ''}{stamp}-{preset_name}-{''.join(modules)}"
-        preset = get_preset(cfg, preset_name)
         run_type = "mock" if args.mock else (args.run_type or preset.get("run_type") or
                                              ("pilot" if preset["gate"].get("enforce", True) else "smoke"))
         prereg = None
@@ -330,19 +379,26 @@ def main(argv: list[str] | None = None) -> int:
         storage.create_run(run_id, preset_name, modules, args.mock, stable_hash(cfg), cfg, git_commit(),
                            run_type=run_type, prereg_hash=prereg, run_seed=run_seed)
         for module in modules:
-            specs = (bench_runner.plan(module, preset, int(cfg["seed"])) if module in BENCH_MODULES
+            mp = preset
+            if module in per_module:  # only the models that passed this module's screen
+                mp = copy.deepcopy(preset)
+                mp["bench"]["models"] = per_module[module]
+            specs = (bench_runner.plan(module, mp, int(cfg["seed"])) if module in BENCH_MODULES
                      else PLANNERS[module](preset))
             for idx, spec in enumerate(specs):
                 seed = int(stable_hash([cfg["seed"], run_seed, module, spec], 8), 16)
                 storage.add_trial(f"{run_id}-{module}-{idx:03d}", run_id, module, idx, spec, seed)
         try:
-            manifest.write(resolve(paths["results_dir"]) / run_id / "manifest.json",
-                           manifest.build(storage.get_run(run_id), cfg, preset, args.mock))
+            man = manifest.build(storage.get_run(run_id), cfg, preset, args.mock)
+            if screen_rec:
+                man["screen"] = screen_rec
+            manifest.write(resolve(paths["results_dir"]) / run_id / "manifest.json", man)
         except OSError as e:
             print(f"  (manifest not written: {e})")
         print(f"Created run {run_id} ({run_type}): "
               + ", ".join(f"{m}={len(storage.trials(run_id, m))} trials" for m in modules))
     preset = get_preset(cfg, preset_name)
+    cfg = apply_preset_providers(cfg, preset)
     client = LLMClient(cfg, usage=storage, mock=args.mock, mock_delay=args.mock_delay)
     runner = Runner(cfg, preset, storage, client, run_id, args.mock, run_seed=run_seed, force_resume=args.force_resume)
     if args.live:
@@ -392,6 +448,15 @@ def main(argv: list[str] | None = None) -> int:
     if code == 0:
         statuses = {t["status"] for t in storage.trials(run_id)}
         storage.set_run_status(run_id, "done" if statuses <= {"done", "excluded"} else "partial")
+    if preset.get("bench", {}).get("stage") == "screen" and code == 0 and not args.gate_only:
+        sres = bench_screen.evaluate(storage, run_id, preset, [m for m in modules if m in BENCH_MODULES])
+        j, md = bench_screen.write(sres, resolve(paths["results_dir"]) / run_id)
+        print("\n" + bench_screen.console(sres) + f"\nScreen report: {md}")
+        if sres["decision"] == "pass":
+            print(f"Next (stage 2): python run_experiment.py --module {','.join(sres['modules'])} --preset bench-v4 "
+                  f"--screen {run_id}")
+        else:
+            code = EXIT_SCREEN_FAIL
     if not args.no_analyze and not args.gate_only:
         res = analyze.run(storage, run_id, resolve(paths["results_dir"]), dash)
         print(f"\nReport:    {res['report']}\nDashboard: {res['dashboard']}")

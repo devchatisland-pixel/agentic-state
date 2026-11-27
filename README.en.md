@@ -308,13 +308,18 @@ in Nov 2026.
 
 Small local models cannot run a free council (run of 24 Nov 2026: no wrong majority ever formed, no motion was ever
 filed). Every published study that works below 8B scripts every agent but one and asks for one short decision per
-call. **Bench L** does the same for the four postulates: L-A tribal Asch, L-B Milgram cascade, L-C1 ostracism
-vignette, L-C2 colony where the experimenter evicts the dissident. Protocol: [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md).
+call. **Bench L** does the same for the four postulates: L-A tribal Asch, L-B chain of command, L-C1 which adviser
+leaves, L-C2 colony where the experimenter evicts the dissident. Protocol: [`docs/protocol_v4_bench.md`](docs/protocol_v4_bench.md)
+(v4, 27 Nov 2026: stages, new L-B and L-C1) and [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (L-A, L-C2).
+
+Since v4, every new design first goes through a **screen** of about 15 minutes with criteria fixed in advance; only
+the modules and models that pass it go to the pilot:
 
 ```
-python run_experiment.py --module bench --preset bench-mini     # calibration: one model, about 30-45 min
-python run_experiment.py --module bench --preset bench-local    # 5 local models, overnight (about 15 h)
-python run_experiment.py --module LC1,LA --preset bench-local   # some modules only
+python run_experiment.py --module LB,LC1 --preset bench-screen                  # stage 1: screen, ~15 min
+python run_experiment.py --module LB,LC1 --preset bench-v4 --screen SCREEN_ID   # stage 2: pilot, ~1 h
+python run_experiment.py --module bench --preset bench-local                    # the whole bench, 5 models
+python scripts/ollama_fit.py --num-ctx 2048                                     # does each model fit on the GPU?
 ```
 
 Its results page shows a scorecard per postulate and the metrics of the papers: accuracy per protocol, conformity
@@ -327,6 +332,9 @@ how a call works technically, the validity checks, the statistics and the protoc
 
 First local result (protocol v3.1, 5 models, 26 Nov 2026): [`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md).
 None of the four primary contrasts is supported or refuted; P3 is not testable with these models.
+Second result (v3.2, 27 Nov 2026): [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
+L-A and L-C2 replicate (in-group bias +16 points; the engineer's forced presence saves the colony); L-B sits at a
+ceiling and L-C1 does not make P3 testable, hence v4.
 
 ## Calibration bench, offline overnight (no key, no quota)
 
