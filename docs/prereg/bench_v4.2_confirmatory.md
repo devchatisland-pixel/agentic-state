@@ -1,8 +1,8 @@
 # Pre-registration: Bench L protocol v4.2, confirmatory test of P2 and P3
 
-*Status: **draft, not frozen**. It is frozen when committed for the run, together with the code and `config.yaml`
-(preset `bench-confirm`). Its hash is stored with the run (`--prereg`). Anything decided after seeing confirmatory
-data is reported as exploratory.*
+*Status: **FROZEN on 27 Nov 2026**, approved by the researcher before any confirmatory data existed. It was committed
+and pushed, together with the code and `config.yaml` (preset `bench-confirm`), before the run started. Its hash is
+stored with the run (`--prereg`). Anything decided after seeing confirmatory data is reported as exploratory.*
 
 ## 1. What is already known (exploratory, 27 Nov 2026)
 

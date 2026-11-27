@@ -492,3 +492,6 @@ Code added:
 - the confirmatory pools;
 - `confirmatory_problems()`, which refuses a Bench L confirmatory run whose solo filter has fewer than 5 repeats;
 - tests.
+
+**Frozen (27 Nov 2026).** The researcher approved the pre-registration unchanged. It is frozen in this commit and
+pushed before the confirmatory run starts.
