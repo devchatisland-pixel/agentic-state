@@ -522,3 +522,47 @@ def test_models_option_replaces_the_preset_models(tmp_path):
     st.close()
     assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--config", str(cfg),
                                 "--models", "no-such-model", "--no-analyze"]) == run_experiment.EXIT_ERROR
+
+
+def test_confirmatory_instances_are_new_and_deterministic():
+    seed = int(load_config()["seed"])
+    ids = l_b_cascade.instance_ids({"pool": "confirm", "instances": 44})
+    assert ids == list(range(200, 244))
+    jobs = {l_b_cascade.inst_of(i)[3] for i in ids}
+    assert len(jobs) == 44 and not jobs & {x[3] for x in l_b_cascade.INSTANCES + l_b_cascade.SCREEN_INSTANCES}
+    a = l_c1_ostracism.instances(60, seed, "confirm")
+    assert a == l_c1_ostracism.instances(60, seed, "confirm")              # deterministic
+    old = {(i["quantity"], i["hi"], i["lo"]) for i in l_c1_ostracism.instances(12, seed)
+           + l_c1_ostracism.instances(6, seed, "screen")}
+    assert not {(i["quantity"], i["hi"], i["lo"]) for i in a} & old       # new figures
+    assert all(i["lo"] < i["hi"] for i in a) and {i["order"] for i in a} == {0, 1}
+
+
+def test_confirm_preset_runs_each_module_on_its_own_models(tmp_path):
+    cfg_path = _bench_config(tmp_path)
+    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+    b = cfg["presets"]["bench-confirm"]["bench"]
+    b["LB"]["instances"], b["LC1"]["instances"], b["solo_repeats"] = 2, 2, 1   # small, for the test only
+    cfg_path.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    assert run_experiment.main(["--module", "LB,LC1", "--preset", "bench-confirm", "--run-type", "pilot", "--mock",
+                                "--seed", "7", "--config", str(cfg_path), "--no-analyze"]) == 0
+    st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
+    run = st.latest_run()
+    models = lambda m: {json.loads(t["spec_json"])["model"] for t in st.trials(run["run_id"], m)}  # noqa: E731
+    assert models("LB") == {"qwen3-1.7b", "qwen2.5-3b", "phi4-mini", "qwen3-4b"}
+    assert models("LC1") == {"qwen3-4b", "nemotron-4b"}
+    assert {t["status"] for t in st.trials(run["run_id"])} <= {"done", "excluded"}
+    assert {json.loads(t["spec_json"])["instance"] for t in st.trials(run["run_id"], "LC1")} == {200, 201}
+    st.close()
+
+
+def test_confirmatory_run_needs_a_five_repeat_solo_filter(tmp_path):
+    import copy
+    pre = copy.deepcopy(load_config()["presets"]["bench-confirm"])
+    prereg = tmp_path / "prereg.md"
+    prereg.write_text("test", encoding="utf-8")
+    assert run_experiment.confirmatory_problems(pre, str(prereg), [], False) == []     # the preset as registered
+    pre["bench"]["solo_repeats"] = 3
+    assert any("solo filter needs at least 5" in x for x in run_experiment.confirmatory_problems(pre, str(prereg), [], False))
+    probs = run_experiment.confirmatory_problems(pre, None, [], True)
+    assert any("--prereg" in x for x in probs) and any("clean commit" in x for x in probs)

@@ -84,15 +84,42 @@ CHOICES = {
 }
 
 
+CONFIRM_BASE = 200  # confirmatory instances have ids 200, 201, ... (pre-registered 27 Nov 2026)
+
+
+def _confirm_instances(n: int = 60) -> list[tuple]:
+    """New scenario instances for the confirmatory run, generated deterministically and never used by a screen or
+    a pilot: (patients, hours done, hours total, job id, delay in weeks)."""
+    rng = random.Random("LB-confirm-instances-v1")
+    used = {x[3] for x in INSTANCES + SCREEN_INSTANCES}
+    out = []
+    while len(out) < n:
+        total = rng.randint(14, 44)
+        done = rng.randint(max(6, total // 3), total - 2)
+        job = f"DX-{rng.randint(1000, 9999)}"
+        if job in used:
+            continue
+        used.add(job)
+        out.append((rng.randint(50, 320), done, total, job, rng.randint(1, 4)))
+    return out
+
+
+CONFIRM_INSTANCES = _confirm_instances()
+
+
 def inst_of(i: int) -> tuple:
-    """A scenario instance by id: 0-11 for pilots and full runs, 100-105 for the screen."""
+    """A scenario instance by id: 0-11 for pilots and full runs, 100-105 for the screen, 200+ for the confirmatory
+    run."""
+    if i >= CONFIRM_BASE:
+        return CONFIRM_INSTANCES[i - CONFIRM_BASE]
     return SCREEN_INSTANCES[i - SCREEN_BASE] if i >= SCREEN_BASE else INSTANCES[i]
 
 
 def instance_ids(block: dict) -> list[int]:
-    """The instance ids a preset uses: `pool: screen` draws from the screen's own instances."""
-    pool = SCREEN_INSTANCES if block.get("pool") == "screen" else INSTANCES
-    base = SCREEN_BASE if block.get("pool") == "screen" else 0
+    """The instance ids a preset uses: `pool: screen` draws from the screen's own instances, `pool: confirm` from
+    the confirmatory ones."""
+    pool, base = {"screen": (SCREEN_INSTANCES, SCREEN_BASE), "confirm": (CONFIRM_INSTANCES, CONFIRM_BASE)}.get(
+        block.get("pool"), (INSTANCES, 0))
     return [base + i for i in range(min(int(block.get("instances", 12)), len(pool)))]
 
 

@@ -203,6 +203,25 @@ presets:
       solo_repeats: 2
       LB: {instances: 12, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
       LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
+  bench-confirm:  # PROTOCOL v4.2, STAGE 3: the pre-registered confirmatory run of P2 (L-B) and P3 (L-C1).
+                  # Pre-registration: docs/prereg/bench_v4.2_confirmatory.md (its hash is stored with the run).
+                  # Models fixed per module from the screens 20261127-152032 (L-B) and 20261127-165259 (L-C1); fresh
+                  # instances (pool: confirm, ids 200+) never used by a screen or a pilot. Do not edit after the
+                  # pre-registration is committed. Run (clean commit):
+                  #   python run_experiment.py --module LB,LC1 --preset bench-confirm --run-type confirmatory
+                  #       --prereg docs/prereg/bench_v4.2_confirmatory.md --seed 20261128
+    run_type: confirmatory
+    temperatures: [0.7]
+    gate: {repeats: 5, enforce: true}
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 2048, num_batch: 128, num_gpu: 99}}
+    bench:
+      models: [qwen3-1.7b, qwen2.5-3b, phi4-mini, qwen3-4b, nemotron-4b]
+      solo_repeats: 5
+      LB: {instances: 44, pool: confirm, models: [qwen3-1.7b, qwen2.5-3b, phi4-mini, qwen3-4b],
+           roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 60, pool: confirm, models: [qwen3-4b, nemotron-4b], truth: [right, wrong],
+            tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
   bench-mini:   # calibration: one model, a few items, about 30-45 min. Checks latency, solo pass rates, invalid %.
     run_type: smoke
     temperatures: [0.7]

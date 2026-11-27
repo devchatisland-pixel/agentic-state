@@ -472,3 +472,23 @@ models, but the runner looped over the preset's model list, so nemotron-4b's 120
 - With advisers stating figures, the false-figure copying fell from 81%/61% (v4) to 23%/2%.
 
 Written up in `runs/20261127-143918-bench-v4-pilot.md`.
+
+## 27 November 2026 (night): draft pre-registration of a confirmatory test of P2 and P3
+
+The draft is `docs/prereg/bench_v4.2_confirmatory.md`, with preset `bench-confirm`. It is not frozen yet and nothing
+has run.
+- **H2 (P2):** relayed vs direct obedience on L-B.
+- **H3 (P3):** dropping the adviser the member names as right, harmony vs accuracy charter, on L-C1.
+- **Verdict:** Holm over the two.
+- **Models:** fixed per module from the screens (L-B: 4 models, L-C1: 2).
+- **Materials:** new instances never used before (pool `confirm`, ids 200+).
+- **Solo filter:** 5 repeats, as protocol v2 requires for a confirmatory run.
+- **Sample size:** smallest effect of interest 10 points. Using the pilots' discordant-pair rates (0.33, 0.23) and
+  exact McNemar at α = 0.025: 352 pairs for H2 and 240 for H3, about 84% and 83% power.
+- **Cost:** about 4,300 calls, 3.5-4 hours.
+
+Code added:
+- per-module model lists in a preset (`bench.LB.models`);
+- the confirmatory pools;
+- `confirmatory_problems()`, which refuses a Bench L confirmatory run whose solo filter has fewer than 5 repeats;
+- tests.

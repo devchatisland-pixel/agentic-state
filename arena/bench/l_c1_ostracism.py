@@ -77,9 +77,37 @@ def cfg_of(preset: dict) -> dict:
     return preset["bench"]["LC1"]
 
 
+CONFIRM_BASE = 200
+
+
+def _confirm_instances(n: int, seed: int) -> list[dict]:
+    """Instances of the confirmatory run (ids from 200): the 18 quantities of the pilots and screens, each with NEW
+    figures, new adviser seats and the name order alternating; generated deterministically, never used before."""
+    rng = random.Random(f"LC1-v4-confirm-instances-{seed}")
+    kinds = [(q, u) for q, u, _, _ in QUANTITIES + SCREEN_QUANTITIES]
+    rng.shuffle(kinds)
+    out = []
+    for i in range(n):
+        q, u = kinds[i % len(kinds)]
+        if u == "%":
+            hi = rng.randint(62, 97)
+        elif u in (" kg", " doses", " units"):
+            hi = rng.randint(110, 900)
+        else:
+            hi = rng.randint(40, 120)
+        lo = max(2, round(hi * rng.uniform(0.15, 0.45)))
+        seats = rng.sample(range(1, 6), 2)
+        out.append({"instance": CONFIRM_BASE + i, "quantity": q, "unit": u, "hi": hi, "lo": lo,
+                    "dissenter": f"Agent_{seats[0]}", "consensus": f"Agent_{seats[1]}", "order": i % 2})
+    return out
+
+
 def instances(n: int, seed: int, pool: str = "main") -> list[dict]:
     """Vignette instances: the quantity and its two figures, the seats of the two advisers, the order of the names.
-    `pool="screen"` gives the screen's own instances (ids from 100, other quantities)."""
+    `pool="screen"` gives the screen's own instances (ids from 100, other quantities); `pool="confirm"` the
+    confirmatory run's (ids from 200)."""
+    if pool == "confirm":
+        return _confirm_instances(n, seed)
     screen = pool == "screen"
     rng = random.Random(f"LC1-v4-screen-instances-{seed}" if screen else f"LC1-v4-instances-{seed}")
     qs = list(SCREEN_QUANTITIES if screen else QUANTITIES)

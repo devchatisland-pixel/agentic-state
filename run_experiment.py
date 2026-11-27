@@ -219,6 +219,22 @@ def check_providers(cfg: dict, storage: Storage) -> int:
     return worst
 
 
+def confirmatory_problems(preset: dict, prereg: str | None, small: list[str], dirty: bool | None) -> list[str]:
+    """Why a confirmatory run must not start (empty list: it may). Protocol v2, plus the Bench L solo filter."""
+    problems = [f"at least 3 trials per cell are needed ({', '.join(small)})"] if small else []
+    if not prereg or not os.path.exists(prereg):
+        problems.append("--prereg FILE is required (the frozen pre-registration)")
+    if not preset["gate"].get("enforce", True):
+        problems.append("the preset must enforce the pre-check (gate.enforce: true)")
+    if int(preset["gate"]["repeats"]) < 5:
+        problems.append("the pre-check needs at least 5 repeats (gate.repeats >= 5)")
+    if "bench" in preset and int(preset["bench"].get("solo_repeats", 0)) < 5:
+        problems.append("the Bench L solo filter needs at least 5 repeats (bench.solo_repeats >= 5)")
+    if dirty:
+        problems.append("commit your changes first: a confirmatory run must come from a clean commit")
+    return problems
+
+
 def apply_preset_providers(cfg: dict, preset: dict) -> dict:
     """A preset may override provider settings (`providers: {ollama: {kind: ollama_native, options: ...}}`): Bench L v4
     sends Ollama requests to the native endpoint with load options (scripts/ollama_fit.py, 27 Nov 2026). The
@@ -378,15 +394,7 @@ def main(argv: list[str] | None = None) -> int:
                       f"from turn {mc['trap_turn']} empties the energy reserve at turn {worst} at the earliest, so "
                       f"the colony outcome cannot vary. Use at least {worst + 2} turns.")
         if run_type == "confirmatory":
-            problems = [f"at least 3 trials per cell are needed ({', '.join(small)})"] if small else []
-            if not args.prereg or not os.path.exists(args.prereg):
-                problems.append("--prereg FILE is required (the frozen pre-registration)")
-            if not preset["gate"].get("enforce", True):
-                problems.append("the preset must enforce the pre-check (gate.enforce: true)")
-            if int(preset["gate"]["repeats"]) < 5:
-                problems.append("the pre-check needs at least 5 repeats (gate.repeats >= 5)")
-            if git_dirty():
-                problems.append("commit your changes first: a confirmatory run must come from a clean commit")
+            problems = confirmatory_problems(preset, args.prereg, small, git_dirty())
             if problems:
                 print("Refusing a confirmatory run:\n  - " + "\n  - ".join(problems))
                 return EXIT_ERROR
@@ -398,9 +406,12 @@ def main(argv: list[str] | None = None) -> int:
                            run_type=run_type, prereg_hash=prereg, run_seed=run_seed)
         for module in modules:
             mp = preset
-            if module in per_module:  # only the models that passed this module's screen
+            block_models = (preset.get("bench", {}).get(module) or {}).get("models")
+            if module in per_module or block_models:
+                # the models that passed this module's screen, or the module's own list in the preset (a
+                # confirmatory preset fixes them per module, from the screens)
                 mp = copy.deepcopy(preset)
-                mp["bench"]["models"] = per_module[module]
+                mp["bench"]["models"] = per_module.get(module) or list(block_models)
             specs = (bench_runner.plan(module, mp, int(cfg["seed"])) if module in BENCH_MODULES
                      else PLANNERS[module](preset))
             for idx, spec in enumerate(specs):
