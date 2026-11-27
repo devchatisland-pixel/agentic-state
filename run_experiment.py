@@ -292,6 +292,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seed", type=int, default=None,
                     help="run-level seed mixed into every trial seed (default: derived from the run id, so two runs "
                          "never reuse the same seeds)")
+    ap.add_argument("--models", default=None, metavar="ID,ID",
+                    help="Bench L: run these model ids (from config.yaml) instead of the preset's models")
     ap.add_argument("--screen", default=None, metavar="RUN_ID",
                     help="Bench L v4: run each module only on the models that passed this screen run")
     ap.add_argument("--force-resume", action="store_true",
@@ -319,6 +321,10 @@ def main(argv: list[str] | None = None) -> int:
             print("No run to resume" + (" in the mock database" if args.mock else "") + ".")
             return EXIT_ERROR
         run_id, preset_name, modules = run["run_id"], run["preset"], run["modules"].split(",")
+        try:  # resume with the preset the run was created with (it may carry a --models override)
+            cfg["presets"][preset_name] = json.loads(run["config_json"])["presets"][preset_name]
+        except (KeyError, TypeError, ValueError):
+            pass
         run_seed = run.get("run_seed") or 0
         print(f"Resuming run {run_id} (preset {preset_name}, modules {','.join(modules)})")
     else:
@@ -328,6 +334,14 @@ def main(argv: list[str] | None = None) -> int:
             preset_name = "bench-local"  # Bench L needs a preset with a `bench` block
             print("Bench L modules: using the 'bench-local' preset (pass --preset to choose another bench preset).")
         preset = get_preset(cfg, preset_name)
+        if args.models:
+            ids = [m.strip() for m in args.models.split(",") if m.strip()]
+            unknown = [m for m in ids if m not in cfg["models"]]
+            if unknown or "bench" not in preset:
+                print(f"Refusing the run: --models needs a Bench L preset and model ids from config.yaml "
+                      f"(unknown: {', '.join(unknown) or 'none'}).")
+                return EXIT_ERROR
+            preset["bench"]["models"] = ids  # recorded in the stored configuration and the manifest
         cfg = apply_preset_providers(cfg, preset)
         per_module, screen_rec = {}, None
         if args.screen:

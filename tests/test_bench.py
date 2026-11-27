@@ -462,3 +462,41 @@ def test_lc1_v42_mock_run_reports_the_judgement_and_the_control_cell(tmp_path):
 def test_inconclusive_says_it_is_a_result_and_what_it_rules_out():
     c = stats.compare_paired("a", [1, 0, 1, 0, 0, 1, 0, 0], "b", [0, 0, 1, 0, 1, 1, 0, 0])
     assert c.verdict == "Inconclusive" and "not a failure" in c.reason and "larger than" in c.reason
+
+
+def test_a_model_can_override_the_ollama_load_options():
+    from arena.llm_client import LLMClient
+    cfg = run_experiment.apply_preset_providers(load_config(), load_config()["presets"]["bench-screen"])
+    sent = []
+
+    class Resp:
+        status_code = 200
+        headers = {}
+
+        def json(self):
+            return {"message": {"content": "{}"}, "prompt_eval_count": 1, "eval_count": 1, "done_reason": "stop"}
+
+    class Http:
+        def post(self, url, headers=None, json=None, timeout=None):
+            sent.append(json)
+            return Resp()
+
+    client = LLMClient(cfg, mock=False)
+    client.http = Http()
+    for mid in ("qwen3-4b", "qwen3-8b"):
+        client.chat(mid, [{"role": "user", "content": "x"}], temperature=0.7, seed=1, max_tokens=10)
+    assert sent[0]["options"]["num_gpu"] == 99                      # a 4B model: every layer on the GPU
+    assert "num_gpu" not in sent[1]["options"] and sent[1]["options"]["num_ctx"] == 2048   # 8B: Ollama places them
+
+
+def test_models_option_replaces_the_preset_models(tmp_path):
+    cfg = _bench_config(tmp_path)
+    assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--config", str(cfg),
+                                "--models", "qwen3-4b,gemma3-4b", "--no-analyze"]) == 0
+    st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
+    run = st.latest_run()
+    assert {json.loads(t["spec_json"])["model"] for t in st.trials(run["run_id"])} == {"qwen3-4b", "gemma3-4b"}
+    assert json.loads(run["config_json"])["presets"]["bench-mini"]["bench"]["models"] == ["qwen3-4b", "gemma3-4b"]
+    st.close()
+    assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--config", str(cfg),
+                                "--models", "no-such-model", "--no-analyze"]) == run_experiment.EXIT_ERROR

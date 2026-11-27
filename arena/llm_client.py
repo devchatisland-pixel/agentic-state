@@ -310,7 +310,10 @@ class LLMClient:
             if used >= int(p["rpd"]):
                 raise QuotaExhausted(f"{pname}/{model_id}: daily budget of {p['rpd']} requests used")
         if p["kind"] == "ollama_native":
-            adapter = OllamaNativeAdapter(p["base_url"], key, p.get("options"))
+            # a model may override the provider's load options (e.g. an 8B model cannot put every layer on a
+            # 4 GB GPU: `options: {num_gpu: null}` leaves the placement to Ollama); null removes an option
+            opts = {k: v for k, v in {**(p.get("options") or {}), **(m.get("options") or {})}.items() if v is not None}
+            adapter = OllamaNativeAdapter(p["base_url"], key, opts)
         else:
             adapter = (GeminiAdapter if p["kind"] == "gemini" else OpenAICompatAdapter)(p["base_url"], key)
         max_tokens = int(max_tokens or m.get("max_tokens", 900))

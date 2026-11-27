@@ -408,3 +408,29 @@ glossary now say it plainly:
 
 By the rule fixed before the screen, L-C1 does not go to a pilot. Nothing has been changed since. Details are in
 `runs/20261127-143918-bench-v4-pilot.md`.
+
+## 27 November 2026 (evening): screening more models on L-C1
+
+The user asked to screen more local models on L-C1. GPU fit and speed with the bench settings (native API, 2048
+context, batch 128, every layer on the GPU):
+
+| Model | On the GPU | Seconds per call | Valid JSON |
+|---|---|---|---|
+| qwen3.5:4b | 100% | 1.4 | 3/3 |
+| nemotron-3-nano:4b | 100% | 0.9 | 3/3 |
+| gemma3:4b | 100% | 0.9 | 3/3 |
+| hermes3:3b | 100% | 0.8 | 3/3 |
+| phi3:3.8b | 100% | 0.9 | 3/3 |
+| granite3.3:2b | 100% | 0.6 | 3/3 |
+| qwen3:8b (Ollama places the layers) | 41% | 24 | 3/3 |
+| hermes3:8b (Ollama places the layers) | 47% | 16 | 3/3 |
+| gemma4:e4b (Ollama places the layers) | 16% | 90 | **0/3**: dropped |
+
+Code added:
+- `--models ID,ID` replaces a Bench L preset's models. It is recorded in the stored configuration and the manifest,
+  and a resumed run uses the stored preset.
+- A model can override the provider's load options: `options: {num_gpu: null}` for the 8B models and gemma4, which
+  cannot put every layer on the 4 GB GPU.
+
+The six fast models are screened together with qwen3-4b, so that one screen run lists every passing model. The
+criteria are unchanged (v4.2).

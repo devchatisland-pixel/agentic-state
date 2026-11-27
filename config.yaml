@@ -98,10 +98,10 @@ models:
   qwen3-1.7b:   {provider: ollama, model: "qwen3:1.7b",        family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}}
   phi4-mini:    {provider: ollama, model: "phi4-mini:3.8b",    family: Microsoft,  max_tokens: 900}
   granite3.3-2b: {provider: ollama, model: "granite3.3:2b",    family: IBM,        max_tokens: 900}
-  gemma4-e4b:   {provider: ollama, model: "gemma4:e4b",        family: Google,     max_tokens: 900}
+  gemma4-e4b:   {provider: ollama, model: "gemma4:e4b",        family: Google,     max_tokens: 900, options: {num_gpu: null}}
   # Size tier of Bench L (already installed; larger than the 4 GB GPU, so part of each runs on the CPU: slow)
-  qwen3-8b:     {provider: ollama, model: "qwen3:8b",          family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}}
-  hermes3-8b:   {provider: ollama, model: "hermes3:8b",        family: Meta-Llama, max_tokens: 900}
+  qwen3-8b:     {provider: ollama, model: "qwen3:8b",          family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}, options: {num_gpu: null}}
+  hermes3-8b:   {provider: ollama, model: "hermes3:8b",        family: Meta-Llama, max_tokens: 900, options: {num_gpu: null}}
   mistral-small: {provider: mistral, model: mistral-small-latest, family: Mistral, enabled: false}
   openrouter-llama: {provider: openrouter, model: "meta-llama/llama-3.3-70b-instruct:free", family: Meta-Llama, enabled: false}
 
