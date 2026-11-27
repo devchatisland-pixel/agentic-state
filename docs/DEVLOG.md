@@ -376,3 +376,24 @@ By the protocol, L-C1 does not go to a pilot in this form. Nothing has been chan
   - advisers state figures instead of describing the log;
   - the ballot records whose figure matches the log;
   - a pressure-free control cell carries the "uses the facts" check.
+
+## 27 November 2026 (evening): L-C1 v4.2 approved and implemented; verdict wording
+
+**L-C1 v4.2.** The user approved the proposal as recommended. Implemented for every model before its screen:
+- advisers state figures instead of describing the log;
+- the ballot names whose figure matches the log, before the vote, and the primary uses "drops the adviser it names
+  as right";
+- a pressure-free control cell carries "uses the facts";
+- a new screen criterion: "knows who is right" (≥ 80% of council ballots);
+- two quantities renamed to singular forms.
+
+v4 runs are still analysed with their own outcome (`v42` false).
+
+**Verdict wording (the user asked what "Inconclusive" means).** The rule is unchanged; only the wording and the
+glossary now say it plainly:
+- *Supported*: the predicted effect is there.
+- *Not supported*: a clear effect in the opposite direction.
+- *Inconclusive*: valid data and no clear effect. It is a result, not a bug, and the reason now states the largest
+  effect in the predicted direction that the data still allow.
+- *Not testable*: the validity checks failed, so the test could not answer.
+

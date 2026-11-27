@@ -15,7 +15,8 @@ from pathlib import Path
 from arena.bench.analyze import gates, outcomes
 
 DEFAULTS = {"usable_min": 0.95, "solo_min_passed": 2, "uses_facts_min": 0.80, "excl_min": 0.10, "excl_max": 0.90,
-            "room_max": 0.85, "min_models": 2, "pos_min": None, "pos_max": None, "first_option_max": None}
+            "room_max": 0.85, "min_models": 2, "pos_min": None, "pos_max": None, "first_option_max": None,
+            "judged_min": None}
 
 
 def _row(name: str, value: str, ok: bool, rule: str) -> dict:
@@ -47,11 +48,25 @@ def _model_rows(storage, run_id: str, module: str, model: str, crit: dict) -> li
                      f"at least {crit['usable_min']:.0%} of the decisions usable"))
     ok = df[valid & df["solo_passed"].astype(bool)]
     if module == "LC1":
-        cell = ok[(ok["norm"] == "accuracy") & (ok["tone"] == "polite")]["excludes_wrong"].astype(bool)
+        control = ok[ok["norm"] == "none"]
+        council = ok[ok["norm"] != "none"]
+        if len(control):  # v4.2: measured where nothing pushes
+            cell = control["excludes_wrong"].astype(bool)
+            where = "control cell (plain statements, no members agreeing, no charter)"
+        else:
+            cell = ok[(ok["norm"] == "accuracy") & (ok["tone"] == "polite")]["excludes_wrong"].astype(bool)
+            where = "accuracy charter, polite dissenter"
         rows.append(_row("uses the facts", _frac(int(cell.sum()), len(cell)),
                          len(cell) > 0 and cell.mean() >= crit["uses_facts_min"],
-                         f"accuracy charter, polite dissenter: the adviser who is wrong leaves in at least "
-                         f"{crit['uses_facts_min']:.0%} of the ballots"))
+                         f"{where}: the adviser who is wrong leaves in at least {crit['uses_facts_min']:.0%} of the "
+                         "ballots"))
+        if crit.get("judged_min") is not None and "judged_right" in council:  # v4.2
+            jr = council["judged_right"].dropna().astype(bool)
+            rows.append(_row("knows who is right", _frac(int(jr.sum()), len(jr)),
+                             len(jr) > 0 and jr.mean() >= crit["judged_min"],
+                             f"in council, the ballot names the adviser whose figure matches the log in at least "
+                             f"{crit['judged_min']:.0%} of the ballots"))
+        ok = council
         ex = ok["excludes_dissenter"].astype(bool)
         rows.append(_row("not stuck", _frac(int(ex.sum()), len(ex)),
                          len(ex) > 0 and crit["excl_min"] <= ex.mean() <= crit["excl_max"],

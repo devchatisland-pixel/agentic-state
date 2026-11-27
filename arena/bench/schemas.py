@@ -184,11 +184,19 @@ class _LC1Solo(_LC1Read):
     _w = field_validator("matches_log", mode="before", check_fields=False)(as_name)
 
 
+class _LC1Ballot42(_LC1Read):
+    _n = field_validator("note", mode="before", check_fields=False)(as_text)
+    _w = field_validator("matches_log", "leaves", mode="before", check_fields=False)(as_name)
+
+
 @lru_cache(maxsize=None)
 def lc1_choice_schema(first: str, second: str) -> type:
-    """v4 ballot: the figure copied from the log, a note, then which of the two advisers leaves (an enum of the two
-    names, in the order they were offered)."""
-    return create_model(f"LC1Choice_{first}_{second}", __base__=_LC1Choice, leaves=(Literal[first, second], ...))
+    """v4.2 ballot, in this order: the figure copied from the log, whose figure matches the log (the member's own
+    judgement), a note, then which of the two advisers leaves (enums of the two names, in the order offered).
+    The v4 ballot had no `matches_log` (stored replies of v4 runs keep their own fields)."""
+    names_ = Literal[first, second]
+    return create_model(f"LC1Ballot_{first}_{second}", __base__=_LC1Ballot42, matches_log=(names_, ...),
+                        note=(str, ""), leaves=(names_, ...))
 
 
 @lru_cache(maxsize=None)

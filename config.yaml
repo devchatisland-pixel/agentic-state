@@ -139,11 +139,12 @@ presets:
         roles: [direct, relayed, transmitter]
         framing: [blunt, jargon]
         reps: 1
-      LC1:                              # protocol v4: which of two advisers leaves, 8 cells per instance
+      LC1:                              # protocol v4.2: which of two advisers leaves, 8 cells + 2 control cells
         instances: 12
         truth: [right, wrong]
         tone: [strict, polite]
         norm: [harmony, accuracy]
+        control: true                   # v4.2: plain statements, no members, no charter ("uses the facts")
         reps: 1
       LC2:
         arms: [none, evicted, forced]
@@ -158,6 +159,8 @@ presets:
                  # v4.1 (27 Nov 2026): 6 instances per module (was 3), the screen's own instances (pool: screen), stricter
                  # bars sized so that a model at the pilot's warning lines rarely passes (docs/protocol_v4_bench.md s. 5),
                  # and a position-habit criterion per module.
+                 # v4.2 (27 Nov 2026, docs/proposal_lc1_v4.2.md): L-C1 control cell for "uses the facts"; "knows who
+                 # is right" in council.
     run_type: smoke
     temperatures: [0.7]
     gate: {repeats: 1, enforce: true}
@@ -172,11 +175,12 @@ presets:
       models: [qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b]
       solo_repeats: 1
       LB: {instances: 6, pool: screen, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
-      LC1: {instances: 6, pool: screen, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
+      LC1: {instances: 6, pool: screen, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
       criteria:
         usable_min: 0.95                # usable decisions
         solo_min_passed: 4              # instances passed alone (of 6)
-        uses_facts_min: 0.80            # L-C1, accuracy charter + polite dissenter: the wrong adviser leaves (10 of 12)
+        uses_facts_min: 0.80            # L-C1, v4.2 control cell: the wrong adviser leaves (10 of 12)
+        judged_min: 0.80                # L-C1, v4.2: in council the ballot names the adviser who matches the log
         excl_min: 0.10                  # L-C1: the dissenter is dropped in 10% to 90% of all ballots (not stuck)
         excl_max: 0.90
         pos_min: 0.25                   # L-C1: the first-listed adviser is dropped in 25% to 75% of all ballots
@@ -198,7 +202,7 @@ presets:
       models: [qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b]
       solo_repeats: 2
       LB: {instances: 12, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
-      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
+      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
   bench-mini:   # calibration: one model, a few items, about 30-45 min. Checks latency, solo pass rates, invalid %.
     run_type: smoke
     temperatures: [0.7]
@@ -214,7 +218,7 @@ presets:
       LA: {banks: [easy, lines], items_per_bank: 6, n_peers: 5, group_sizes: [1, 3],
            identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
       LB: {instances: 3, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
-      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
+      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
       LC2: {arms: [none, evicted, forced], colonies_per_arm: 1, turns: 12, evict_after: 3, renew_bulletin: true,
             variants: [v1]}
   bench-calib:  # 26 Nov 2026: checks the redesigned L-B (harmless control) and L-C1 (dissident without numbers,
@@ -233,7 +237,7 @@ presets:
       LA: {banks: [easy, lines], items_per_bank: 4, n_peers: 5, group_sizes: [1, 3],
            identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
       LB: {instances: 4, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
-      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
+      LC1: {instances: 4, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
       LC2: {arms: [none, evicted, forced], colonies_per_arm: 1, turns: 12, evict_after: 3, renew_bulletin: true,
             variants: [v1]}
   bench-size:   # size tier: 8B models with CPU offload (slow), L-A and L-C1 only, overnight
@@ -249,7 +253,7 @@ presets:
       LA: {banks: [easy, lines], items_per_bank: 16, n_peers: 5, group_sizes: [1, 3],
            identity: [neutral, ingroup, outgroup], threat: [false, true], cross_protocols: [W], reps: 1}
       LB: {instances: 8, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
-      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
+      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
       LC2: {arms: [none, evicted, forced], colonies_per_arm: 2, turns: 12, evict_after: 3, renew_bulletin: true,
             variants: [v1, v2]}
   local:   # CALIBRATION BENCH, not a pilot: 100% offline on Ollama, un-gated, n = 1 per cell. Checks that the protocol

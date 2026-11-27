@@ -430,7 +430,7 @@ function benchScene(t) {
     const bl = f.ballot || {};
     h += `<div class="line">${esc(f.log || "")}</div>`;
     h += (f.speakers || []).map(p => { const who = p.who.replace(" (adviser)", ""); return `<div class="peer ${who === f.dissident ? "dis" : ""}"><b>${esc(who)}${who === f.dissident ? " (dissident)" : who === f.consensus ? " (consensuel)" : ""}</b> : ${esc(p.text)}</div>`; }).join("");
-    h += `<div class="line">Scrutin : recopie <b>${esc(bl.log_value ?? "…")}</b>${f.log_read_ok === false ? " (faux)" : ""} · part : <b class="${bl.leaves && bl.leaves === f.dissident && f.truth === "right" ? "bad" : ""}">${esc(bl.leaves || "…")}</b></div>`;
+    h += `<div class="line">Scrutin : recopie <b>${esc(bl.log_value ?? "…")}</b>${f.log_read_ok === false ? " (faux)" : ""}${bl.matches_log ? ` · juge juste : <b>${esc(bl.matches_log)}</b>` : ""} · part : <b class="${bl.leaves && bl.leaves === f.dissident && f.truth === "right" ? "bad" : ""}">${esc(bl.leaves || "…")}</b></div>`;
   } else if (t.module === "LC1") {
     const bl = f.ballot || {};
     h += f.speakers.slice(0, 1).map(p => `<div class="peer dis"><b>${esc(p.who)} (dissident)</b> : ${esc(p.text)}</div>`).join("");

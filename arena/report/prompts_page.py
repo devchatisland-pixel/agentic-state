@@ -45,7 +45,8 @@ MODULE_NAMES = {"LA": "L-A · Tribal Asch (P1)", "LB": "L-B · Chain of command 
 COND = {"LA": [("protocol", ["C", "W", "T", "D"]), ("identity", ["neutral", "ingroup", "outgroup"]),
                ("threat", [False, True]), ("n_peers", [5, 3, 1])],
         "LB": [("role", ["direct", "relayed", "transmitter"]), ("framing", ["blunt", "jargon"])],
-        "LC1": [("truth", ["right", "wrong"]), ("tone", ["strict", "polite"]), ("norm", ["harmony", "accuracy"])],
+        "LC1": [("truth", ["right", "wrong"]), ("tone", ["strict", "polite", "neutral"]),
+                ("norm", ["harmony", "accuracy", "none"])],
         "LC2": [("arm", ["none", "evicted", "forced"])]}
 UNIT = {"LA": "item_id", "LB": "instance", "LC1": "instance", "LC2": "variant"}
 STEP_LABEL = {"answer": "Public answer (after the scripted peers)", "probe": "Private probe (separate call)",
@@ -110,6 +111,8 @@ def _cond_label(mod: str, key: tuple) -> str:
     if mod == "LB":
         return f"{d['role']} · {d['framing']} order"
     if mod == "LC1":
+        if d["norm"] == "none":
+            return f"control (plain statements, no members, no charter) · dissenter {d['truth']}"
         return f"dissenter {d['truth']} · {d['tone']} tone · {d['norm']} charter"
     return {"none": "no engineer", "evicted": "engineer evicted after turn 3", "forced": "engineer present all season"}[d["arm"]]
 

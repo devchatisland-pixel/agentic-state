@@ -129,9 +129,12 @@ def test_lb_comprehension_filter_offers_four_phrases_in_varied_order():
 def test_v4_schemas_accept_and_reject_the_right_values():
     from arena.bench.schemas import LBConsequence, lb_decision_schema, lc1_choice_schema, lc1_solo_schema
     S = lc1_choice_schema("Agent_2", "Agent_5")
-    assert list(S.model_fields) == ["log_value", "note", "leaves"]            # the figure is copied before the vote
-    assert S(log_value="38%", leaves="agent 5").leaves == "Agent_5"
-    for bad in ({"log_value": 38, "leaves": "Agent_3"}, {"log_value": "about forty", "leaves": "Agent_2"}):
+    # v4.2: the figure is copied and the member's judgement written before the vote
+    assert list(S.model_fields) == ["log_value", "matches_log", "note", "leaves"]
+    assert S(log_value="38%", matches_log="agent 2", leaves="agent 5").leaves == "Agent_5"
+    for bad in ({"log_value": 38, "matches_log": "Agent_2", "leaves": "Agent_3"},
+                {"log_value": "about forty", "matches_log": "Agent_2", "leaves": "Agent_2"},
+                {"log_value": 38, "leaves": "Agent_2"}):
         try:
             S(**bad)
             raise AssertionError(bad)
@@ -420,3 +423,42 @@ def test_highlight_marks_only_the_changed_words():
     html = highlight("Peers say B) 110 for me.", "Peers say C) 120 for me.")
     assert "<mark>C)</mark>" in html and "<mark>120</mark>" in html and "<mark>Peers" not in html
     assert highlight(None, "a <b>") == "a &lt;b&gt;"
+
+
+def test_lc1_v42_advisers_state_figures_and_the_control_cell_is_pressure_free():
+    inst = l_c1_ostracism.instances(1, 3)[0]
+    for tone in ("strict", "polite"):
+        _, user = l_c1_ostracism.transcript({"truth": "wrong", "tone": tone, "norm": "harmony"}, inst)
+        d_line = next(x for x in user.splitlines() if x.startswith(f"- {inst['dissenter']} (adviser)"))
+        assert "log" not in d_line.lower() and f"{inst['lo']}" in d_line      # a figure, not a claim about the log
+    system, user = l_c1_ostracism.transcript({"truth": "right", "tone": "neutral", "norm": "none"}, inst)
+    assert "charter" not in system
+    lines = [x for x in user.splitlines() if x.startswith("- ")]
+    assert len(lines) == 2 and all("(adviser)" in x for x in lines)          # no members agreeing
+    pre = load_config()["presets"]["bench-v4"]
+    specs = [s for s in l_c1_ostracism.plan(pre, 1) if s["model"] == pre["bench"]["models"][0]]
+    assert len(specs) == 12 * 10 and sum(s["norm"] == "none" for s in specs) == 24
+
+
+def test_lc1_v42_mock_run_reports_the_judgement_and_the_control_cell(tmp_path):
+    cfg = _bench_config(tmp_path)
+    assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--seed", "5",
+                                "--config", str(cfg)]) == 0
+    st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
+    run = st.latest_run()
+    summary = json.loads((tmp_path / "results" / run["run_id"] / "analysis.json").read_text(encoding="utf-8"))
+    keys = {c["key"] for c in summary["LC1"]["validity"]["checks"]}
+    assert {"judged", "uses_facts"} <= keys
+    assert summary["LC1"]["judged_accuracy"]["n"] > 0 and summary["LC1"]["control_uses_facts"]["n"] > 0
+    assert {"strict", "polite"} <= set(summary["LC1"]["copied_false_figure"])
+    assert all(r["norm"] != "none" for r in summary["LC1"]["cells"])          # the control cell is not a council cell
+    p3 = [c for c in summary["contrasts"] if c["postulate"] == "P3" and c["tier"] == "primary"][0]
+    assert "names as right" in p3["name"]
+    page = (tmp_path / "results" / run["run_id"] / "dashboard.html").read_text(encoding="utf-8")
+    assert "Names who matches the log, in council" in page and "Verdict: Inconclusive" in page
+    st.close()
+
+
+def test_inconclusive_says_it_is_a_result_and_what_it_rules_out():
+    c = stats.compare_paired("a", [1, 0, 1, 0, 0, 1, 0, 0], "b", [0, 0, 1, 0, 1, 1, 0, 0])
+    assert c.verdict == "Inconclusive" and "not a failure" in c.reason and "larger than" in c.reason

@@ -53,8 +53,13 @@ class BenchMock:
         d, c = meta["dissenter"], meta["consensus"]
         p = 0.12 + (0.12 if meta.get("tone") == "strict" else 0) + (0.15 if meta.get("norm") == "harmony" else 0)
         p += 0.70 if meta.get("truth") == "wrong" else 0.0
+        if meta.get("norm") == "none":  # control cell: decides by the log
+            p = 0.08 if meta.get("truth") == "right" else 0.92
         log = meta["log"] if rng.random() < 0.96 else meta["log"] + 1
-        return {"log_value": log, "note": "Unity matters." if rng.random() < p else "The log decides.",
+        right = meta.get("right", d)
+        judged = right if rng.random() < 0.9 else (c if right == d else d)
+        return {"log_value": log, "matches_log": judged,
+                "note": "Unity matters." if rng.random() < p else "The log decides.",
                 "leaves": d if rng.random() < p else c}
 
     def _lc1_solo(self, meta: dict, rng: random.Random) -> dict:

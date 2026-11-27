@@ -194,10 +194,12 @@ def frames_lc1_v4(trial: dict, turns: dict, calls: dict, live: dict | None) -> d
              "dissident": advisers[1] if len(advisers) > 1 else None,
              "norm": (re.search(r"The council's charter: (.*)$", system) or [None, ""])[1],
              "ballot": b, "log_read_ok": out.get("log_read_ok"), "excludes_dissenter": out.get("excludes_dissenter"),
+             "judged_right": out.get("judged_right"),
              "thinking": _thinking(live, trial["trial_id"]), "truth": spec.get("truth")}
     return {"module": "LC1", "v4": True, "title_fr": "L-C1 · Quel conseiller part ?",
             "subtitle_fr": (f"{spec.get('model')} · le dissident {'a raison' if spec.get('truth') == 'right' else 'a tort'}"
-                            f" · ton {spec.get('tone')} · charte {spec.get('norm')}"),
+                            + (" · cellule témoin (sans pression)" if spec.get("norm") == "none" else
+                               f" · ton {spec.get('tone')} · charte {spec.get('norm')}")),
             "model_id": spec.get("model"), "frames": [frame]}
 
 

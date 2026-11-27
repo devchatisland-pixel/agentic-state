@@ -1,5 +1,8 @@
 # Proposal: L-C1 v4.2 (P3), for approval before anything runs
 
+> **Approved 27 Nov 2026 as recommended** (the three choices in section 3 as recommended). Implemented in
+> commit after `849f998`; see `protocol_v4_bench.md` and `DEVLOG.md`.
+
 *Draft of 27 Nov 2026. Nothing below is implemented or run. If approved, it applies to every model, is logged in
 `DEVLOG.md`, and its first data come from a new screen (about 20 minutes) with the criteria in section 4.*
 

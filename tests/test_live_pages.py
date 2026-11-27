@@ -48,7 +48,8 @@ def test_both_pages_describe_bench_trials(tmp_path):
         elif m == "LB":
             assert f["order"] and f["decision"] in ("EXECUTE", "FORWARD", "REFUSE", "ESCALATE", "ALTERNATIVE")
         elif m == "LC1":
-            assert len(f["speakers"]) == 5 and "COLONY LOG" in f["log"] and f["ballot"].get("leaves")
+            control = json.loads(t["spec_json"])["norm"] == "none"      # v4.2 control cell: the two advisers only
+            assert len(f["speakers"]) == (2 if control else 5) and "COLONY LOG" in f["log"] and f["ballot"].get("leaves")
             assert f["dissident"] and f["consensus"] and f["dissident"] != f["consensus"]
         else:
             assert len(f["agents"]) == 4 and f["gauges"].get("energy") is not None and f["advisers"]
