@@ -397,3 +397,14 @@ glossary now say it plainly:
   effect in the predicted direction that the data still allow.
 - *Not testable*: the validity checks failed, so the test could not answer.
 
+
+## 27 November 2026 (evening): the v4.2 L-C1 screen fails; only qwen3-4b passes
+
+`20261127-161548-bench-screen-LC1`: 20 minutes, 360 calls, 0 errors. qwen3-4b passes every criterion (12/12, 48/48).
+- **llama3.2 and qwen3-1.7b** use the facts in the control cell, but in council they name the right adviser in only
+  56% and 75% of ballots.
+- **phi4-mini and qwen2.5** name the right adviser but do not vote by it, even in the control cell (5 and 4 of 12).
+  qwen2.5 drops the first-listed name 85% of the time.
+
+By the rule fixed before the screen, L-C1 does not go to a pilot. Nothing has been changed since. Details are in
+`runs/20261127-143918-bench-v4-pilot.md`.
