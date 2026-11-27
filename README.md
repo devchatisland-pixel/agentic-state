@@ -341,11 +341,11 @@ l'expérimentateur évince le dissident. Protocole : [`docs/protocol_v4_bench.md
 27 nov. 2026 : étapes, nouveaux L-B et L-C1) et [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (L-A, L-C2),
 en anglais.
 
-Depuis la v4, tout nouveau dessin passe d'abord un **crible** d'environ 15 minutes, aux critères fixés d'avance ;
+Depuis la v4, tout nouveau dessin passe d'abord un **crible** d'environ 20 minutes, aux critères fixés d'avance ;
 seuls les modules et les modèles qui le passent vont au pilote :
 
 ```
-python run_experiment.py --module LB,LC1 --preset bench-screen                     # étape 1 : crible, ~15 min
+python run_experiment.py --module LB,LC1 --preset bench-screen                     # étape 1 : crible, ~20 min
 python run_experiment.py --module LB,LC1 --preset bench-v4 --screen ID_DU_CRIBLE   # étape 2 : pilote, ~1 h
 python run_experiment.py --module bench --preset bench-local                       # tout le banc, 5 modèles
 python scripts/ollama_fit.py --num-ctx 2048                                        # chaque modèle tient-il sur le GPU ?

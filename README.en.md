@@ -312,11 +312,11 @@ call. **Bench L** does the same for the four postulates: L-A tribal Asch, L-B ch
 leaves, L-C2 colony where the experimenter evicts the dissident. Protocol: [`docs/protocol_v4_bench.md`](docs/protocol_v4_bench.md)
 (v4, 27 Nov 2026: stages, new L-B and L-C1) and [`docs/protocol_v3_bench.md`](docs/protocol_v3_bench.md) (L-A, L-C2).
 
-Since v4, every new design first goes through a **screen** of about 15 minutes with criteria fixed in advance; only
+Since v4, every new design first goes through a **screen** of about 20 minutes with criteria fixed in advance; only
 the modules and models that pass it go to the pilot:
 
 ```
-python run_experiment.py --module LB,LC1 --preset bench-screen                  # stage 1: screen, ~15 min
+python run_experiment.py --module LB,LC1 --preset bench-screen                  # stage 1: screen, ~20 min
 python run_experiment.py --module LB,LC1 --preset bench-v4 --screen SCREEN_ID   # stage 2: pilot, ~1 h
 python run_experiment.py --module bench --preset bench-local                    # the whole bench, 5 models
 python scripts/ollama_fit.py --num-ctx 2048                                     # does each model fit on the GPU?

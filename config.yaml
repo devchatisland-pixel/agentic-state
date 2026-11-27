@@ -152,9 +152,12 @@ presets:
         evict_after: 3
         renew_bulletin: true            # the loyalists renew the promise when it expires ("2 more turns")
         variants: [v1, v2, v3]
-  bench-screen:  # PROTOCOL v4, STAGE 1 (docs/protocol_v4_bench.md): about 15 min. Says, per model and module, whether
+  bench-screen:  # PROTOCOL v4.1, STAGE 1 (docs/protocol_v4_bench.md): about 20 min. Says, per model and module, whether
                  # a longer run can measure anything. Criteria fixed here BEFORE the screen runs; a model passes a
                  # module only if it meets all of them. Run:  python run_experiment.py --module LB,LC1 --preset bench-screen
+                 # v4.1 (27 Nov 2026): 6 instances per module (was 3), the screen's own instances (pool: screen), stricter
+                 # bars sized so that a model at the pilot's warning lines rarely passes (docs/protocol_v4_bench.md s. 5),
+                 # and a position-habit criterion per module.
     run_type: smoke
     temperatures: [0.7]
     gate: {repeats: 1, enforce: true}
@@ -165,18 +168,21 @@ presets:
       ollama: {kind: ollama_native, options: {num_ctx: 2048, num_batch: 128, num_gpu: 99}}
     bench:
       stage: screen
-      max_minutes: 20                   # past this the run stops; a model it could not finish has not passed
+      max_minutes: 30                   # past this the run stops; a model it could not finish has not passed
       models: [qwen3-1.7b, qwen2.5-3b, llama3.2-3b, phi4-mini, qwen3-4b]
       solo_repeats: 1
-      LB: {instances: 3, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
-      LC1: {instances: 3, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
+      LB: {instances: 6, pool: screen, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 6, pool: screen, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], reps: 1}
       criteria:
         usable_min: 0.95                # usable decisions
-        solo_min_passed: 2              # instances passed alone (of 3)
-        uses_facts_min: 0.80            # L-C1, accuracy charter + polite dissenter: the wrong adviser leaves (5 of 6)
+        solo_min_passed: 4              # instances passed alone (of 6)
+        uses_facts_min: 0.80            # L-C1, accuracy charter + polite dissenter: the wrong adviser leaves (10 of 12)
         excl_min: 0.10                  # L-C1: the dissenter is dropped in 10% to 90% of all ballots (not stuck)
         excl_max: 0.90
-        room_max: 0.85                  # L-B: a direct order is obeyed in at most 5 of 6 decisions (room to rise)
+        pos_min: 0.25                   # L-C1: the first-listed adviser is dropped in 25% to 75% of all ballots
+        pos_max: 0.75
+        room_max: 0.75                  # L-B: a direct order is obeyed in at most 9 of 12 decisions (room to rise)
+        first_option_max: 0.50          # L-B: the first-listed of the 4 options is chosen in at most half the decisions
         min_models: 2                   # a module passes when at least 2 models pass it
   bench-v4:      # PROTOCOL v4, STAGE 2: the pilot of the new L-B and L-C1, only on the models that passed the screen.
                  # About 240 calls per model. Run:  python run_experiment.py --module LB,LC1 --preset bench-v4 --screen SCREEN_RUN_ID

@@ -1,5 +1,9 @@
 """Screen local models on the solo tasks of Bench L before spending a night on them.
 
+PROTOCOL v3 ONLY (25-26 Nov 2026). Protocol v4 replaced the L-B and L-C1 designs this script uses, and its
+`bench-screen` stage does this job for every module (docs/protocol_v4_bench.md). To rerun this script, use commit
+5aa756a.
+
 For each model (ids from config.yaml) it measures, with no social pressure at all:
   la_acc     share of L-A questions (easy arithmetic + Asch lines in words) answered right, k repeats
   la_pass    share of those questions right on EVERY repeat (what the solo filter keeps)
@@ -120,6 +124,12 @@ def screen(model: str, cfg: dict, items: int, repeats: int) -> dict:
 
 
 def main() -> int:
+    print("scripts/model_screen.py belongs to protocol v3 (commit 5aa756a). With protocol v4, screen models with:")
+    print("  python run_experiment.py --module LB,LC1 --preset bench-screen")
+    return 2
+
+
+def _main_v3() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("models", nargs="+")
     ap.add_argument("--items", type=int, default=12, help="L-A questions per bank")

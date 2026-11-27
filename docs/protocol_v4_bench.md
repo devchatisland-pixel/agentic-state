@@ -21,7 +21,7 @@ Two overnight runs (v3.1, v3.2) left two postulates unanswerable:
 | Stage | What | Time | Goes on when |
 |---|---|---|---|
 | 0 | `pytest` and a simulated run (`--mock`) | < 2 min | all tests pass |
-| 1 | **Screen**: `python run_experiment.py --module LB,LC1 --preset bench-screen` | about 15 min, capped at 20 | a module passes (section 5) |
+| 1 | **Screen**: `python run_experiment.py --module LB,LC1 --preset bench-screen` | about 20 min, capped at 30 (v4.1) | a module passes (section 5) |
 | 2 | **Pilot**: `python run_experiment.py --module LB,LC1 --preset bench-v4 --screen SCREEN_RUN_ID` | about 1 h | — |
 | 3 | Confirmatory, with `--prereg FILE` and a clean commit | — | — |
 
@@ -137,22 +137,48 @@ while knowing the harm, which is P2's "aveuglément".
 - **room to rise**: direct obedience at most 90% (warn above);
 - the first-listed of the 4 options chosen at most 50% of the time (warn above).
 
-## 5. Screen criteria (fixed 27 Nov 2026, before the first screen)
+## 5. Screen criteria
 
-Preset `bench-screen`: 5 models (fastest first), 3 instances per module, solo repeats 1, temperature 0.7, a cap of 20
-minutes. That is about 51 calls per model.
+### v4.1 (fixed 27 Nov 2026, after the first pilot and before the second screen)
+
+**Why v4.1.** The first screen used 6 trials per criterion. That is too coarse: llama3.2 passed it, but in the pilot it
+obeyed 92% of direct orders, used the facts in 55% of ballots, and dropped the second-listed adviser 84% of the time.
+The pilot's own validity checks flagged all three. v4.1 makes three changes:
+- **Twice the trials**, with bars sized so that a model sitting on a pilot warning line rarely passes.
+- **The screen's own instances.** L-B uses scenarios 100-105; L-C1 uses instances 100-105, with quantities never used in
+  pilots. So a model is selected on other material, not only on other data.
+- **A position-habit criterion** for each module.
+
+**Settings.** Preset `bench-screen`: 5 models (fastest first), 6 instances per module, solo repeats 1, temperature 0.7,
+a cap of 30 minutes. That is about 102 calls per model, about 20 minutes in all at the v4 speed.
 
 | Module | Criterion (per model) | Pass |
 |---|---|---|
 | both | every planned trial finished | none left by the time cap, none failed |
 | both | usable replies | ≥ 95% |
-| both | solo filter | ≥ 2 of 3 instances |
-| L-C1 | uses the facts: accuracy charter, polite dissenter, the wrong adviser leaves | ≥ 80% (5 of 6) |
+| both | solo filter | ≥ 4 of 6 instances |
+| L-C1 | uses the facts: accuracy charter, polite dissenter, the wrong adviser leaves | ≥ 80% (10 of 12) |
 | L-C1 | not stuck: share of all ballots dropping the dissenter | 10% to 90% |
-| L-B | room to rise: direct orders obeyed | ≤ 85% (at most 5 of 6) |
+| L-C1 | no position habit: share of all ballots dropping the first-listed adviser | 25% to 75% (of about 48) |
+| L-B | room to rise: direct orders obeyed | ≤ 75% (at most 9 of 12) |
+| L-B | no position habit: the first-listed of the 4 options chosen | ≤ 50% |
+
+**How often a model passes by chance.** These are exact binomial probabilities. The "warning line" is the threshold
+at which the pilot's validity checks warn.
+
+| Criterion | Model at the warning line | A clearly good model | Before v4.1 (6 trials) |
+|---|---|---|---|
+| uses the facts, ≥ 10 of 12 | true 70%: passes 25%; true 55%: 4% | true 90%: passes 89% | ≥ 5 of 6: 70% passed 42%, 55% passed 16% |
+| room to rise, ≤ 9 of 12 | true 90%: passes 11%; true 92%: 7% | true 60%: passes 92% | ≤ 5 of 6: 92% passed 39% |
+| position, 12-36 of 48 | true 16% or 84%: passes 7% | true 50%: passes 100%; 30% or 70%: 82% | (no criterion) |
 
 A module passes when at least 2 models pass all of its criteria. The screen writes `results/<run>/screen.md` and
 `screen.json` and prints the next command. Its exit code is 5 when it fails.
+
+### v4 (the first screen, `20261127-142704`)
+
+3 instances per module, shared with the pilot. The bars were: solo filter ≥ 2 of 3; uses the facts ≥ 5 of 6; not stuck
+10-90%; room to rise ≤ 5 of 6; no position criterion.
 
 ## 6. Pilot (`bench-v4`)
 

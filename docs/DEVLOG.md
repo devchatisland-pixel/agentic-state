@@ -326,3 +326,30 @@ the screen and the pilot.
 - **What the pilot showed about the screen:** the 6-trial criteria let llama3.2 through, but in the pilot it obeys
   direct orders 92% of the time in L-B and drops the second-listed adviser 84% of the time in L-C1. A larger screen,
   or the pilot's own checks, would catch this. Nothing has been changed for it yet.
+
+## 27 November 2026 (evening): v4.1, a bigger screen with its own instances
+
+**Decision (the user):** enlarge the screen before anything else. Its criteria passed llama3.2, which the pilot then
+flagged in both modules:
+- L-B: it obeyed 92% of direct orders, so the chain had no room;
+- L-C1: it used the facts in only 55% of ballots and dropped the second-listed adviser 84% of the time.
+
+**Changes (all models, before the v4.1 screen runs; details and probabilities in `protocol_v4_bench.md`, section 5):**
+- 6 instances per module instead of 3: about 102 calls per model, about 20 minutes, with a cap of 30.
+- **The screen's own instances.** L-B scenarios 100-105; L-C1 instances 100-105, with six new quantities. Pilot
+  instances are unchanged. A model is therefore selected on other material, not only on other data.
+- **Bars sized by exact binomial probability:**
+  - uses the facts ≥ 10 of 12: a model at the pilot's 70% warning line passes 25% of the time (was 42%), one at 55%
+    passes 4% (was 16%);
+  - room to rise ≤ 9 of 12: a model obeying 92% of direct orders passes 7% of the time (was 39%);
+  - solo filter ≥ 4 of 6.
+- **New position criteria:**
+  - L-C1: the first-listed adviser is dropped in 25-75% of ballots;
+  - L-B: the first-listed option is chosen in at most 50% of decisions.
+- **Why this is not outcome-driven:**
+  - The bars are set at the pilot's own validity warning lines, which were fixed before the pilot.
+  - They concern validity (room, use of the facts, position), never the P2 or P3 contrasts.
+  - They apply to every model. A model that failed the pilot's checks can pass the new screen, and the other way
+    round.
+- `scripts/model_screen.py` (protocol v3) now only prints that the v4 screen replaces it.
+

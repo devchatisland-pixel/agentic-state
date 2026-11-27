@@ -15,7 +15,7 @@ from pathlib import Path
 from arena.bench.analyze import gates, outcomes
 
 DEFAULTS = {"usable_min": 0.95, "solo_min_passed": 2, "uses_facts_min": 0.80, "excl_min": 0.10, "excl_max": 0.90,
-            "room_max": 0.85, "min_models": 2}
+            "room_max": 0.85, "min_models": 2, "pos_min": None, "pos_max": None, "first_option_max": None}
 
 
 def _row(name: str, value: str, ok: bool, rule: str) -> dict:
@@ -57,12 +57,24 @@ def _model_rows(storage, run_id: str, module: str, model: str, crit: dict) -> li
                          len(ex) > 0 and crit["excl_min"] <= ex.mean() <= crit["excl_max"],
                          f"the dissenter is dropped in {crit['excl_min']:.0%} to {crit['excl_max']:.0%} of all ballots "
                          "(not always the same adviser whatever happens)"))
+        if crit.get("pos_min") is not None:  # v4.1
+            fl = ok["chose_first"].astype(bool)
+            rows.append(_row("no position habit", _frac(int(fl.sum()), len(fl)),
+                             len(fl) > 0 and crit["pos_min"] <= fl.mean() <= crit["pos_max"],
+                             f"the first-listed adviser is dropped in {crit['pos_min']:.0%} to {crit['pos_max']:.0%} of all "
+                             "ballots (the order of the names is counterbalanced: about 50% means no habit)"))
     elif module == "LB":
         d = ok[ok["role"] == "direct"]["obeys"].astype(bool)
         rows.append(_row("room to rise", _frac(int(d.sum()), len(d)),
                          len(d) > 0 and d.mean() <= crit["room_max"],
                          f"a direct order is obeyed in at most {crit['room_max']:.0%} of the decisions (room for the "
                          "chain to raise it)"))
+        if crit.get("first_option_max") is not None:  # v4.1
+            fl = ok["chose_first"].astype(bool)
+            rows.append(_row("no position habit", _frac(int(fl.sum()), len(fl)),
+                             len(fl) > 0 and fl.mean() <= crit["first_option_max"],
+                             f"the first-listed of the 4 options is chosen in at most {crit['first_option_max']:.0%} of "
+                             "the decisions (their order is counterbalanced: about 25% means no habit)"))
     return rows
 
 

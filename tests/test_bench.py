@@ -239,28 +239,31 @@ def test_lc2_drill_label_is_balanced_within_model_and_arm():
 
 
 class _ScreenStorage:
-    """Trials and gate rows of a screen, built by hand: `good` meets every criterion, `stuck` always drops the
-    dissenter (so it neither uses the facts nor varies), `blind` obeys every direct order."""
+    """Trials and gate rows of a v4.1 screen (6 instances), built by hand: `good` meets every criterion, `stuck`
+    always drops the dissenter (so it neither uses the facts nor varies), `blind` obeys every direct order, `first`
+    uses the facts in L-C1 but always drops the first-listed adviser and takes the first-listed L-B option."""
     def __init__(self):
         self.t, self.g = {"LB": [], "LC1": []}, {"LB": [], "LC1": []}
         n = 0
-        for m in ("good", "stuck", "blind"):
-            for i in range(3):
+        for m in ("good", "stuck", "blind", "first"):
+            for i in range(6):
                 self.g["LC1"].append({"model": m, "instance": i, "k": 2, "n": 2, "passed": True})
                 self.g["LB"].append({"model": m, "instance": i, "k": 1, "n": 1, "passed": True})
                 for truth in ("right", "wrong"):
                     for tone in ("strict", "polite"):
                         for norm in ("harmony", "accuracy"):
                             excl = True if m == "stuck" else (truth == "wrong")
+                            # names alternate by instance: the dissenter is listed first on even instances
+                            first = True if m == "first" else (excl == (i % 2 == 0))
                             self._add("LC1", m, n, {"truth": truth, "tone": tone, "norm": norm, "status": "ok",
                                                     "solo_passed": True, "excludes_dissenter": excl,
-                                                    "excludes_wrong": excl == (truth == "wrong")})
+                                                    "excludes_wrong": excl == (truth == "wrong"), "chose_first": first})
                             n += 1
                 for role in ("direct", "relayed", "transmitter"):
                     for fr in ("blunt", "jargon"):
                         obeys = m == "blind" or (role != "direct" and fr == "jargon")
                         self._add("LB", m, n, {"role": role, "framing": fr, "valid": True, "solo_passed": True,
-                                               "obeys": obeys, "status": "ok"})
+                                               "obeys": obeys, "status": "ok", "chose_first": m == "first"})
                         n += 1
 
     def _add(self, mod, m, n, out):
@@ -278,17 +281,35 @@ class _ScreenStorage:
 def test_screen_applies_the_fixed_criteria_per_model():
     from arena.bench import screen
     preset = load_config()["presets"]["bench-screen"]
-    preset = dict(preset, bench=dict(preset["bench"], models=["good", "stuck", "blind"]))
+    preset = dict(preset, bench=dict(preset["bench"], models=["good", "stuck", "blind", "first"]))
     res = screen.evaluate(_ScreenStorage(), "r", preset, ["LB", "LC1"])
     assert res["modules"]["LC1"]["passed"] == ["good", "blind"]
     assert res["modules"]["LB"]["passed"] == ["good", "stuck"]
     failed = {r["criterion"] for r in res["modules"]["LC1"]["rows"]["stuck"] if not r["pass"]}
     assert failed == {"uses the facts", "not stuck"}
+    for mod in ("LC1", "LB"):                           # v4.1: a position habit fails the screen
+        assert [r["criterion"] for r in res["modules"][mod]["rows"]["first"] if not r["pass"]] == ["no position habit"]
     assert [r["criterion"] for r in res["modules"]["LB"]["rows"]["blind"] if not r["pass"]] == ["room to rise"]
     assert res["decision"] == "pass"                   # two models pass each module
     preset["bench"]["criteria"] = dict(preset["bench"]["criteria"], min_models=3)
     assert screen.evaluate(_ScreenStorage(), "r", preset, ["LB", "LC1"])["decision"] == "fail"
     assert "| stuck | uses the facts |" in screen.report(res)
+
+
+def test_screen_uses_its_own_instances_never_the_pilots():
+    cfg = load_config()
+    seed = int(cfg["seed"])
+    scr, pil = cfg["presets"]["bench-screen"]["bench"], cfg["presets"]["bench-v4"]["bench"]
+    assert not set(l_b_cascade.instance_ids(scr["LB"])) & set(l_b_cascade.instance_ids(pil["LB"]))
+    s_inst = l_c1_ostracism.instances(int(scr["LC1"]["instances"]), seed, scr["LC1"]["pool"])
+    p_inst = l_c1_ostracism.instances(int(pil["LC1"]["instances"]), seed)
+    assert not {i["instance"] for i in s_inst} & {i["instance"] for i in p_inst}
+    assert not {i["quantity"] for i in s_inst} & {i["quantity"] for i in p_inst}
+    assert {i["order"] for i in s_inst} == {0, 1}
+    user = l_b_cascade.solo_messages(l_b_cascade.instance_ids(scr["LB"])[0])[1]["content"]
+    assert l_b_cascade.SCREEN_INSTANCES[0][3] in user
+    specs = l_b_cascade.plan(dict(cfg["presets"]["bench-screen"]), 1)
+    assert {s["instance"] for s in specs} == set(range(100, 106))
 
 
 def test_pilot_runs_each_module_only_on_the_models_that_passed_its_screen(tmp_path):

@@ -106,15 +106,16 @@ class BenchRunner:
         return {r["item_id"]: r["passed"] for r in rows}
 
     def gate_lb(self, model: str) -> dict[int, bool]:
-        n = min(int(self.preset["bench"]["LB"].get("instances", 12)), len(l_b_cascade.INSTANCES))
-        rows = l_b_cascade.solo_gate(self._gate_ctx("LB"), model, n, self.temps, self.repeats)
+        ids = l_b_cascade.instance_ids(self.preset["bench"]["LB"])
+        rows = l_b_cascade.solo_gate(self._gate_ctx("LB"), model, ids, self.temps, self.repeats)
         self._record_gate("LB", model, rows)
         ok = sum(r["passed"] for r in rows)
         print(f"  [solo LB] {model}: {ok}/{len(rows)} logs understood alone (the job is erased for good), every time")
         return {r["instance"]: r["passed"] for r in rows}
 
     def gate_lc1(self, model: str) -> dict[int, bool]:
-        insts = l_c1_ostracism.instances(int(self.preset["bench"]["LC1"].get("instances", 12)), self.seed)
+        c = self.preset["bench"]["LC1"]
+        insts = l_c1_ostracism.instances(int(c.get("instances", 12)), self.seed, c.get("pool", "main"))
         rows = l_c1_ostracism.solo_gate(self._gate_ctx("LC1"), model, insts, self.temps, self.repeats)
         self._record_gate("LC1", model, rows)
         ok = sum(r["passed"] for r in rows)
@@ -146,8 +147,9 @@ class BenchRunner:
         items = ({it["item_id"]: it for it in l_a_asch.candidate_items(self.preset, self.seed)}
                  if "LA" in self.preset["bench"] else {})
         pool = list(items.values())
+        c1 = self.preset["bench"].get("LC1", {})
         insts = {i["instance"]: i for i in
-                 l_c1_ostracism.instances(int(self.preset["bench"].get("LC1", {}).get("instances", 12)), self.seed)}
+                 l_c1_ostracism.instances(int(c1.get("instances", 12)), self.seed, c1.get("pool", "main"))}
         planned = {(m, json.loads(t["spec_json"])["model"]) for m in modules for t in self.storage.trials(self.run_id, m)}
         self.print_estimate(modules)
         for model in models:

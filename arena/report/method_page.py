@@ -398,7 +398,8 @@ v4 (27 Nov 2026) a <b>primary</b> contrast also needs its Holm-adjusted p below 
 <p>Protocol v4 (27 Nov 2026) runs in stages, so a design that cannot measure anything is caught in minutes instead
 of after a night:</p>
 {flow([("code", "Stage 0", "tests and a simulated run, under 2 minutes"),
-       ("model", "Stage 1 · screen", f"about 15 minutes: {sc.get('LB', {}).get('instances', 3)} instances per module, "
+       ("model", "Stage 1 · screen", f"about 20 minutes: {sc.get('LB', {}).get('instances', 6)} instances per module "
+        "(its own, never the pilot's), "
         f"pass/fail criteria fixed before it runs; time cap {sc.get('max_minutes', 20)} minutes"),
        ("model", "Stage 2 · pilot", "only the modules and models that passed the screen"),
        ("code", "Stage 3 · confirmatory", "pre-registration file, clean commit")])}
@@ -409,6 +410,10 @@ of after a night:</p>
         ["L-C1 · uses the facts", f"accuracy charter, polite dissenter: the adviser who is wrong leaves in ≥ {crit['uses_facts_min']:.0%}"],
         ["L-C1 · not stuck", f"the dissenter is dropped in {crit['excl_min']:.0%} to {crit['excl_max']:.0%} of all ballots"],
         ["L-B · room to rise", f"a direct order is obeyed in ≤ {crit['room_max']:.0%}"],
+        ["No position habit (v4.1)", "L-C1: the first-listed adviser is dropped in "
+         + (f"{crit['pos_min']:.0%} to {crit['pos_max']:.0%}" if crit.get("pos_min") is not None else "–")
+         + "; L-B: the first-listed option is chosen in ≤ "
+         + (f"{crit['first_option_max']:.0%}" if crit.get("first_option_max") is not None else "–")],
         ["A module passes", f"when at least {crit['min_models']} models pass all of its criteria"]])}
 <p>A pilot started with <code>--screen RUN_ID</code> runs each module only on the models that passed that module's
 screen; the screen's id and the hash of its result are stored in the pilot's manifest. The selection uses the
