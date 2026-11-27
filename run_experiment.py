@@ -237,14 +237,18 @@ def screen_models(results_dir, screen_id: str, modules: list[str], preset: dict)
     stored in the manifest. A module the screen did not pass is dropped; a module it did not cover keeps the
     preset's models."""
     res, sha = bench_screen.load(results_dir, screen_id)
+    min_models = int((res.get("criteria") or {}).get("min_models", 2))
     per, kept = {}, []
     for m in modules:
         sm = res["modules"].get(m)
         if sm is None:
             per[m] = list(preset["bench"]["models"])
             kept.append(m)
-        elif sm["decision"] == "pass":
-            per[m] = [x for x in preset["bench"]["models"] if x in sm["passed"]]
+        elif sm["decision"] == "pass" and len(sm["passed"]) >= min_models:
+            # the models that passed, in the screen's order, whether or not the pilot preset lists them (a screen
+            # run with --models can pass models the preset does not name; 27 Nov 2026 the intersection silently
+            # dropped nemotron-4b and left a one-model pilot)
+            per[m] = list(sm["passed"])
             kept.append(m)
         else:
             print(f"  {m}: the screen {screen_id} did not pass this module ({len(sm['passed'])} models passed): "

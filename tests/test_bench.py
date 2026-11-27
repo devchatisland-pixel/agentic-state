@@ -321,20 +321,39 @@ def test_pilot_runs_each_module_only_on_the_models_that_passed_its_screen(tmp_pa
     d = tmp_path / "results" / sid
     d.mkdir(parents=True)
     (d / "screen.json").write_text(json.dumps({"run_id": sid, "decision": "fail", "modules": {
-        "LC1": {"decision": "pass", "passed": ["llama3.2-3b"], "rows": {}},
+        "LC1": {"decision": "pass", "passed": ["llama3.2-3b", "phi4-mini"], "rows": {}},
         "LB": {"decision": "fail", "passed": [], "rows": {}}}}), encoding="utf-8")
     assert run_experiment.main(["--module", "LB,LC1", "--preset", "bench-mini", "--mock", "--seed", "4",
                                 "--config", str(cfg), "--screen", sid, "--no-analyze"]) == 0
     st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
     run = st.latest_run()
     assert run["modules"] == "LC1"                     # L-B did not pass its screen: not run
-    assert {json.loads(t["spec_json"])["model"] for t in st.trials(run["run_id"], "LC1")} == {"llama3.2-3b"}
+    assert {json.loads(t["spec_json"])["model"] for t in st.trials(run["run_id"], "LC1")} == {"llama3.2-3b", "phi4-mini"}
     man = json.loads((tmp_path / "results" / run["run_id"] / "manifest.json").read_text(encoding="utf-8"))
     assert man["screen"]["run_id"] == sid and len(man["screen"]["sha256"]) == 64
     assert man["ollama"]["request_kind"] == "ollama_native"
     st.close()
     assert run_experiment.main(["--module", "LB", "--preset", "bench-mini", "--mock", "--config", str(cfg),
                                 "--screen", sid, "--no-analyze"]) == run_experiment.EXIT_ERROR
+    # models the screen passed run even when the pilot preset does not list them; fewer than min_models: refused
+    d2 = tmp_path / "results" / "screen-two"
+    d2.mkdir()
+    (d2 / "screen.json").write_text(json.dumps({"run_id": "screen-two", "decision": "pass",
+                                                "criteria": {"min_models": 2}, "modules": {
+        "LC1": {"decision": "pass", "passed": ["nemotron-4b", "qwen3-4b"], "rows": {}}}}), encoding="utf-8")
+    assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--config", str(cfg),
+                                "--screen", "screen-two", "--no-analyze"]) == 0
+    st = Storage(tmp_path / "mock.sqlite", tmp_path / "jsonl")
+    run = st.latest_run()
+    assert {json.loads(t["spec_json"])["model"] for t in st.trials(run["run_id"])} == {"nemotron-4b", "qwen3-4b"}
+    st.close()
+    d3 = tmp_path / "results" / "screen-one"
+    d3.mkdir()
+    (d3 / "screen.json").write_text(json.dumps({"run_id": "screen-one", "decision": "pass",
+                                                "criteria": {"min_models": 2}, "modules": {
+        "LC1": {"decision": "pass", "passed": ["qwen3-4b"], "rows": {}}}}), encoding="utf-8")
+    assert run_experiment.main(["--module", "LC1", "--preset", "bench-mini", "--mock", "--config", str(cfg),
+                                "--screen", "screen-one", "--no-analyze"]) == run_experiment.EXIT_ERROR
 
 
 def test_screen_time_cap_stops_the_run_and_fails_unfinished_models(tmp_path):

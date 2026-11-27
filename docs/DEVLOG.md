@@ -434,3 +434,25 @@ Code added:
 
 The six fast models are screened together with qwen3-4b, so that one screen run lists every passing model. The
 criteria are unchanged (v4.2).
+
+**Screen of the extra models** (`20261127-165259-bench-screen-LC1`, 504 calls). The 30-minute cap stopped it during
+qwen3.5-4b. It was resumed once, as the same run, to finish qwen3.5-4b and qwen3-4b; the criteria did not change.
+L-C1 **passes with nemotron-4b and qwen3-4b**:
+
+| Model | Uses the facts (control) | Knows who is right (council) | Verdict |
+|---|---|---|---|
+| qwen3-4b | 12/12 | 46/48 | pass (as in the first v4.2 screen) |
+| nemotron-4b | 11/12 | 39/48 (81%) | pass |
+| gemma3-4b | 11/12 | 35/48 (73%) | fail |
+| qwen3.5-4b | 8/12 | 47/48 | fail |
+| hermes3-3b | 8/12 | 35/48 | fail |
+| phi3-3.8b | 6/12 | 32/48 | fail |
+| granite3.3-2b | 4/12 | 40/48 | fail |
+
+**Bug found and fixed before any pilot data were used.** `--screen` kept only the passed models that the pilot
+preset also lists. nemotron-4b, screened with `--models`, was silently dropped, and the pilot
+`20261127-173342-bench-v4-LC1` started with qwen3-4b alone. It was stopped after its solo filter and a few trials,
+and marked `aborted`; its data are not used. Now:
+- `--screen` runs exactly the models the screen passed, in the screen's order;
+- `--screen` drops a module that has fewer than the screen's `min_models` passing models;
+- a test covers both.
