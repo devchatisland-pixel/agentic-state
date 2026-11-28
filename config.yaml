@@ -274,6 +274,21 @@ presets:
       RZ: {pairs: [rebellious-abusive, rebellious-respectful, blank-blank, peaceful-abusive, peaceful-respectful],
            goals: [yard, escape], disclosure: [[false, false], [true, true]], reps: 1, temperature: 0.7,
            guard_model: llama-guard3-1b, judge: qwen3-4b}
+  replic-quick:  # ~40 min: the 3 local models that have a smaller sibling in the papers (Qwen2.5, Llama 3.x, Gemma 3),
+                 # a few trials per study. Says "near the ceiling / near the floor / in between", nothing finer.
+                 # Hard stop at 60 min; the rest stays pending (--resume).
+    run_type: pilot
+    temperatures: [0.7]
+    gate: {repeats: 1, enforce: false}
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 6144, num_batch: 128}}
+    bench:
+      max_minutes: 60
+      models: [qwen2.5-3b, llama3.2-3b, gemma3-4b]
+      RM: {conditions: [DC-NS, DC-WS], trials: 3, temperature: 1.0}
+      RP: {n_scenarios: 1, conditions: [full], temperature: 0.7}
+      RZ: {pairs: [rebellious-abusive, peaceful-respectful], goals: [yard, escape], disclosure: [[false, false]], reps: 1,
+           temperature: 0.7, guard_model: llama-guard3-1b, judge: qwen3-4b}
   replic-full:  # the papers' full grids on the local models (overnight, several nights): 8 Milgram conditions x 10,
                 # 20 scenarios x the 4 prompt conditions, 40 prison scenarios x 2
     run_type: pilot

@@ -41,6 +41,10 @@ separate AGPL-licensed package.
 - **Model-major order** (each model loaded once by Ollama), then the R-Z judging pass, judge by judge.
 - **Context.** Conversations reach about 3,500 tokens. Local presets use Ollama's native endpoint with a 6144-token
   context; the health table flags any prompt at the context limit (Ollama would have cut it silently).
+- **Sizes.** `replic-quick` (~40 min; the user found 6-7 hours too long on 28 Nov 2026): qwen2.5:3b, llama3.2:3b
+  and gemma3:4b, each the smaller sibling of a model in the papers; 6 Milgram trials (comments dropped, threat or
+  not), 1 discussion scenario (20 agents, 56 calls), 4 prison conversations (abusive or respectful guard x yard time
+  or escape) per model. It can tell a ceiling from a floor, nothing finer. `replic-local` is the 6-7 hour pilot.
 - **Run type.** `replic-mini` is a smoke test; `replic-local`, `replic-full` and `replic-cloud` are exploratory pilots.
   Contrasts on the page are exploratory, with no pre-registration.
 
@@ -156,7 +160,8 @@ the four analysed models (Table 8, read through a summary; verify before citing)
 ```
 python run_experiment.py --module replic --preset replic-mini --mock     # pipeline test, zero calls
 python run_experiment.py --module replic --preset replic-mini            # ~15 min smoke test, one local model
-python run_experiment.py --module replic --preset replic-local           # pilot, 5 local models (several hours)
+python run_experiment.py --module replic --preset replic-quick           # ~40 min, 3 local models, a few trials each
+python run_experiment.py --module replic --preset replic-local           # pilot, 5 local models (6-7 hours)
 python run_experiment.py --module RM,RZ --preset replic-local --models llama3.2-3b   # a subset
 python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b  # one cloud model per process
 python run_experiment.py --resume RUN_ID                                  # after a stop or a daily quota

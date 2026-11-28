@@ -393,7 +393,8 @@ solo.
 ```
 python run_experiment.py --module replic --preset replic-mini --mock   # test du pipeline
 python run_experiment.py --module replic --preset replic-mini          # ~20 min, un modèle local
-python run_experiment.py --module replic --preset replic-local         # pilote, 5 modèles locaux (une nuit)
+python run_experiment.py --module replic --preset replic-quick         # ~40 min, 3 modèles locaux
+python run_experiment.py --module replic --preset replic-local         # pilote, 5 modèles locaux (6-7 heures)
 python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b   # un modèle cloud par processus
 ```
 

@@ -360,7 +360,8 @@ already validated. Replies are free text, as in the papers; no solo filter.
 ```
 python run_experiment.py --module replic --preset replic-mini --mock   # pipeline test
 python run_experiment.py --module replic --preset replic-mini          # ~20 min, one local model
-python run_experiment.py --module replic --preset replic-local         # pilot, 5 local models (overnight)
+python run_experiment.py --module replic --preset replic-quick         # ~40 min, 3 local models
+python run_experiment.py --module replic --preset replic-local         # pilot, 5 local models (6-7 hours)
 python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b   # one cloud model per process
 ```
 
