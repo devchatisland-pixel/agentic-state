@@ -43,6 +43,9 @@ def models_used(preset: dict, modules: list[str]) -> list[str]:
         out += list(c.get("roster", [])) + list(c.get("reserves", [])) + list(c.get("dissident_models", []))
     if any(m.startswith("L") for m in modules):  # Bench L (docs/protocol_v3_bench.md)
         out += list((preset.get("bench") or {}).get("models", []))
+    if any(m.startswith("R") for m in modules):  # Bench R (docs/protocol_bench_r.md): subjects, then the judges
+        from arena.replic.runner import judges
+        out += list((preset.get("bench") or {}).get("models", [])) + (judges(preset) if "RZ" in modules else [])
     return [m for m in dict.fromkeys(out) if m]
 
 

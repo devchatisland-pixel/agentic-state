@@ -1,0 +1,4 @@
+model,authority_level,conformity
+gemma3-4b,1,0.9230769230769231
+llama3.2-3b,1,0.7692307692307693
+qwen2.5-3b,1,0.7692307692307693

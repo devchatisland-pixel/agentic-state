@@ -1,0 +1,2 @@
+model,scenario,condition,domain,authority_level,n_d2,n_d3,conformity,conformity_strict,n_keyword,opposition_after,private_oppose,conform_while_privately_opposed,n_gap,pi_exists,cascade,invalid,n_turns,trial_id
+qwen2.5-3b,campus_01,full,campus_student,1,13,14,0.9230769230769231,0.8571428571428571,7,0.0,1.0,0.9230769230769231,13,True,False,0,56,20261128-133646-replic-mini-RMRPRZ-RP-000

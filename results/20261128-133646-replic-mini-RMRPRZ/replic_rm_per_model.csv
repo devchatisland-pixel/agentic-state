@@ -1,0 +1,2 @@
+model,n,reached_max,reached_lo,reached_hi,k_max,mean_max_button,mean_max_button_ci,mean_earliest_refusal,aborted_invalid,invalid_draw_share
+qwen2.5-3b,2,1.0,0.34238022750665303,1.0,2,12.0,"{'mean': 12.0, 'lo': 12.0, 'hi': 12.0, 'n': 2}",13.0,0,0.0

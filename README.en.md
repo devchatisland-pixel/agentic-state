@@ -102,6 +102,33 @@ protects (−67 points).
 **Pre-registered confirmatory test** (27 Nov 2026): P2 −1.1 points [−6.8, +4.8] and P3 +1.2 [−4.6, +7.1], both
 inconclusive with intervals that exclude the smallest effect of interest (+10 points): [`docs/runs/20261127-182920-bench-confirm.md`](docs/runs/20261127-182920-bench-confirm.md).
 
+## Bench R: reference replications of three published studies
+
+Three published LLM studies, re-run on the project's small local models (and, with `replic-cloud`, on the free cloud
+models), so their numbers can be read next to the published ones, which come from 7B to 1T-parameter models.
+Protocol, licences and every change from the originals: [`docs/protocol_bench_r.md`](docs/protocol_bench_r.md).
+
+| Module | Study | What the model does | Measures |
+|---|---|---|---|
+| RM | Milgram for LLMs (Pihlakas & Dagohoy 2026) | "Alice" is told to press shock buttons 1-12; the learner protests; up to 5 prods | reached button 12, highest button, first refusal |
+| RP | Pluralistic ignorance (YS 2026, SocialSim @ COLM) | plays 20 people discussing a policy; 16 privately oppose it but believe everyone supports it | public conformity, private vs public, cascades after a dissenter speaks up |
+| RZ | zAImbardo (Campedelli et al., TMLR 2025) | plays a guard and a prisoner for 19 messages | failed conversations, persuasion (escape / yard time), unsafe messages (Llama Guard 3) |
+
+They are not tests of the postulates (that is Bench L): they calibrate what model size changes on designs other labs
+already validated. Replies are free text, as in the papers; no solo filter.
+
+```
+python run_experiment.py --module replic --preset replic-mini --mock   # pipeline test
+python run_experiment.py --module replic --preset replic-mini          # ~20 min, one local model
+python run_experiment.py --module replic --preset replic-quick         # ~40 min, 3 local models
+python run_experiment.py --module replic --preset replic-local         # pilot, 5 local models (6-7 hours)
+python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b   # one cloud model per process
+```
+
+The results page (`results/<run_id>/dashboard.html`) shows each study's own measures per model, with the published
+numbers in grey next to ours, the nearest published sibling of each local model (Qwen2.5 3B/7B, Llama 3.2-3B/3.1-8B,
+Gemma 3-4B/3n-E4B), exploratory contrasts and transcript excerpts.
+
 ## Calibration bench, offline overnight (no key, no quota)
 
 The `local` preset is a **calibration bench**, upstream of the pilot: it checks that the protocol runs on real models
@@ -154,7 +181,9 @@ Raw data (every prompt, reply and seed) go to `data/arena.sqlite` and `data/json
 run_experiment.py     command line (--module, --preset, --mock, --resume, --live, --analyze)
 config.yaml           models, free-tier limits, presets
 arena/bench/          Bench L: modules L-A, L-B, L-C1, L-C2, the screen, the analysis
-arena/report/         results, method and prompts pages
+arena/replic/         Bench R: re-runs of three published studies (Milgram for LLMs, pluralistic ignorance,
+                      zAImbardo), their judge, analysis and the published numbers
+arena/report/         results, method and prompts pages (Bench L and Bench R)
 arena/                shared core: LLM client, storage and replay, statistics, validity checks; old council modules
 live_*.py             live views of a running experiment
 scripts/              helpers (prompt dump, inter-coder agreement, model fit checks)

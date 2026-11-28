@@ -64,6 +64,35 @@ protège fortement (−67 points).
 **Test confirmatoire pré-enregistré** (27 nov. 2026) : P2 −1,1 point [−6,8 ; +4,8] et P3 +1,2 [−4,6 ; +7,1], non concluants
 avec des intervalles qui excluent l'effet minimal visé (+10 points) : [`docs/runs/20261127-182920-bench-confirm.md`](docs/runs/20261127-182920-bench-confirm.md).
 
+## Banc R : réplications de référence de trois études publiées
+
+Trois études publiées sur les LLM, relancées sur les petits modèles locaux du projet (et, avec `replic-cloud`, sur les
+modèles cloud gratuits), pour lire leurs chiffres à côté de ceux des articles, obtenus sur des modèles de 7 milliards
+à 1 000 milliards de paramètres. Protocole, licences et chaque écart avec les originaux :
+[`docs/protocol_bench_r.md`](docs/protocol_bench_r.md) (en anglais).
+
+| Module | Étude | Ce que fait le modèle | Mesures |
+|---|---|---|---|
+| RM | Milgram pour LLM (Pihlakas & Dagohoy 2026) | « Alice » doit appuyer sur des boutons de choc 1 à 12 ; l'apprenant proteste ; jusqu'à 5 relances | bouton 12 atteint, bouton le plus haut, premier refus |
+| RP | Ignorance pluraliste (YS 2026, SocialSim @ COLM) | joue 20 personnes qui discutent d'une règle ; 16 s'y opposent en privé mais croient que tout le monde la soutient | conformité publique, privé contre public, cascades après une prise de parole dissidente |
+| RZ | zAImbardo (Campedelli et al., TMLR 2025) | joue un gardien et un prisonnier pendant 19 messages | conversations ratées, persuasion (évasion / promenade), messages dangereux (Llama Guard 3) |
+
+Ce ne sont pas des tests des postulats (c'est le rôle du Banc L) : ils calibrent ce que change la taille du modèle
+sur des protocoles déjà validés par d'autres équipes. Réponses en texte libre, comme dans les articles ; pas de filtre
+solo.
+
+```
+python run_experiment.py --module replic --preset replic-mini --mock   # test du pipeline
+python run_experiment.py --module replic --preset replic-mini          # ~20 min, un modèle local
+python run_experiment.py --module replic --preset replic-quick         # ~40 min, 3 modèles locaux
+python run_experiment.py --module replic --preset replic-local         # pilote, 5 modèles locaux (6-7 heures)
+python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b   # un modèle cloud par processus
+```
+
+La page de résultats (`results/<run_id>/dashboard.html`, en anglais) montre les mesures de chaque étude par modèle,
+les chiffres publiés en gris à côté des nôtres, le « grand frère » publié de chaque modèle local (Qwen2.5 3B/7B,
+Llama 3.2-3B/3.1-8B, Gemma 3-4B/3n-E4B), des contrastes exploratoires et des extraits de transcriptions.
+
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 
 Le preset `local` est un **banc de calibration**, en amont du pilote : il vérifie que le protocole tourne sur de vrais
@@ -152,6 +181,8 @@ pas versionnés. Les dossiers de `results/` versionnés sont listés dans [`resu
 run_experiment.py     ligne de commande (--module, --preset, --mock, --resume, --live, --analyze)
 config.yaml           modèles, limites des offres gratuites, presets
 arena/bench/          banc L : modules L-A, L-B, L-C1, L-C2, le crible, l'analyse
+arena/replic/         banc R : trois études publiées rejouées (Milgram pour LLM, ignorance pluraliste,
+                      zAImbardo), leur juge, l'analyse et les chiffres publiés
 arena/report/         pages de résultats, de méthode et de prompts
 arena/                socle commun : client LLM, stockage et rejeu, statistiques, contrôles ; anciens modules de conseil
 live_*.py             suivi en direct d'une expérience

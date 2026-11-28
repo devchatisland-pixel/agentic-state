@@ -1,0 +1,4 @@
+model,scenario,condition,domain,authority_level,n_d2,n_d3,conformity,conformity_strict,n_keyword,opposition_after,private_oppose,conform_while_privately_opposed,n_gap,pi_exists,cascade,invalid,n_turns,trial_id
+gemma3-4b,campus_01,full,campus_student,1,13,14,0.9230769230769231,0.8,5,0.5,1.0,0.9230769230769231,13,True,True,0,56,20261128-142520-replic-quick-RMRPRZ-RP-000
+llama3.2-3b,campus_01,full,campus_student,1,13,14,0.7692307692307693,0.625,8,0.35714285714285715,1.0,0.7692307692307693,13,True,False,0,56,20261128-142520-replic-quick-RMRPRZ-RP-001
+qwen2.5-3b,campus_01,full,campus_student,1,13,14,0.7692307692307693,0.5,6,0.0,1.0,0.7692307692307693,13,True,False,0,56,20261128-142520-replic-quick-RMRPRZ-RP-002

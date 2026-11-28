@@ -246,7 +246,20 @@ def snapshot(db: Path, feed_limit: int = 60) -> dict:
             f["trial"] = trials_info.get(f["trial_id"])
         calls = _rows(conn, "SELECT COUNT(*) n, COALESCE(SUM(tokens_in+tokens_out),0) tok, "
                             "COALESCE(AVG(latency_s),0) lat FROM calls WHERE run_id=?", (rid,))[0]
+        # Bench R: the judging pass of R-Z adds verdicts to finished conversations, so the trial bars stay full
+        # while it runs; count the verdicts per judge instead (28 Nov 2026)
+        judging = []
+        if "RZ" in progress:
+            n_conv = progress["RZ"].get("done", 0)
+            for r in _rows(conn, "SELECT payload_json FROM events WHERE run_id=? AND event_type='rz_judged'", (rid,)):
+                j = json.loads(r["payload_json"]).get("judge")
+                hit = next((x for x in judging if x["judge"] == j), None)
+                if hit is None:
+                    judging.append({"judge": j, "done": 1, "total": n_conv})
+                else:
+                    hit["done"] += 1
         return {"run": run, "progress": progress, "trial": trial, "now": now, "feed": feed, "calls": calls,
+                "judging": judging,
                 "by_model": [{"model": m, **by_model[m]} for m in order],
                 "server_time": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
     finally:
@@ -406,6 +419,9 @@ function renderProgress(d) {
       const w = Math.round(100 * (m.done / Math.max(m.total, 1)));
       h += `<div class="mrow ${m.running ? "cur" : ""}"><b>${esc(m.model)}</b><div class="bar"><div style="width:${w}%"></div></div><span class="n">${m.done}/${m.total}${m.running ? " · en cours" : m.done >= m.total ? " · fini" : ""}</span></div>`;
     }
+  }
+  for (const j of (d.judging || [])) {
+    h += bar(j.done / Math.max(j.total, 1), `Jugement R-Z (${esc(j.judge)}) : ${j.done}/${j.total} conversations jugées`, 0);
   }
   h += `<div class="sub">${d.calls.n} appels aux modèles jusqu'ici · ${(+d.calls.lat).toFixed(1)} s en moyenne par appel</div>`;
   document.getElementById("progress").innerHTML = h;

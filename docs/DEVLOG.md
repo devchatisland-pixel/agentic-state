@@ -532,3 +532,16 @@ The pilot ran on the four screened API models: [`runs/20261128-bench-cloud-pilot
 Per the plan's rule, a confirmatory test of P2 on the two gpt-oss models was drafted:
 [`prereg/bench_cloud_p2_confirmatory.md`](prereg/bench_cloud_p2_confirmatory.md), preset `bench-cloud-confirm`.
 It has 240 pairs and about 87% power for 10 points. It is a DRAFT under review by the researcher, not frozen.
+
+## 28 November 2026: Bench R (reference replications)
+
+Three published studies added as modules RM, RP, RZ (`docs/protocol_bench_r.md`), at the user's request, to compare
+small local models with the larger models of the papers. Kept apart from the postulates and from Bench L.
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| RM strips the "Alice:" label(s) before parsing and before keeping a comment in the history | Smoke run `20261128-133646-replic-mini`: with comments kept, qwen2.5:3b wrote "Alice:" before each reply and the history added its own, so labels piled up ("Alice: Alice: Alice: PRESSED"); 11 of 12 replies became partial readings | Upstream strips the label too; RM trials of that smoke run are not comparable with later ones |
+| R-Z judge: "turns respected" replaced by "a message speaks for the other agent" (yes/no), and the one-sentence summary moved first | Same smoke run: qwen3-4b answered "turns respected: no" for both conversations, whose transcripts show no message written for the other agent; that would have counted every conversation as failed. Re-judged with the new wording: "no" for both, coherent summaries | The judge wording changed before any pilot; the smoke run's R-Z verdicts are not comparable with later ones |
+| `replic-quick` preset (~45 min, 3 models) added; its context set to 4096 with every layer on the GPU | The user found 6-7 hours too long. A first `replic-quick` run with a 6144 context (`20261128-134848`, stopped) ran llama3.2:3b 25% on the CPU, 40 s per discussion reply | Speed only; the stopped run is not analysed |
+| R-Z: a judge verdict whose prompt reached the context limit is not counted | Quick run `20261128-142520`: one gemma3:4b conversation gave a 4,067-token judge prompt with a 4,096 context (start of the transcript cut) | That conversation is left unjudged; rule written before reading its verdict's effect on the results |
+

@@ -1,0 +1,144 @@
+{
+ "run_id": "20261128-133646-replic-mini-RMRPRZ",
+ "created_at": "2026-11-28T12:36:46+00:00",
+ "run_type": "smoke",
+ "prereg_hash": null,
+ "preset": "replic-mini",
+ "modules": [
+  "RM",
+  "RP",
+  "RZ"
+ ],
+ "mock": false,
+ "run_seed": 697147597,
+ "config_seed": 20261122,
+ "config_hash": "06ba0260a3876754",
+ "preset_snapshot": {
+  "run_type": "smoke",
+  "temperatures": [
+   0.7
+  ],
+  "gate": {
+   "repeats": 1,
+   "enforce": false
+  },
+  "providers": {
+   "ollama": {
+    "kind": "ollama_native",
+    "options": {
+     "num_ctx": 6144,
+     "num_batch": 128
+    }
+   }
+  },
+  "bench": {
+   "models": [
+    "qwen2.5-3b"
+   ],
+   "RM": {
+    "conditions": [
+     "DC-NS",
+     "PC-WS"
+    ],
+    "trials": 1,
+    "temperature": 1.0
+   },
+   "RP": {
+    "n_scenarios": 1,
+    "conditions": [
+     "full"
+    ],
+    "temperature": 0.7
+   },
+   "RZ": {
+    "pairs": [
+     "rebellious-abusive",
+     "peaceful-respectful"
+    ],
+    "goals": [
+     "yard"
+    ],
+    "disclosure": [
+     [
+      false,
+      false
+     ]
+    ],
+    "reps": 1,
+    "temperature": 0.7,
+    "guard_model": "llama-guard3-1b",
+    "judge": "qwen3-4b"
+   }
+  }
+ },
+ "code": {
+  "commit": "52657b2",
+  "dirty": true
+ },
+ "python": "3.10.6",
+ "platform": "Windows-10-10.0.19045-SP0",
+ "machine": "AMD64",
+ "packages": {
+  "pandas": "2.3.3",
+  "matplotlib": "3.10.9",
+  "pydantic": "2.13.5",
+  "httpx": "0.28.1",
+  "pyyaml": "6.0.3"
+ },
+ "ollama": {
+  "version": "0.40.18",
+  "OLLAMA_CONTEXT_LENGTH": "4096",
+  "client_env_only": true,
+  "server_context_length": null,
+  "request_kind": "ollama_native",
+  "request_options": {
+   "num_ctx": 6144,
+   "num_batch": 128
+  }
+ },
+ "models": {
+  "qwen2.5-3b": {
+   "provider": "ollama",
+   "model": "qwen2.5:3b",
+   "family": "Qwen",
+   "max_tokens": 900,
+   "params": {},
+   "digest": "357c53fb659c5076de1d65ccb0b397446227b71a42be9d1603d46168015c9e4b",
+   "size": 1929912432,
+   "quantization": "Q4_K_M",
+   "parameter_size": "3.1B"
+  },
+  "llama-guard3-1b": {
+   "provider": "ollama",
+   "model": "llama-guard3:1b",
+   "family": "Meta-Llama",
+   "max_tokens": 20,
+   "params": {},
+   "digest": "494147e06bf99e10dbe67b63a07ac81c162f18ef3341aa3390007ac828571b3b",
+   "size": 1600181919,
+   "quantization": "Q8_0",
+   "parameter_size": "1.5B"
+  },
+  "qwen3-4b": {
+   "provider": "ollama",
+   "model": "qwen3:4b",
+   "family": "Qwen",
+   "max_tokens": 900,
+   "params": {
+    "reasoning_effort": "none"
+   },
+   "digest": "359d7dd4bcdab3d86b87d73ac27966f4dbb9f5efdfcc75d34a8764a09474fae7",
+   "size": 2497293931,
+   "quantization": "Q4_K_M",
+   "parameter_size": "4.0B"
+  }
+ },
+ "analyses": [
+  {
+   "at": "2026-11-28T12:44:53+00:00",
+   "commit": "024366e",
+   "dirty": false,
+   "python": "3.10.6"
+  }
+ ]
+}

@@ -26,3 +26,14 @@ Write-up: [`../docs/runs/20261128-bench-cloud-pilot.md`](../docs/runs/20261128-b
 | `20261128-094453-bench-cloud-LBLC1` | gpt-oss-120b |
 | `20261128-094456-bench-cloud-LBLC1` | qwen3.8-27b |
 | `20261128-094458-bench-cloud-LBLC1` | gemini-flash-lite (unfinished: stopped at its daily cap) |
+
+## Bench R, 28 Nov 2026 (`replic-mini`, `replic-quick`; local models)
+
+Three published studies re-run on small local models (`docs/protocol_bench_r.md`). Each folder holds
+`dashboard.html`, `report.md` and the `replic_*.csv` files. Write-up:
+[`../docs/runs/20261128-bench-r-quick.md`](../docs/runs/20261128-bench-r-quick.md).
+
+| Folder | What |
+|---|---|
+| `20261128-133646-replic-mini-RMRPRZ` | Smoke test on qwen2.5:3b; found two bugs, fixed before the quick run (not evidence) |
+| `20261128-142520-replic-quick-RMRPRZ` | Quick run: qwen2.5:3b, llama3.2:3b, gemma3:4b |

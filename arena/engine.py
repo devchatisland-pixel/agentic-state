@@ -158,6 +158,68 @@ class TrialContext:
                                {"role": "user", "content": REPAIR_PROMPT.format(error=last_error)}]
         return self._finish(step_key, seat, "invalid", None, max_repairs + 1, last_error)
 
+    def text_turn(self, step_key: str, seat: Seat, messages: list[dict], *, temperature: float, meta: dict,
+                  max_tokens: int | None = None, parse: Callable[[str], Any] | None = None,
+                  max_attempts: int = 1) -> TurnOutcome:
+        """A FREE-TEXT turn (Bench R, docs/protocol_bench_r.md): no JSON, no grammar, no repair prompt. The published
+        studies Bench R replicates let the model answer in prose ("Start your response with PRESSED or REFUSE";
+        "2-3 sentences"), so the reply is kept as written. `parse(text)` returns the coded value, or None for an
+        unusable reply; an unusable reply is asked again with the SAME messages (a new draw), up to `max_attempts`
+        (Pihlakas & Dagohoy retry up to 10 times). Resume and prompt-hash checks are those of `turn()`.
+        The outcome's data is {"text": reply, "value": parse(reply)}."""
+        stored = self.storage.get_turn(self.trial_id, step_key)
+        first = self.storage.get_call(self.trial_id, step_key, 0)
+        msgs = [dict(m) for m in messages]
+        if first is not None and not self.force_resume:
+            now_hash = text_hash(json.dumps(msgs, ensure_ascii=False))
+            if first.get("prompt_hash") and first["prompt_hash"] != now_hash:
+                raise PromptMismatch(f"{self.trial_id} {step_key}: the stored reply came from a different prompt; the "
+                                     "code changed since this run started. Start a new run, or resume with "
+                                     "--force-resume to accept mixing the two versions.")
+        if stored:
+            data = json.loads(stored["parsed_json"]) if stored["parsed_json"] else None
+            return TurnOutcome(stored["status"], data, stored["attempts"], stored["error"])
+        parse = parse or (lambda t: t.strip() or None)
+        base_seed = call_seed(self.trial_seed, step_key)
+        text = ""
+        for attempt in range(max_attempts):
+            seed = base_seed + attempt
+            row = self.storage.get_call(self.trial_id, step_key, attempt)
+            if row is not None and row["error_type"] is None:
+                raw = row["response_text"] or ""
+            elif row is not None and row["error_type"] == "blocked":
+                return self._finish(step_key, seat, "blocked", None, attempt + 1, row["error"])
+            else:
+                m = dict(meta, step=step_key, attempt=attempt, model_id=seat.model_id, label=seat.label,
+                         role=seat.role, text=True)
+                base = dict(run_id=self.run_id, trial_id=self.trial_id, step_key=step_key, attempt=attempt,
+                            agent=seat.label, role=seat.role, model_id=seat.model_id, temperature=temperature,
+                            seed=seed, prompt_hash=text_hash(json.dumps(msgs, ensure_ascii=False)),
+                            messages_json=json.dumps(msgs, ensure_ascii=False), mock=int(self.mock))
+                self.storage.set_live(self.run_id, self.trial_id, step_key, seat.label, seat.role, seat.model_id)
+                try:
+                    res = self.client.chat(seat.model_id, msgs, temperature=temperature, seed=seed,
+                                           max_tokens=max_tokens, meta=m, json_mode=False, json_schema=None)
+                except ProviderBlocked as e:
+                    self.storage.set_live(self.run_id, None, None, None, None, None)
+                    self.storage.record_call(**base, provider=self.client.model(seat.model_id)["provider"],
+                                             error_type="blocked", error=str(e)[:500])
+                    return self._finish(step_key, seat, "blocked", None, attempt + 1, str(e)[:300])
+                self.calls_made += 1
+                self.storage.set_live(self.run_id, None, None, None, None, None)
+                _, think = split_think(res.text)
+                self.storage.record_call(**base, provider=res.provider, model_name=res.model_name,
+                                         response_hash=text_hash(res.text), response_text=res.text,
+                                         reasoning=res.reasoning or think, tokens_in=res.tokens_in,
+                                         tokens_out=res.tokens_out, latency_s=round(res.latency_s, 3))
+                raw = res.text
+            text = split_think(raw)[0].strip()
+            value = parse(text)
+            if value is not None:
+                return self._finish(step_key, seat, "ok", {"text": text, "value": value}, attempt + 1, None)
+        return self._finish(step_key, seat, "invalid", {"text": text, "value": None}, max_attempts,
+                            "no usable reply" + (f" in {max_attempts} draws" if max_attempts > 1 else ""))
+
 
 def example_letter(*parts: Any) -> str:
     """A deterministic A-D letter for format examples, varied per item so no letter is systematically suggested."""
