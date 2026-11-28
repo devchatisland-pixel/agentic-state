@@ -1,0 +1,5 @@
+label,diff,lo,hi,n
+harmony charter,-1.0,-1.0,-1.0,12
+accuracy charter,-0.9166666666666666,-1.0,-0.75,12
+strict tone,-1.0,-1.0,-1.0,12
+polite tone,-0.9166666666666666,-1.0,-0.75,12
