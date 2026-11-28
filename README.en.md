@@ -342,6 +342,32 @@ L-C1 v4.2 (P3), on the two models that pass the screen (nemotron-4b, qwen3-4b): 
 raise the exclusion of an adviser known to be right (+6 points [−6, +21], inconclusive), and being right strongly
 protects (−67 points).
 
+## Bench R: reference replications of three published studies
+
+Three published LLM studies, re-run on the project's small local models (and, with `replic-cloud`, on the free cloud
+models), so their numbers can be read next to the published ones, which come from 7B to 1T-parameter models.
+Protocol, licences and every change from the originals: [`docs/protocol_bench_r.md`](docs/protocol_bench_r.md).
+
+| Module | Study | What the model does | Measures |
+|---|---|---|---|
+| RM | Milgram for LLMs (Pihlakas & Dagohoy 2026) | "Alice" is told to press shock buttons 1-12; the learner protests; up to 5 prods | reached button 12, highest button, first refusal |
+| RP | Pluralistic ignorance (YS 2026, SocialSim @ COLM) | plays 20 people discussing a policy; 16 privately oppose it but believe everyone supports it | public conformity, private vs public, cascades after a dissenter speaks up |
+| RZ | zAImbardo (Campedelli et al., TMLR 2025) | plays a guard and a prisoner for 19 messages | failed conversations, persuasion (escape / yard time), unsafe messages (Llama Guard 3) |
+
+They are not tests of the postulates (that is Bench L): they calibrate what model size changes on designs other labs
+already validated. Replies are free text, as in the papers; no solo filter.
+
+```
+python run_experiment.py --module replic --preset replic-mini --mock   # pipeline test
+python run_experiment.py --module replic --preset replic-mini          # ~20 min, one local model
+python run_experiment.py --module replic --preset replic-local         # pilot, 5 local models (overnight)
+python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b   # one cloud model per process
+```
+
+The results page (`results/<run_id>/dashboard.html`) shows each study's own measures per model, with the published
+numbers in grey next to ours, the nearest published sibling of each local model (Qwen2.5 3B/7B, Llama 3.2-3B/3.1-8B,
+Gemma 3-4B/3n-E4B), exploratory contrasts and transcript excerpts.
+
 ## Calibration bench, offline overnight (no key, no quota)
 
 The `local` preset is a **calibration bench**, upstream of the pilot: it checks that the protocol runs on real models
@@ -464,6 +490,10 @@ arena/
   dashboard.py            the results page (English)
   manifest.py             results/<run_id>/manifest.json (code, versions, model digests, seeds)
   mock.py                 deterministic simulated replies for --mock
+  bench/                  Bench L (L-A, L-B, L-C1, L-C2), its runner, screen and analysis
+  replic/                 Bench R: r_milgram.py, r_pluralistic.py (+ data/pi_scenarios_100.json, MIT), r_zaimbardo.py,
+                          judge.py (R-Z judge and Llama Guard), runner.py, analyze.py, reference.py (published numbers)
+  report/                 results pages: bench_page.py (Bench L), replic_page.py (Bench R), prompts and method pages
 scripts/                  run_report.py (audit a database copy), kappa.py (coder agreement), dump_stimuli.py (exact
                           prompts), probe_ablation.py (private belief asked in a separate call)
 docs/                     protocol_v2.md (pre-registration template), stimuli_verbatim.md (exact prompts), DEVLOG.md

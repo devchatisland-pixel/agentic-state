@@ -104,6 +104,8 @@ models:
   # Size tier of Bench L (already installed; larger than the 4 GB GPU, so part of each runs on the CPU: slow)
   qwen3-8b:     {provider: ollama, model: "qwen3:8b",          family: Qwen,       max_tokens: 900, params: {reasoning_effort: none}, options: {num_gpu: null}}
   hermes3-8b:   {provider: ollama, model: "hermes3:8b",        family: Meta-Llama, max_tokens: 900, options: {num_gpu: null}}
+  # Bench R (docs/protocol_bench_r.md): Llama Guard 3 labels every R-Z message safe / unsafe (free, local, 1B)
+  llama-guard3-1b: {provider: ollama, model: "llama-guard3:1b",   family: Meta-Llama, max_tokens: 20}
   mistral-small: {provider: mistral, model: mistral-small-latest, family: Mistral, enabled: false}
   openrouter-llama: {provider: openrouter, model: "meta-llama/llama-3.3-70b-instruct:free", family: Meta-Llama, enabled: false}
 
@@ -250,6 +252,70 @@ presets:
       models: [gpt-oss-20b, gpt-oss-120b]
       solo_repeats: 5
       LB: {instances: 60, pool: confirm, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+  # ---------------------------------------------------------------- Bench R (docs/protocol_bench_r.md)
+  # Reference replications of three published studies (Milgram for LLMs; pluralistic ignorance; zAImbardo), to set
+  # small local models next to the published large ones. Free-text replies, as in the originals; no solo filter.
+  #   python run_experiment.py --module replic --preset replic-local
+  replic-local:
+    run_type: pilot
+    temperatures: [0.7]                 # unused by Bench R (each module sets its own, as its paper did)
+    gate: {repeats: 1, enforce: false}  # no solo filter: the replicated studies have none
+    # Native Ollama requests: the conversations reach ~3,500 tokens (R-M with comments kept, R-Z, the R-P log), so
+    # a 6144 context; layers placed by Ollama (a 4B model with this context does not fit whole on the 4 GB GPU).
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 6144, num_batch: 128}}
+    bench:
+      max_minutes: 600
+      # subjects: the bench's small models + gemma3:4b (smaller sibling of the gemma-3n of the Milgram paper);
+      # qwen3-4b judges R-Z and is therefore not a subject (a model never codes its own conversations)
+      models: [qwen2.5-3b, llama3.2-3b, gemma3-4b, phi4-mini, qwen3-1.7b]
+      RM: {conditions: [DC-NS, DC-WS, PC-NS, PC-WS], trials: 5, temperature: 1.0}
+      RP: {n_scenarios: 10, conditions: [full], temperature: 0.7}
+      RZ: {pairs: [rebellious-abusive, rebellious-respectful, blank-blank, peaceful-abusive, peaceful-respectful],
+           goals: [yard, escape], disclosure: [[false, false], [true, true]], reps: 1, temperature: 0.7,
+           guard_model: llama-guard3-1b, judge: qwen3-4b}
+  replic-full:  # the papers' full grids on the local models (overnight, several nights): 8 Milgram conditions x 10,
+                # 20 scenarios x the 4 prompt conditions, 40 prison scenarios x 2
+    run_type: pilot
+    temperatures: [0.7]
+    gate: {repeats: 1, enforce: false}
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 6144, num_batch: 128}}
+    bench:
+      models: [qwen2.5-3b, llama3.2-3b, gemma3-4b, phi4-mini, qwen3-1.7b]
+      RM: {conditions: [DC-NS-FB, DC-NS, DC-WS-FB, DC-WS, PC-NS-FB, PC-NS, PC-WS-FB, PC-WS], trials: 10, temperature: 1.0}
+      RP: {n_scenarios: 20, conditions: [full, no_false_consensus, no_goal, neither], temperature: 0.7}
+      RZ: {disclosure: [[false, false], [false, true], [true, false], [true, true]], reps: 2, temperature: 0.7,
+           guard_model: llama-guard3-1b, judge: qwen3-4b}
+  replic-cloud:  # the same design as replic-local on the free-tier API models (two of them, gpt-oss-20b and -120b,
+                 # are also in the Milgram paper). About 1,350 calls per model: over Groq's 900/day, so 2 days with
+                 # --resume; one process per model. Judge: gpt-oss-120b (a large judge); Llama Guard stays local.
+                 #   python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b
+    run_type: pilot
+    temperatures: [0.7]
+    gate: {repeats: 1, enforce: false}
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 6144, num_batch: 128}}
+    bench:
+      max_minutes: 600
+      models: [gpt-oss-20b, gpt-oss-120b, qwen3.8-27b, gemini-flash-lite]
+      RM: {conditions: [DC-NS, DC-WS, PC-NS, PC-WS], trials: 5, temperature: 1.0}
+      RP: {n_scenarios: 10, conditions: [full], temperature: 0.7}
+      RZ: {pairs: [rebellious-abusive, rebellious-respectful, blank-blank, peaceful-abusive, peaceful-respectful],
+           goals: [yard, escape], disclosure: [[false, false], [true, true]], reps: 1, temperature: 0.7,
+           guard_model: llama-guard3-1b, judge: gpt-oss-120b}
+  replic-mini:  # smoke test of Bench R on one model: a few trials of each module (~15 min)
+    run_type: smoke
+    temperatures: [0.7]
+    gate: {repeats: 1, enforce: false}
+    providers:
+      ollama: {kind: ollama_native, options: {num_ctx: 6144, num_batch: 128}}
+    bench:
+      models: [qwen2.5-3b]
+      RM: {conditions: [DC-NS, PC-WS], trials: 1, temperature: 1.0}
+      RP: {n_scenarios: 1, conditions: [full], temperature: 0.7}
+      RZ: {pairs: [rebellious-abusive, peaceful-respectful], goals: [yard], disclosure: [[false, false]], reps: 1,
+           temperature: 0.7, guard_model: llama-guard3-1b, judge: qwen3-4b}
   bench-mini:   # calibration: one model, a few items, about 30-45 min. Checks latency, solo pass rates, invalid %.
     run_type: smoke
     temperatures: [0.7]

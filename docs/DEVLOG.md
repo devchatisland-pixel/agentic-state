@@ -518,3 +518,13 @@ The pilot ran on the four screened API models: [`runs/20261128-bench-cloud-pilot
 Per the plan's rule, a confirmatory test of P2 on the two gpt-oss models was drafted:
 [`prereg/bench_cloud_p2_confirmatory.md`](prereg/bench_cloud_p2_confirmatory.md), preset `bench-cloud-confirm`.
 It has 240 pairs and about 87% power for 10 points. It is a DRAFT under review by the researcher, not frozen.
+
+## 28 November 2026: Bench R (reference replications)
+
+Three published studies added as modules RM, RP, RZ (`docs/protocol_bench_r.md`), at the user's request, to compare
+small local models with the larger models of the papers. Kept apart from the postulates and from Bench L.
+
+| Change | Seen in the data | Consequence for inference |
+|---|---|---|
+| RM strips the "Alice:" label(s) before parsing and before keeping a comment in the history | Smoke run `20261128-133646-replic-mini`: with comments kept, qwen2.5:3b wrote "Alice:" before each reply and the history added its own, so labels piled up ("Alice: Alice: Alice: PRESSED"); 11 of 12 replies became partial readings | Upstream strips the label too; RM trials of that smoke run are not comparable with later ones |
+

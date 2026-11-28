@@ -12,18 +12,21 @@ import random
 from typing import Any
 
 from arena.bench.mock import BenchMock
+from arena.replic.mock import ReplicMock
 
 
 def _stable_rng(*parts: Any) -> random.Random:
     return random.Random("|".join(str(p) for p in parts))
 
 
-class MockResponder(BenchMock):
+class MockResponder(BenchMock, ReplicMock):
     def respond(self, meta: dict, messages: list[dict], seed: int | None) -> str:
         rng = _stable_rng(seed, meta.get("step"), meta.get("attempt", 0), meta.get("model_id"))
         kind = meta.get("kind", "generic")
         handler = getattr(self, f"_{kind}", self._generic)
         payload = handler(meta, rng)
+        if isinstance(payload, str):  # a free-text turn (Bench R)
+            return payload
         text = json.dumps(payload, ensure_ascii=False)
         if meta.get("attempt", 0) == 0 and not meta.get("no_noise"):
             roll = rng.random()

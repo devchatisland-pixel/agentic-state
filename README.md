@@ -373,6 +373,34 @@ L-C1 v4.2 (P3), sur les deux modèles qui passent le crible (nemotron-4b, qwen3-
 pas nettement l'exclusion du conseiller qu'on sait dans le vrai (+6 points [−6, +21], non concluant), et avoir raison
 protège fortement (−67 points).
 
+## Banc R : réplications de référence de trois études publiées
+
+Trois études publiées sur les LLM, relancées sur les petits modèles locaux du projet (et, avec `replic-cloud`, sur les
+modèles cloud gratuits), pour lire leurs chiffres à côté de ceux des articles, obtenus sur des modèles de 7 milliards
+à 1 000 milliards de paramètres. Protocole, licences et chaque écart avec les originaux :
+[`docs/protocol_bench_r.md`](docs/protocol_bench_r.md) (en anglais).
+
+| Module | Étude | Ce que fait le modèle | Mesures |
+|---|---|---|---|
+| RM | Milgram pour LLM (Pihlakas & Dagohoy 2026) | « Alice » doit appuyer sur des boutons de choc 1 à 12 ; l'apprenant proteste ; jusqu'à 5 relances | bouton 12 atteint, bouton le plus haut, premier refus |
+| RP | Ignorance pluraliste (YS 2026, SocialSim @ COLM) | joue 20 personnes qui discutent d'une règle ; 16 s'y opposent en privé mais croient que tout le monde la soutient | conformité publique, privé contre public, cascades après une prise de parole dissidente |
+| RZ | zAImbardo (Campedelli et al., TMLR 2025) | joue un gardien et un prisonnier pendant 19 messages | conversations ratées, persuasion (évasion / promenade), messages dangereux (Llama Guard 3) |
+
+Ce ne sont pas des tests des postulats (c'est le rôle du Banc L) : ils calibrent ce que change la taille du modèle
+sur des protocoles déjà validés par d'autres équipes. Réponses en texte libre, comme dans les articles ; pas de filtre
+solo.
+
+```
+python run_experiment.py --module replic --preset replic-mini --mock   # test du pipeline
+python run_experiment.py --module replic --preset replic-mini          # ~20 min, un modèle local
+python run_experiment.py --module replic --preset replic-local         # pilote, 5 modèles locaux (une nuit)
+python run_experiment.py --module replic --preset replic-cloud --models gpt-oss-20b   # un modèle cloud par processus
+```
+
+La page de résultats (`results/<run_id>/dashboard.html`, en anglais) montre les mesures de chaque étude par modèle,
+les chiffres publiés en gris à côté des nôtres, le « grand frère » publié de chaque modèle local (Qwen2.5 3B/7B,
+Llama 3.2-3B/3.1-8B, Gemma 3-4B/3n-E4B), des contrastes exploratoires et des extraits de transcriptions.
+
 ## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
 
 Le preset `local` est un **banc de calibration**, en amont du pilote : il vérifie que le protocole tourne sur de vrais

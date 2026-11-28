@@ -976,6 +976,9 @@ def run(storage: Storage, run_id: str, results_dir: Path, dashboard_path: Path) 
     run_row = {**run_row, **manifest_facts(out_dir / "manifest.json")}
     _STAMP["text"] = figure_stamp(run_type(run_row), gate_enforced(run_row))
     modules = run_row["modules"].split(",")
+    if modules and all(m.startswith("R") for m in modules):  # Bench R (docs/protocol_bench_r.md)
+        from arena.replic.analyze import run_replic
+        return run_replic(storage, run_row, modules, out_dir, dashboard_path)
     bench_mods = [m for m in modules if m.startswith("L")]
     if bench_mods and not any(m in ("A", "B", "C") for m in modules):
         return run_bench(storage, run_row, bench_mods, out_dir, dashboard_path)

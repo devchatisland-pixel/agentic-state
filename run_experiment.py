@@ -26,6 +26,8 @@ from arena.engine import PromptMismatch, TrialContext
 from arena.bench import BENCH_MODULES
 from arena.bench import runner as bench_runner
 from arena.bench import screen as bench_screen
+from arena.replic import REPLIC_MODULES
+from arena.replic import runner as replic_runner
 from arena.items import item_banks, module_a_items
 from arena.llm_client import LLMClient, LLMError, ProviderUnavailable, QuotaExhausted
 from arena.schemas import extract_json
@@ -277,18 +279,24 @@ def _modules_arg(text: str):
         return "all"
     if text.strip().lower() == "bench":
         return list(BENCH_MODULES)
+    if text.strip().lower() == "replic":
+        return list(REPLIC_MODULES)
     mods = {m.strip().upper() for m in text.split(",") if m.strip()}
-    order = ("A", "B", "C") + BENCH_MODULES
+    order = ("A", "B", "C") + BENCH_MODULES + REPLIC_MODULES
     if not mods or any(m not in order for m in mods):
-        raise argparse.ArgumentTypeError("expected A, B, C, all, bench (= LA,LB,LC1,LC2), or a comma list such as "
-                                         "B,C or LC1,LA")
+        raise argparse.ArgumentTypeError("expected A, B, C, all, bench (= LA,LB,LC1,LC2), replic (= RM,RP,RZ), or a "
+                                         "comma list such as B,C or LC1,LA")
+    if mods & set(REPLIC_MODULES) and mods - set(REPLIC_MODULES):
+        raise argparse.ArgumentTypeError("Bench R modules (RM, RP, RZ) run on their own: do not mix them with "
+                                         "A, B, C or Bench L in one run")
     return [m for m in order if m in mods]
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="The Epistemic Arena")
     ap.add_argument("--module", type=_modules_arg, default="all",
-                    help="A, B, C, all, bench (Bench L: LA, LB, LC1, LC2), or a comma list such as B,C or LC1,LA")
+                    help="A, B, C, all, bench (Bench L: LA, LB, LC1, LC2), replic (Bench R: RM, RP, RZ), or a comma list such "
+                         "as B,C or LC1,LA")
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--pilot", action="store_true", help="small exploratory batch (default)")
     g.add_argument("--full", action="store_true", help="full study preset")
@@ -353,6 +361,9 @@ def main(argv: list[str] | None = None) -> int:
         if any(m in BENCH_MODULES for m in modules) and "bench" not in get_preset(cfg, preset_name):
             preset_name = "bench-local"  # Bench L needs a preset with a `bench` block
             print("Bench L modules: using the 'bench-local' preset (pass --preset to choose another bench preset).")
+        if any(m in REPLIC_MODULES for m in modules) and "bench" not in get_preset(cfg, preset_name):
+            preset_name = "replic-local"  # Bench R presets also carry a `bench` block (models, RM / RP / RZ)
+            print("Bench R modules: using the 'replic-local' preset (pass --preset to choose another).")
         preset = get_preset(cfg, preset_name)
         if args.models:
             ids = [m.strip() for m in args.models.split(",") if m.strip()]
@@ -413,6 +424,7 @@ def main(argv: list[str] | None = None) -> int:
                 mp = copy.deepcopy(preset)
                 mp["bench"]["models"] = per_module.get(module) or list(block_models)
             specs = (bench_runner.plan(module, mp, int(cfg["seed"])) if module in BENCH_MODULES
+                     else replic_runner.plan(module, mp, int(cfg["seed"])) if module in REPLIC_MODULES
                      else PLANNERS[module](preset))
             for idx, spec in enumerate(specs):
                 seed = int(stable_hash([cfg["seed"], run_seed, module, spec], 8), 16)
@@ -446,8 +458,14 @@ def main(argv: list[str] | None = None) -> int:
     storage.set_run_status(run_id, "running")  # also on --resume of a paused run
     try:
         for module in modules:
-            if module not in BENCH_MODULES:
+            if module not in BENCH_MODULES and module not in REPLIC_MODULES:
                 runner.run_module(module, args.gate_only, args.max_trials)
+        replic_mods = [m for m in modules if m in REPLIC_MODULES]
+        if replic_mods and not args.gate_only:  # Bench R: model-major, then the judging pass of R-Z
+            rr = replic_runner.ReplicRunner(cfg, preset, storage, client, run_id, args.mock,
+                                            force_resume=args.force_resume)
+            rr.on_trial_done = runner.on_trial_done
+            rr.run(replic_mods, args.max_trials)
         bench_mods = [m for m in modules if m in BENCH_MODULES]
         if bench_mods:  # model-major: every module of one model, then the next model (Ollama loads each model once)
             br = bench_runner.BenchRunner(cfg, preset, storage, client, run_id, args.mock,
