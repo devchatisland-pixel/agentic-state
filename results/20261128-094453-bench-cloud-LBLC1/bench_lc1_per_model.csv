@@ -1,0 +1,2 @@
+model,n,judged_right,known_dropped_harmony,known_dropped_accuracy,excl_right,excl_wrong,harmony,accuracy,strict,polite,uses_facts,log_read,first_listed
+gpt-oss-120b,96,1.0,0.125,0.0,0.0625,1.0,0.125,0.0,0.041666666666666664,0.08333333333333333,1.0,1.0,0.53125

@@ -1,0 +1,9 @@
+truth,tone,norm,k,n,rate,lo,hi,excludes_wrong,log_read_ok
+right,polite,accuracy,0,5,0.0,0.0,0.43448246478317476,1.0,1.0
+right,polite,harmony,0,4,0.0,0.0,0.4898908364545973,1.0,1.0
+right,strict,accuracy,0,4,0.0,0.0,0.4898908364545973,1.0,1.0
+right,strict,harmony,0,3,0.0,5.551115123125783e-17,0.5614970317550454,1.0,1.0
+wrong,polite,accuracy,6,6,1.0,0.6096657120978346,1.0,1.0,1.0
+wrong,polite,harmony,3,3,1.0,0.4385029682449546,1.0,1.0,1.0
+wrong,strict,accuracy,3,3,1.0,0.4385029682449546,1.0,1.0,1.0
+wrong,strict,harmony,5,5,1.0,0.5655175352168251,1.0,1.0,1.0

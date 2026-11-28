@@ -1,0 +1,2 @@
+model_id,calls,retries,mean_latency_s,median_latency_s,tokens_in,tokens_out,hours
+qwen3.8-27b,264,0,0.39233333333333337,0.305,439.2348484848485,41.875,0.028771111111111112

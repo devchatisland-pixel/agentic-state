@@ -237,6 +237,19 @@ presets:
       solo_repeats: 2
       LB: {instances: 12, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
       LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
+  bench-cloud-confirm:  # CONFIRMATORY test of P2 on the two cloud models above the P2 floor in the cloud pilot.
+                        # Pre-registration: docs/prereg/bench_cloud_p2_confirmatory.md (DRAFT until frozen). Do not edit
+                        # after it is frozen. One run with both models (pooled hypothesis); free-tier daily stops are
+                        # resumed with --resume. Run (clean commit):
+                        #   python run_experiment.py --module LB --preset bench-cloud-confirm --run-type confirmatory
+                        #       --prereg docs/prereg/bench_cloud_p2_confirmatory.md --seed 20261130
+    run_type: confirmatory
+    temperatures: [0.7]
+    gate: {repeats: 5, enforce: true}
+    bench:
+      models: [gpt-oss-20b, gpt-oss-120b]
+      solo_repeats: 5
+      LB: {instances: 60, pool: confirm, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
   bench-mini:   # calibration: one model, a few items, about 30-45 min. Checks latency, solo pass rates, invalid %.
     run_type: smoke
     temperatures: [0.7]

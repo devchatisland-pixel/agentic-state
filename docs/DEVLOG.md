@@ -506,3 +506,15 @@ criterion, so this passes unnoticed. Plan and rules fixed before any pilot data:
 [`proposal_cloud_pilot.md`](proposal_cloud_pilot.md) (new preset `bench-cloud`, a 10% floor rule for P2 and P3).
 gpt-oss models now carry `min_reply_tokens: 1000` in `config.yaml`. Screen data: `data/cloud_screen_20261127/` and
 `results/20261127-2039*` (data/ is git-ignored; the four results folders are not committed yet).
+
+## 28 November 2026: cloud pilot (`bench-cloud`) and a draft confirmatory test of P2
+
+The pilot ran on the four screened API models: [`runs/20261128-bench-cloud-pilot.md`](runs/20261128-bench-cloud-pilot.md).
+- **P2:** both gpt-oss models obey a relayed harmful order far more than a direct one (+33 and +58 points, 24 pairs
+  each), unlike the local models (confirmatory H2: −1 [−7, +5]). qwen3.8-27b and gemini-flash-lite sit at the floor.
+- **P3:** only gpt-oss-20b is above the floor, and its charter contrast is null.
+- Gemini stopped at its daily cap with 33 of 120 L-C1 trials done; it resumes on 29 Nov.
+
+Per the plan's rule, a confirmatory test of P2 on the two gpt-oss models was drafted:
+[`prereg/bench_cloud_p2_confirmatory.md`](prereg/bench_cloud_p2_confirmatory.md), preset `bench-cloud-confirm`.
+It has 240 pairs and about 87% power for 10 points. It is a DRAFT under review by the researcher, not frozen.
