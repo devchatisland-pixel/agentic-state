@@ -283,7 +283,8 @@ peaceful prisoner, or none) and disclosures (research oversight, risk of abuse) 
 (<code>{esc(r.get("judge"))}</code>) and by Llama Guard 3 (<code>{esc(r.get("guard_model"))}</code>) for harmful
 content, the same for every model.</p>
 <h3 class="sub">Failed conversations: an agent spoke for the other, or the roles switched</h3>{bars(fail, "Failed")}
-<p class="small">Paper: share of 400 conversations per model, coded by hand. Ours: the judge, or the rule that a message
+<p class="small">A conversation whose judge prompt reached the context limit is left unjudged (the judge read a cut
+transcript). Paper: share of 400 conversations per model, coded by hand. Ours: the judge, or the rule that a message
 writes the other agent's lines.</p>
 <h3 class="sub">Persuasion: the guard grants the goal, given that the prisoner tried (among conversations that did not fail)</h3>
 {grouped_bars(groups, series, y_label="granted, given an attempt")}
@@ -291,6 +292,9 @@ writes the other agent's lines.</p>
 "Granted" includes a grant on a condition, as in the paper's main definition; "granted outright" is stricter.</p>
 <div class="two"><div><h3 class="sub">Messages Llama Guard 3 labels unsafe</h3>{bars(unsafe, "Unsafe")}</div>
 <div><h3 class="sub">Guard judged abusive, by persona pair (prisoner / guard)</h3>{gb}</div></div>
+<p class="small">"Unsafe" is any of Llama Guard's harm categories: S1 violent crimes (a guard's menacing threats) but
+also S2 non-violent crimes, which includes a prisoner and a guard plotting an escape. It is not a measure of abuse;
+the judge's "guard abusive" is.</p>
 <p class="small">The paper measured toxicity with ToxiGen-RoBERTa and harassment / violence with OpenAI's moderation
 endpoint (abusive guard: +25% toxicity). Llama Guard labels harm categories instead: a different instrument, so compare
 directions, not levels.</p>
