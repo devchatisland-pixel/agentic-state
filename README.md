@@ -40,6 +40,47 @@ tester, il ne prouve rien.
 
 **Prochaine étape :** un test confirmatoire de P2 sur les deux modèles gpt-oss
 ([pré-enregistrement en projet](docs/prereg/bench_cloud_p2_confirmatory.md), pas encore figé).
+La page de résultats montre une carte par postulat et les métriques des articles : exactitude par protocole, taux de
+conformité CR, taux de correction, taux d'indépendance IR (BenchForm), conformité selon la taille du groupe (Bellina
+et al.), effets d'identité (Soffer et al.), réponses publiques vs privées (Huang et al.), obéissance après relances
+(Pihlakas & Dagohoy), cartes de chaleur des bannissements, survie des colonies (Kaplan-Meier), et nos chiffres à côté
+des chiffres publiés. Deux pages l'accompagnent (en anglais) : **prompts.html**, tous les prompts envoyés pendant le
+run avec la réponse du modèle, relus dans la base, les mots que chaque manipulation change étant surlignés ; et
+**method.html**, un document qui explique toute l'expérience, le fonctionnement technique d'un appel, les contrôles
+de validité, les statistiques et l'historique du protocole.
+
+Premier résultat local (protocole v3.1, 5 modèles, 26 nov. 2026) :
+[`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md) (en anglais). Aucune
+des quatre comparaisons principales n'est confirmée ni réfutée ; le postulat 3 n'est pas testable avec ces modèles.
+Deuxième résultat (v3.2, 27 nov. 2026) : [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
+L-A et L-C2 se répliquent (biais d'endogroupe +16 points ; la présence forcée de l'ingénieur sauve la colonie) ; L-B
+plafonne et L-C1 ne rend pas P3 testable, d'où la v4.
+Premier pilote v4 (crible 11 min, pilote 31 min) : [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
+P2 et P3 sont désormais mesurables ; leurs comparaisons principales sont non concluantes, être dans le vrai protège
+le conseiller (−23 points), et le rôle de transmetteur réduit l'obéissance (−19 points).
+L-C1 v4.2 (P3), sur les deux modèles qui passent le crible (nemotron-4b, qwen3-4b) : la charte d'harmonie n'augmente
+pas nettement l'exclusion du conseiller qu'on sait dans le vrai (+6 points [−6, +21], non concluant), et avoir raison
+protège fortement (−67 points).
+**Test confirmatoire pré-enregistré** (27 nov. 2026) : P2 −1,1 point [−6,8 ; +4,8] et P3 +1,2 [−4,6 ; +7,1], non concluants
+avec des intervalles qui excluent l'effet minimal visé (+10 points) : [`docs/runs/20261127-182920-bench-confirm.md`](docs/runs/20261127-182920-bench-confirm.md).
+
+## Banc de calibration, une nuit hors ligne (sans clé, sans quota)
+
+Le preset `local` est un **banc de calibration**, en amont du pilote : il vérifie que le protocole tourne sur de vrais
+modèles et montre comment se comportent les petits modèles. Il a n = 1 par case et n'applique pas le test préalable :
+son type est `smoke`, ses chiffres ne sont jamais des résultats. Il fait tout tourner sur Ollama, avec de petits
+modèles :
+
+| Rôle | Modèle |
+|---|---|
+| Dissident épistémique (C) | `phi3:3.8b` |
+| Cibles du module A | `llama3.2:3b`, `qwen2.5:3b` |
+| Échelons de la chaîne (B) | `llama3.2:3b`, `phi3:3.8b`, `qwen2.5:3b`, `gemma3:4b` |
+| Sièges standard du module C (en rotation) | `llama3.2:3b`, `qwen2.5:3b`, `gemma3:4b` |
+
+Quatre modèles seulement, pour qu'Ollama change rarement de modèle. Pourquoi ces modèles, et tous les choix faits
+après avoir vu des résultats : [`docs/DEVLOG.md`](docs/DEVLOG.md) (en anglais). Le modèle du dissident est choisi
+parce qu'il contredit de façon fiable : c'est une **variable manipulée** (comme un compère entraîné chez Moscovici).
 
 Toutes les décisions prises après avoir vu des données, par date : [`docs/DEVLOG.md`](docs/DEVLOG.md). Tous les
 documents : [`docs/README.md`](docs/README.md).

@@ -76,6 +76,52 @@ ollama pull qwen3:4b llama3.2:3b qwen2.5:3b
 python run_experiment.py --module LB,LC1 --preset bench-screen                  # stage 1: screen, ~20 min
 python run_experiment.py --module LB,LC1 --preset bench-v4 --screen SCREEN_ID   # stage 2: pilot, ~1 h
 python run_experiment.py --module bench --preset bench-local                    # all four modules, overnight
+python run_experiment.py --module bench --preset bench-local                    # the whole bench, 5 models
+python scripts/ollama_fit.py --num-ctx 2048                                     # does each model fit on the GPU?
+```
+
+Its results page shows a scorecard per postulate and the metrics of the papers: accuracy per protocol, conformity
+rate CR, uptake, independence rate IR (BenchForm), conformity vs group size (Bellina et al.), identity effects
+(Soffer et al.), public vs private answers (Huang et al.), obedience after prods (Pihlakas & Dagohoy), banishment
+heatmaps, Kaplan-Meier survival of colonies, and our numbers next to the published ones. Two companion pages sit
+next to it: **prompts.html**, every prompt sent in the run with the model's reply, read back from the database, with
+the words each manipulation changes highlighted; and **method.html**, a document that explains the whole experiment,
+how a call works technically, the validity checks, the statistics and the protocol history.
+
+First local result (protocol v3.1, 5 models, 26 Nov 2026): [`docs/runs/20261126-002448-bench-local-v3.1.md`](docs/runs/20261126-002448-bench-local-v3.1.md).
+None of the four primary contrasts is supported or refuted; P3 is not testable with these models.
+Second result (v3.2, 27 Nov 2026): [`docs/runs/20261126-193924-bench-local-v3.2.md`](docs/runs/20261126-193924-bench-local-v3.2.md).
+L-A and L-C2 replicate (in-group bias +16 points; the engineer's forced presence saves the colony); L-B sits at a
+ceiling and L-C1 does not make P3 testable, hence v4.
+First v4 pilot (11-minute screen, 31-minute pilot): [`docs/runs/20261127-143918-bench-v4-pilot.md`](docs/runs/20261127-143918-bench-v4-pilot.md).
+P2 and P3 are now measurable; their primaries are inconclusive, being right protects the adviser (−23 points), and
+the transmitter role lowers obedience (−19 points).
+L-C1 v4.2 (P3), on the two models that pass the screen (nemotron-4b, qwen3-4b): a harmony charter does not clearly
+raise the exclusion of an adviser known to be right (+6 points [−6, +21], inconclusive), and being right strongly
+protects (−67 points).
+**Pre-registered confirmatory test** (27 Nov 2026): P2 −1.1 points [−6.8, +4.8] and P3 +1.2 [−4.6, +7.1], both
+inconclusive with intervals that exclude the smallest effect of interest (+10 points): [`docs/runs/20261127-182920-bench-confirm.md`](docs/runs/20261127-182920-bench-confirm.md).
+
+## Calibration bench, offline overnight (no key, no quota)
+
+The `local` preset is a **calibration bench**, upstream of the pilot: it checks that the protocol runs on real models
+and shows how small models behave. It has n = 1 per cell and does not enforce the pre-check, so its run type is
+`smoke` and its numbers are never evidence. It runs everything on Ollama with small models:
+
+| Role | Model |
+|---|---|
+| Epistemic Dissident (C) | `phi3:3.8b` |
+| Module A Targets | `llama3.2:3b`, `qwen2.5:3b` |
+| Module B chain tiers | `llama3.2:3b`, `phi3:3.8b`, `qwen2.5:3b`, `gemma3:4b` |
+| Module C standard seats (cycled) | `llama3.2:3b`, `qwen2.5:3b`, `gemma3:4b` |
+
+Four models only, so Ollama rarely has to swap them. Why these models, and every other choice made after seeing
+outputs: [`docs/DEVLOG.md`](docs/DEVLOG.md). The other local models (`smollm2`, `hermes3`, `nemotron`, `qwen3`) stay in
+`config.yaml`; the `smollm2` preset uses smollm2.
+
+```bash
+ollama pull qwen3:4b phi3:3.8b llama3.2:3b smollm2:1.7b qwen2.5:3b gemma3:4b hermes3:3b nemotron-3-nano:4b
+python run_experiment.py --module all --local --live     # A, B and C, opens the live monitor
 ```
 
 **API models (free tiers):** copy `.env.example` to `.env` and fill in `GROQ_API_KEY` (console.groq.com) and/or
