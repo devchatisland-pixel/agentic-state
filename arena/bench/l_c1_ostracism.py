@@ -26,7 +26,7 @@ and removes both causes:
 
 v4.1 (27 Nov 2026): the screen uses its own instances (`SCREEN_QUANTITIES`, ids from 100), never those of the pilot.
 
-v4.2 (27 Nov 2026, docs/proposal_lc1_v4.2.md, approved as recommended). In the v4 pilot and the v4.1 screen, four of
+v4.2 (27 Nov 2026, docs/archive/proposal_lc1_v4.2.md, approved as recommended). In the v4 pilot and the v4.1 screen, four of
 five models did not decide by the log in council (the wrong adviser left in 40-67% of the easiest ballots), and when a
 wrong dissenter said "the log says 19", members copied 19 as the log's figure in 67-100% of ballots (strict tone),
 although alone they read the log right in 143 of 144 readings. Changes:

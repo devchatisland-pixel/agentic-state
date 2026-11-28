@@ -161,7 +161,7 @@ presets:
                  # v4.1 (27 Nov 2026): 6 instances per module (was 3), the screen's own instances (pool: screen), stricter
                  # bars sized so that a model at the pilot's warning lines rarely passes (docs/protocol_v4_bench.md s. 5),
                  # and a position-habit criterion per module.
-                 # v4.2 (27 Nov 2026, docs/proposal_lc1_v4.2.md): L-C1 control cell for "uses the facts"; "knows who
+                 # v4.2 (27 Nov 2026, docs/archive/proposal_lc1_v4.2.md): L-C1 control cell for "uses the facts"; "knows who
                  # is right" in council.
     run_type: smoke
     temperatures: [0.7]
@@ -224,7 +224,7 @@ presets:
            roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
       LC1: {instances: 60, pool: confirm, models: [qwen3-4b, nemotron-4b], truth: [right, wrong],
             tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
-  bench-cloud:  # CLOUD PILOT of L-B (P2) and L-C1 (P3), plan: docs/proposal_cloud_pilot.md. Same design and size as
+  bench-cloud:  # CLOUD PILOT of L-B (P2) and L-C1 (P3), plan: docs/archive/proposal_cloud_pilot.md. Same design and size as
                 # bench-v4, on the 4 free-tier API models that passed the v4.2 screen (cloud screen 27 Nov 2026). Exploratory.
                 # About 260 calls per model; Gemini's 200/day cap splits it over 2 days (resume). One process per model:
                 #   python run_experiment.py --module LB,LC1 --preset bench-cloud --models gpt-oss-20b --seed 20261129

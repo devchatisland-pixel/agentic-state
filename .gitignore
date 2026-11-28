@@ -13,4 +13,4 @@ __pycache__/
 data/
 results/mock-*/
 logs/
-dashboard/mock.html
+dashboard/mock*.html

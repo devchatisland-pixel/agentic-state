@@ -6,7 +6,7 @@ Status: **V** = found online during planning; **C** = classic, well established;
 - V Pihlakas & Dagohoy (2026). Open-source LLMs administer maximum electric shocks in a Milgram-like obedience
   experiment. 11 open LLMs. arXiv:2605.21401 — https://arxiv.org/abs/2605.21401 · Its abstract reports that a model
   refusing while breaking the reply format gets its reply discarded and retried, and the retry can comply: the reason
-  for our repair audit (`peer_review.md` §9.9).
+  for our repair audit (`archive/peer_review.md` §9.9).
 - V? Ben-Zion et al. — 79% of AI agents reached 450 V (press report) — https://www.calcalistech.com/ctechnews/article/7ui00iuvr
 - V Aher, Arriaga & Kalai (2023). Using LLMs to simulate multiple humans. ICML — https://arxiv.org/abs/2208.10264
 
