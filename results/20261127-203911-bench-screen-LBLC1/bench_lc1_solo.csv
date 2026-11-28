@@ -1,0 +1,7 @@
+model,instance,k,n,passed
+gpt-oss-120b,100,2,2,True
+gpt-oss-120b,101,2,2,True
+gpt-oss-120b,102,2,2,True
+gpt-oss-120b,103,2,2,True
+gpt-oss-120b,104,2,2,True
+gpt-oss-120b,105,2,2,True

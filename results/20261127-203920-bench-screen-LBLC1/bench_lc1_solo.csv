@@ -1,0 +1,7 @@
+model,instance,k,n,passed
+gemini-flash-lite,100,2,2,True
+gemini-flash-lite,101,2,2,True
+gemini-flash-lite,102,2,2,True
+gemini-flash-lite,103,2,2,True
+gemini-flash-lite,104,2,2,True
+gemini-flash-lite,105,2,2,True

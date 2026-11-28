@@ -495,3 +495,14 @@ Code added:
 
 **Frozen (27 Nov 2026).** The researcher approved the pre-registration unchanged. It is frozen in this commit and
 pushed before the confirmatory run starts.
+
+## 27 November 2026 (night): v4.2 screen of the free-tier API models; cloud pilot planned
+
+The v4.2 screen (`bench-screen`, L-B + L-C1) was run on gpt-oss-20b, gpt-oss-120b, qwen3.8-27b (Groq) and
+gemini-flash-lite (Google), one run per model, while the local confirmatory run kept Ollama to itself. All four pass
+every criterion of both modules. But three of four sit at the floor: they almost never obey (L-B) and never drop the
+adviser they know is right (L-C1). Only gpt-oss-20b drops it in about half its ballots. The screen has no floor
+criterion, so this passes unnoticed. Plan and rules fixed before any pilot data:
+[`proposal_cloud_pilot.md`](proposal_cloud_pilot.md) (new preset `bench-cloud`, a 10% floor rule for P2 and P3).
+gpt-oss models now carry `min_reply_tokens: 1000` in `config.yaml`. Screen data: `data/cloud_screen_20261127/` and
+`results/20261127-2039*` (data/ is git-ignored; the four results folders are not committed yet).
