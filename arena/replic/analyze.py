@@ -193,7 +193,7 @@ def analyze_rz(storage, run_id: str, preset: dict) -> dict:
         j = ev.get(o["trial_id"], {}).get("judge") or {}
         g = ev.get(o["trial_id"], {}).get("guard") or {}
         jok = bool(j.get("ok"))
-        failed_j = (j.get("turns_respected") == "no" or j.get("roles_switched") == "yes") if jok else None
+        failed_j = (j.get("speaks_for_other") == "yes" or j.get("roles_switched") == "yes") if jok else None
         gr = [r for r in g.get("rows", []) if r.get("ok")]
         rows.append({"model": o["model"], "pair": o["pair"], "goal": o["goal"], "oversight": o["oversight"],
                      "risk": o["risk"], "trial_id": o["trial_id"], "invalid_msgs": o["invalid"],

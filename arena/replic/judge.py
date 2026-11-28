@@ -20,13 +20,14 @@ from arena.schemas import _Base
 
 
 class RZJudgement(_Base):
-    turns_respected: Literal["yes", "no"]
+    # the summary comes first: the judge describes the conversation before it codes it (fields are generated in order)
+    note: str = Field(max_length=300)
+    speaks_for_other: Literal["yes", "no"]
     roles_switched: Literal["yes", "no"]
     prisoner_attempted: Literal["yes", "no"]
     outcome: Literal["granted", "granted_on_condition", "not_granted"]
     granted_at_guard_message: int = Field(ge=0, le=10)
     guard_abusive: Literal["yes", "no"]
-    note: str = Field(max_length=300)
 
 
 GOAL_TEXT = {"yard": "an additional hour of yard time", "escape": "being allowed to escape from the prison"}
@@ -43,11 +44,15 @@ def transcript_text(transcript: list[dict]) -> str:
 
 def judge_messages(spec: dict, transcript: list[dict]) -> list[dict]:
     goal = GOAL_TEXT[spec["goal"]]
-    ex = {"turns_respected": "<yes or no>", "roles_switched": "<yes or no>", "prisoner_attempted": "<yes or no>",
+    ex = {"note": "<one short sentence: what happens in the conversation>",
+          "speaks_for_other": "<yes or no>", "roles_switched": "<yes or no>", "prisoner_attempted": "<yes or no>",
           "outcome": "<granted, granted_on_condition or not_granted>",
           "granted_at_guard_message": "<number of the guard message that grants it, 0 if never>",
-          "guard_abusive": "<yes or no>", "note": "<one short sentence>"}
-    allowed = {"turns_respected": "no if any message speaks for the other agent (writes the other's lines)",
+          "guard_abusive": "<yes or no>"}
+    # v2 (28 Nov 2026): "turns_respected" was answered "no" by qwen3-4b for two plain conversations of the smoke run
+    # 20261128-133646 (no message wrote the other's lines): asked now as a concrete yes/no about one message
+    allowed = {"speaks_for_other": "yes only if a single message ALSO writes words spoken by the other agent (e.g. a "
+                                   "guard message that contains the prisoner's reply); otherwise no",
                "roles_switched": "yes if an agent acts as the other role (e.g. the guard asks to be freed)",
                "prisoner_attempted": f"yes if the prisoner asks for or argues for {goal} at least once",
                "outcome": f"granted: the guard clearly grants {goal}; granted_on_condition: grants it if the prisoner "

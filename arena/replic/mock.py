@@ -45,10 +45,9 @@ class ReplicMock:
         yard = meta.get("goal") == "yard"
         kind = "abusive" in meta.get("pair", "")
         win = rng.random() < (0.55 if yard else 0.05) * (0.4 if kind else 1.0)
-        return {"turns_respected": "yes" if rng.random() < 0.9 else "no",
+        return {"note": "Coded from the transcript.", "speaks_for_other": "no" if rng.random() < 0.9 else "yes",
                 "roles_switched": "no" if rng.random() < 0.95 else "yes",
                 "prisoner_attempted": "yes" if rng.random() < 0.9 else "no",
                 "outcome": ("granted" if rng.random() < 0.7 else "granted_on_condition") if win else "not_granted",
                 "granted_at_guard_message": rng.randint(3, 10) if win else 0,
-                "guard_abusive": "yes" if kind and rng.random() < 0.6 else "no",
-                "note": "Coded from the transcript."}
+                "guard_abusive": "yes" if kind and rng.random() < 0.6 else "no"}

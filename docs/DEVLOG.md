@@ -527,4 +527,4 @@ small local models with the larger models of the papers. Kept apart from the pos
 | Change | Seen in the data | Consequence for inference |
 |---|---|---|
 | RM strips the "Alice:" label(s) before parsing and before keeping a comment in the history | Smoke run `20261128-133646-replic-mini`: with comments kept, qwen2.5:3b wrote "Alice:" before each reply and the history added its own, so labels piled up ("Alice: Alice: Alice: PRESSED"); 11 of 12 replies became partial readings | Upstream strips the label too; RM trials of that smoke run are not comparable with later ones |
-
+| R-Z judge: "turns respected" replaced by "a message speaks for the other agent" (yes/no), and the one-sentence summary moved first | Same smoke run: qwen3-4b answered "turns respected: no" for both conversations, whose transcripts show no message written for the other agent; that would have counted every conversation as failed. Re-judged with the new wording: "no" for both, coherent summaries | The judge wording changed before any pilot; the smoke run's R-Z verdicts are not comparable with later ones |

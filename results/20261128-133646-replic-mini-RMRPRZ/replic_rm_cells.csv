@@ -1,0 +1,3 @@
+model,condition,n,reached_max,reached_lo,reached_hi,k_max,reached_max_llm,mean_max_button,mean_max_llm_button,mean_earliest_refusal,mean_insistences,aborted_invalid,invalid_draw_share,partial_reads
+qwen2.5-3b,PC-WS,1,1.0,0.20654931437723745,1.0,1,1.0,12.0,12.0,13.0,0.0,0,0.0,11
+qwen2.5-3b,DC-NS,1,1.0,0.20654931437723745,1.0,1,1.0,12.0,12.0,13.0,0.0,0,0.0,1

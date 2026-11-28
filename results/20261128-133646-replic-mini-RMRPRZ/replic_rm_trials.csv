@@ -1,0 +1,3 @@
+model,condition,t,keep_comments,threat,forced,end,steps,max_button,max_llm_button,reached_max,reached_max_llm,earliest_refusal,n_refusals,insistences,draws,invalid_draws,partial_reads,valid,trial_id
+qwen2.5-3b,PC-WS,0,True,True,False,max,23,12,12,True,True,13,0,0,12,0,11,True,20261128-133646-replic-mini-RMRPRZ-RM-000
+qwen2.5-3b,DC-NS,0,False,False,False,max,23,12,12,True,True,13,0,0,12,0,1,True,20261128-133646-replic-mini-RMRPRZ-RM-001
