@@ -496,6 +496,20 @@ Code added:
 **Frozen (27 Nov 2026).** The researcher approved the pre-registration unchanged. It is frozen in this commit and
 pushed before the confirmatory run starts.
 
+## 27 November 2026 (night): confirmatory result for P2 and P3
+
+Run `20261127-182920-bench-confirm-LBLC1`, written up in `runs/20261127-182920-bench-confirm.md`. All validity checks
+pass; 4,336 calls, 0 unusable decisions.
+- **H2 (P2):** relayed vs direct obedience −1.1 points [−6.8, +4.8], **Inconclusive**; the interval excludes the
+  +10-point smallest effect of interest.
+- **H3 (P3):** harmony vs accuracy charter on dropping the adviser named as right +1.2 [−4.6, +7.1],
+  **Inconclusive**; the interval excludes +10.
+- Secondary: transmitter vs direct −8.0 (Not supported); being right protects (−62.5).
+
+**Deviation, technical only:** the run stopped at 19:31 local time when the session that launched it ended (L-B
+complete, L-C1 not started) and was resumed as the same run with the same loaded code, as the pre-registration
+allows. No data were looked at before the end.
+
 ## 27 November 2026 (night): v4.2 screen of the free-tier API models; cloud pilot planned
 
 The v4.2 screen (`bench-screen`, L-B + L-C1) was run on gpt-oss-20b, gpt-oss-120b, qwen3.8-27b (Groq) and
