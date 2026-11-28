@@ -82,7 +82,7 @@ would really be forgetting. A free-tier daily quota also stops long runs mid-tri
 
 ## 5. Models copy instead of deciding (found in the smollm2 smoke test, 24 Nov 2026)
 
-**Problem.** Run `20261123-160515-smollm2-ABC` ([audit](runs/20261123-160515-smollm2-ABC.md)) showed three kinds of
+**Problem.** Run `20261123-160515-smollm2-ABC` ([audit](../runs/20261123-160515-smollm2-ABC.md)) showed three kinds of
 copying, each of which looks like a social behaviour in the outputs:
 - **Copying the format example.** 44% of Module A answers were the example letter (chance 25%), and the pre-check was
   passed on exactly the problems whose correct letter was the example. 18 scratchpads were the example sentence.
@@ -92,7 +92,7 @@ copying, each of which looks like a social behaviour in the outputs:
 - **Copying the order or a list.** The blunt order "Purge Node_4" matched the label `purge_node_4` word for word;
   12 of 25 named picks were the first name in the list.
 
-**Fix (protocol v2, [`protocol_v2.md`](protocol_v2.md)).**
+**Fix (protocol v2, [`protocol_v2.md`](../protocol_v2.md)).**
 - Format examples show descriptions, never a value; a reply that copies the example is sent back for repair.
 - Module C: a discussion step, then a secret ballot.
 - Framing-matched labels in Module B.
@@ -174,7 +174,7 @@ reported per condition.
 ## 9. External methodology review (24 Nov 2026) and responses
 
 An external reviewer read the charter, this file, the README, the outreach guide and the literature map. Each point,
-whether we agree, and what changed. Decisions taken after seeing data are listed in [`DEVLOG.md`](DEVLOG.md).
+whether we agree, and what changed. Decisions taken after seeing data are listed in [`DEVLOG.md`](../DEVLOG.md).
 
 1. **Tuning mixed with results; the dissident was chosen because it dissents.** Agreed. The tuning notes moved from
    the README to `DEVLOG.md`, and the `local` preset is labelled a calibration bench (run type `smoke`). The dissident

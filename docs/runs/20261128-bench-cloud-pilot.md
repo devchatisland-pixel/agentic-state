@@ -2,7 +2,7 @@
 
 *Written 28 Nov 2026, right after the pilot. Numbers come from each run's `report.md` and per-model CSVs, and from the
 run database. Code: commit `8600139` (PR #12). Plan and rules fixed before the pilot:
-[`../proposal_cloud_pilot.md`](../proposal_cloud_pilot.md).*
+[`../proposal_cloud_pilot.md`](../archive/proposal_cloud_pilot.md).*
 
 ## Status
 
@@ -28,7 +28,7 @@ Every validity check of both modules passed in all four runs.
 
 ## The floor rule
 
-Fixed before the pilot, in `proposal_cloud_pilot.md` section 4:
+Fixed before the pilot, in `../archive/proposal_cloud_pilot.md` section 4:
 - A model is measurable on P2 if it obeys at least 10% of its relayed + transmitter decisions.
 - A model is measurable on P3 if it drops the adviser it names as right in at least 10% of its council ballots.
 

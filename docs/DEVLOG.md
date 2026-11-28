@@ -12,7 +12,7 @@ show how those models behave. They come before the pilot (`--pilot`) and are nev
 
 | Change | Seen in the data | Consequence for inference |
 |---|---|---|
-| Module C dissident `qwen3:4b` → `phi3:3.8b` | `qwen3:4b` computed the right numbers in its private notes but voted DRILL for 7 turns | The dissident is chosen **because** it dissents. Module C therefore tests "given an agent that reliably dissents, what does the group do?" The dissident role is a **manipulated variable** (like a trained confederate in Moscovici's studies), not a measure of how often models dissent. See [`peer_review.md`](peer_review.md) §9.1. |
+| Module C dissident `qwen3:4b` → `phi3:3.8b` | `qwen3:4b` computed the right numbers in its private notes but voted DRILL for 7 turns | The dissident is chosen **because** it dissents. Module C therefore tests "given an agent that reliably dissents, what does the group do?" The dissident role is a **manipulated variable** (like a trained confederate in Moscovici's studies), not a measure of how often models dissent. See [`peer_review.md`](archive/peer_review.md) §9.1. |
 | `deepseek-r1:1.5b` dropped as dissident | 37% of its colony turns were unusable JSON, and it voted for the false plan | Same as above; it stays in `config.yaml` but no preset uses it |
 | `qwen3:4b`, `nemotron-3-nano:4b`: `reasoning_effort: none` | With thinking on, qwen3 spent all 900 tokens on hidden reasoning and returned nothing (238 s, empty reply); nemotron took up to 173 s per reply and one reply exceeded every timeout | Technical only (no content choice) |
 | Module C banishment `named` → `yesno` | `named` votes were incoherent: an agent filed a motion against Agent_7 and then voted for Agent_5 (hermes3 4 of 7, nemotron 4 of 7) | Votes before the change are not comparable with later ones |
@@ -27,11 +27,11 @@ every seat). It led to protocol v2.
 
 Validity checks, run types, a secret ballot in Module C, a no-majority control arm in Module A, an `informed` dissident
 mode for models that cannot do the arithmetic, format examples without values, gate repeats 2 → 3 (local, pilot) and
-5 (confirmatory). Rationale: [`protocol_v2.md`](protocol_v2.md) and [`peer_review.md`](peer_review.md) §5–8.
+5 (confirmatory). Rationale: [`protocol_v2.md`](protocol_v2.md) and [`peer_review.md`](archive/peer_review.md) §5–8.
 
 ## 24 November 2026: external methodology review
 
-Changes made in answer to an external review (all before any pilot data): see [`peer_review.md`](peer_review.md) §9.
+Changes made in answer to an external review (all before any pilot data): see [`peer_review.md`](archive/peer_review.md) §9.
 Summary: the `local` preset is labelled a calibration bench; every figure of a non-confirmatory or un-gated run carries
 a stamp; the pilot has n = 3 per arm and crosses the Module A item bank and the Module C dissident tone; API presets drop
 the pre-computed sensor lines; a licence was chosen; the exact prompts are published in
@@ -372,7 +372,7 @@ By the protocol, L-C1 does not go to a pilot in this form. Nothing has been chan
   - P2 primary, relayed vs direct: −6 points [−18, +5], Inconclusive.
   - Transmitter vs direct: −7. Jargon vs blunt: +2.
   - Both v4 pilots agree: the chain does not raise obedience.
-- **L-C1 v4.2** is proposed in [`proposal_lc1_v4.2.md`](proposal_lc1_v4.2.md), for approval before anything runs:
+- **L-C1 v4.2** is proposed in [`proposal_lc1_v4.2.md`](archive/proposal_lc1_v4.2.md), for approval before anything runs:
   - advisers state figures instead of describing the log;
   - the ballot records whose figure matches the log;
   - a pressure-free control cell carries the "uses the facts" check.
@@ -517,7 +517,7 @@ gemini-flash-lite (Google), one run per model, while the local confirmatory run 
 every criterion of both modules. But three of four sit at the floor: they almost never obey (L-B) and never drop the
 adviser they know is right (L-C1). Only gpt-oss-20b drops it in about half its ballots. The screen has no floor
 criterion, so this passes unnoticed. Plan and rules fixed before any pilot data:
-[`proposal_cloud_pilot.md`](proposal_cloud_pilot.md) (new preset `bench-cloud`, a 10% floor rule for P2 and P3).
+[`proposal_cloud_pilot.md`](archive/proposal_cloud_pilot.md) (new preset `bench-cloud`, a 10% floor rule for P2 and P3).
 gpt-oss models now carry `min_reply_tokens: 1000` in `config.yaml`. Screen data: `data/cloud_screen_20261127/` and
 `results/20261127-2039*` (data/ is git-ignored; the four results folders are not committed yet).
 
