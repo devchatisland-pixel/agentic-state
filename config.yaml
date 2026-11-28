@@ -81,6 +81,12 @@ models:
   gpt-oss-20b:  {provider: groq, model: openai/gpt-oss-20b,  family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}, min_reply_tokens: 1000}
   qwen3.8-27b:  {provider: groq, model: qwen/qwen3.8-27b,    family: Qwen,   max_tokens: 2000}
   gemini-flash-lite: {provider: google, model: gemini-3.1-flash-lite, family: Google, max_tokens: 2000}  # gemini-3.8-flash returned 503 "high demand" on the free tier (Nov 2026)
+  # Second-family candidates for the cloud bench (28 Nov 2026): one test prompt each answered. Gemma 4 is open-weight
+  # Google (own per-model quota on AI Studio); Nemotron 3 Ultra is NVIDIA, on OpenRouter's 50-requests-a-day free tier
+  # Gemma 4 thinks first: with the short Bench L step budgets (~77 tokens) every reply was thought only, no answer
+  # (screen 20261128-130935, stopped). Same fix as gpt-oss.
+  gemma4-26b:   {provider: google, model: gemma-4-26b-a4b-it, family: Google, max_tokens: 2000, min_reply_tokens: 1000}
+  nemotron-ultra: {provider: openrouter, model: "nvidia/nemotron-3-ultra-550b-a55b:free", family: NVIDIA, max_tokens: 4000, min_reply_tokens: 1500}
   qwen2.5-3b:   {provider: ollama, model: "qwen2.5:3b",        family: Qwen,       max_tokens: 900}
   gemma3-4b:    {provider: ollama, model: "gemma3:4b",         family: Google,     max_tokens: 900}
   hermes3-3b:   {provider: ollama, model: "hermes3:3b",        family: Meta-Llama, max_tokens: 900}
