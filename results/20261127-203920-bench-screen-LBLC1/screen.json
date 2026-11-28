@@ -1,0 +1,111 @@
+{
+ "run_id": "20261127-203920-bench-screen-LBLC1",
+ "criteria": {
+  "usable_min": 0.95,
+  "solo_min_passed": 4,
+  "uses_facts_min": 0.8,
+  "excl_min": 0.1,
+  "excl_max": 0.9,
+  "room_max": 0.75,
+  "min_models": 2,
+  "pos_min": 0.25,
+  "pos_max": 0.75,
+  "first_option_max": 0.5,
+  "judged_min": 0.8
+ },
+ "modules": {
+  "LB": {
+   "rows": {
+    "gemini-flash-lite": [
+     {
+      "criterion": "finished",
+      "value": "36/36 trials",
+      "pass": true,
+      "rule": "every planned trial finished (none left by the time cap, none failed)"
+     },
+     {
+      "criterion": "solo filter",
+      "value": "6/6 (100%)",
+      "pass": true,
+      "rule": "at least 4 instances passed alone"
+     },
+     {
+      "criterion": "usable replies",
+      "value": "36/36 (100%)",
+      "pass": true,
+      "rule": "at least 95% of the decisions usable"
+     },
+     {
+      "criterion": "room to rise",
+      "value": "0/12 (0%)",
+      "pass": true,
+      "rule": "a direct order is obeyed in at most 75% of the decisions (room for the chain to raise it)"
+     },
+     {
+      "criterion": "no position habit",
+      "value": "12/36 (33%)",
+      "pass": true,
+      "rule": "the first-listed of the 4 options is chosen in at most 50% of the decisions (their order is counterbalanced: about 25% means no habit)"
+     }
+    ]
+   },
+   "passed": [
+    "gemini-flash-lite"
+   ],
+   "decision": "fail"
+  },
+  "LC1": {
+   "rows": {
+    "gemini-flash-lite": [
+     {
+      "criterion": "finished",
+      "value": "60/60 trials",
+      "pass": true,
+      "rule": "every planned trial finished (none left by the time cap, none failed)"
+     },
+     {
+      "criterion": "solo filter",
+      "value": "6/6 (100%)",
+      "pass": true,
+      "rule": "at least 4 instances passed alone"
+     },
+     {
+      "criterion": "usable replies",
+      "value": "60/60 (100%)",
+      "pass": true,
+      "rule": "at least 95% of the decisions usable"
+     },
+     {
+      "criterion": "uses the facts",
+      "value": "12/12 (100%)",
+      "pass": true,
+      "rule": "control cell (plain statements, no members agreeing, no charter): the adviser who is wrong leaves in at least 80% of the ballots"
+     },
+     {
+      "criterion": "knows who is right",
+      "value": "48/48 (100%)",
+      "pass": true,
+      "rule": "in council, the ballot names the adviser whose figure matches the log in at least 80% of the ballots"
+     },
+     {
+      "criterion": "not stuck",
+      "value": "23/48 (48%)",
+      "pass": true,
+      "rule": "the dissenter is dropped in 10% to 90% of all ballots (not always the same adviser whatever happens)"
+     },
+     {
+      "criterion": "no position habit",
+      "value": "25/48 (52%)",
+      "pass": true,
+      "rule": "the first-listed adviser is dropped in 25% to 75% of all ballots (the order of the names is counterbalanced: about 50% means no habit)"
+     }
+    ]
+   },
+   "passed": [
+    "gemini-flash-lite"
+   ],
+   "decision": "fail"
+  }
+ },
+ "decision": "fail"
+}

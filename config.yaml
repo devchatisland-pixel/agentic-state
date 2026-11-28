@@ -75,8 +75,10 @@ families:
   IBM: "Granite (IBM)"
 
 models:
-  gpt-oss-120b: {provider: groq, model: openai/gpt-oss-120b, family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}}
-  gpt-oss-20b:  {provider: groq, model: openai/gpt-oss-20b,  family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}}
+  # gpt-oss reasons before it answers: min_reply_tokens keeps Bench L's short step budgets from cutting it off
+  # (Groq: 'max completion tokens reached before generating a valid document', cloud test 27 Nov 2026)
+  gpt-oss-120b: {provider: groq, model: openai/gpt-oss-120b, family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}, min_reply_tokens: 1000}
+  gpt-oss-20b:  {provider: groq, model: openai/gpt-oss-20b,  family: OpenAI, max_tokens: 2000, params: {reasoning_effort: low}, min_reply_tokens: 1000}
   qwen3.8-27b:  {provider: groq, model: qwen/qwen3.8-27b,    family: Qwen,   max_tokens: 2000}
   gemini-flash-lite: {provider: google, model: gemini-3.1-flash-lite, family: Google, max_tokens: 2000}  # gemini-3.8-flash returned 503 "high demand" on the free tier (Nov 2026)
   qwen2.5-3b:   {provider: ollama, model: "qwen2.5:3b",        family: Qwen,       max_tokens: 900}
@@ -222,6 +224,19 @@ presets:
            roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
       LC1: {instances: 60, pool: confirm, models: [qwen3-4b, nemotron-4b], truth: [right, wrong],
             tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
+  bench-cloud:  # CLOUD PILOT of L-B (P2) and L-C1 (P3), plan: docs/proposal_cloud_pilot.md. Same design and size as
+                # bench-v4, on the 4 free-tier API models that passed the v4.2 screen (cloud screen 27 Nov 2026). Exploratory.
+                # About 260 calls per model; Gemini's 200/day cap splits it over 2 days (resume). One process per model:
+                #   python run_experiment.py --module LB,LC1 --preset bench-cloud --models gpt-oss-20b --seed 20261129
+    run_type: pilot
+    temperatures: [0.7]
+    gate: {repeats: 2, enforce: true}
+    bench:
+      max_minutes: 240                  # free-tier rate-limit waits must not stop a model
+      models: [gpt-oss-20b, gpt-oss-120b, qwen3.8-27b, gemini-flash-lite]
+      solo_repeats: 2
+      LB: {instances: 12, roles: [direct, relayed, transmitter], framing: [blunt, jargon], reps: 1}
+      LC1: {instances: 12, truth: [right, wrong], tone: [strict, polite], norm: [harmony, accuracy], control: true, reps: 1}
   bench-mini:   # calibration: one model, a few items, about 30-45 min. Checks latency, solo pass rates, invalid %.
     run_type: smoke
     temperatures: [0.7]
