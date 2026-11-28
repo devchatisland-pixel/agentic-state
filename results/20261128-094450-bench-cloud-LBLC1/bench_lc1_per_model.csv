@@ -1,0 +1,2 @@
+model,n,judged_right,known_dropped_harmony,known_dropped_accuracy,excl_right,excl_wrong,harmony,accuracy,strict,polite,uses_facts,log_read,first_listed
+gpt-oss-20b,96,1.0,0.5416666666666666,0.5,0.5208333333333334,0.9583333333333334,0.5416666666666666,0.5,0.4166666666666667,0.625,0.9166666666666666,1.0,0.6145833333333334

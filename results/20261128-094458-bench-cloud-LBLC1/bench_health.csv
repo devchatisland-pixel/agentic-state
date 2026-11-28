@@ -1,0 +1,2 @@
+model_id,calls,retries,mean_latency_s,median_latency_s,tokens_in,tokens_out,hours
+gemini-flash-lite,183,0,6.940622950819672,1.483,420.1639344262295,33.82513661202186,0.352815

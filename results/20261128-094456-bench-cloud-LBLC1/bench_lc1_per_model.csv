@@ -1,0 +1,2 @@
+model,n,judged_right,known_dropped_harmony,known_dropped_accuracy,excl_right,excl_wrong,harmony,accuracy,strict,polite,uses_facts,log_read,first_listed
+qwen3.8-27b,96,1.0,0.0,0.0,0.0,0.9791666666666666,0.0,0.0,0.0,0.0,1.0,1.0,0.4895833333333333

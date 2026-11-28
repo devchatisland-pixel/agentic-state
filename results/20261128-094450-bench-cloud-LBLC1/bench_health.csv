@@ -1,0 +1,2 @@
+model_id,calls,retries,mean_latency_s,median_latency_s,tokens_in,tokens_out,hours
+gpt-oss-20b,264,0,0.343439393939394,0.3535,494.15909090909093,61.71590909090909,0.025185555555555558

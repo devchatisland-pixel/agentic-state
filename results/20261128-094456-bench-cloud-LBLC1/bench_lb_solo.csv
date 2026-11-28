@@ -1,0 +1,13 @@
+model,instance,k,n,passed
+qwen3.8-27b,0,2,2,True
+qwen3.8-27b,1,2,2,True
+qwen3.8-27b,2,2,2,True
+qwen3.8-27b,3,2,2,True
+qwen3.8-27b,4,2,2,True
+qwen3.8-27b,5,2,2,True
+qwen3.8-27b,6,2,2,True
+qwen3.8-27b,7,2,2,True
+qwen3.8-27b,8,2,2,True
+qwen3.8-27b,9,2,2,True
+qwen3.8-27b,10,2,2,True
+qwen3.8-27b,11,2,2,True
