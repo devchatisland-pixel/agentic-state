@@ -96,7 +96,7 @@ Per module, these decide whether the primary contrast is testable at all (`arena
   (`--force-resume` to override, reported).
 - **Context window.** On Ollama set `OLLAMA_CONTEXT_LENGTH=8192`: Module C prompts reach about 2,000 tokens.
 
-### Added after the external review of 24 Nov 2026 (`peer_review.md` §9)
+### Added after the external review of 24 Nov 2026 (`archive/peer_review.md` §9)
 - **The dissident is a manipulated variable.** Its model is fixed before the run (`[TO FILL]`: model and why) and
   chosen to dissent reliably, like a trained confederate. H-C1/H-C2 are conditional on an effective dissident; they
   say nothing about how often models dissent.
@@ -163,7 +163,7 @@ dates.
   Cohen's κ between coders and between each coder and the word lists. A word list with κ < 0.6 against humans is
   reported as unvalidated.
 
-## 9. Threats to validity (see also `docs/peer_review.md`)
+## 9. Threats to validity (see also `docs/archive/peer_review.md`)
 - **Copying instead of deciding** (format example, neighbours' messages, first name in a list): measured and gated.
 - **Single-model societies:** with one model in every seat, "agreeing with the group" is agreeing with copies of
   itself. Single-model runs are smoke tests.

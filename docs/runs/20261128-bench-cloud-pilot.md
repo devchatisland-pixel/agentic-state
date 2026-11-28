@@ -2,7 +2,7 @@
 
 *Written 28 Nov 2026, right after the pilot. Numbers come from each run's `report.md` and per-model CSVs, and from the
 run database. Code: commit `8600139` (PR #12). Plan and rules fixed before the pilot:
-[`../proposal_cloud_pilot.md`](../proposal_cloud_pilot.md).*
+[`../proposal_cloud_pilot.md`](../archive/proposal_cloud_pilot.md).*
 
 ## Status
 
@@ -28,7 +28,7 @@ Every validity check of both modules passed in all four runs.
 
 ## The floor rule
 
-Fixed before the pilot, in `proposal_cloud_pilot.md` section 4:
+Fixed before the pilot, in `../archive/proposal_cloud_pilot.md` section 4:
 - A model is measurable on P2 if it obeys at least 10% of its relayed + transmitter decisions.
 - A model is measurable on P3 if it drops the adviser it names as right in at least 10% of its council ballots.
 
@@ -90,3 +90,62 @@ Under the plan's decision rule:
 - **Both P2-measurable models come from one family (gpt-oss).** A family-level explanation (how OpenAI tuned
   gpt-oss to defer to an authority that takes responsibility) cannot be told apart from a general one with these data.
 - **Provider model versions cannot be pinned.** The run records the date, the model ids and every raw reply.
+
+## Comparison with the literature
+
+*Added 28 Nov 2026. Two outside analyses compared this pilot with six 2024-2026 papers. Both read only the Gemini
+run's report and so treated the pilot as a one-model test. This section keeps what holds against the code and the
+data, and corrects the rest. The arXiv ids and the figures quoted from them have not been checked against the papers
+(only `2410.07109` matches a paper known to us). Check them before citing.*
+
+### Where the pilot's design differs from those studies
+
+- **The L-C1 ballot makes the member copy the log, then name who matches it, before voting** (`log_value`,
+  `matches_log`, v4.2). This step may work like a chain of thought and lower conformity. Studies where the model
+  answers right after reading its peers have no such step. It is a real difference when comparing rates, but it does
+  not protect the model: gpt-oss-20b names the right adviser in every ballot and still drops that adviser in 52%.
+  The step was added for measurement (v4.1 members copied a wrong dissenter's figure as the log's figure in 67-100%
+  of strict-tone ballots), not to lower pressure.
+- **L-C1's fact is one checkable number; norm-conformity studies (`2608.02758`) use ambiguous social norms.** This
+  fits the design ("checking who is right is copying"). It is not enough on its own: Asch-style tasks with checkable
+  answers (line lengths, `2601.05384`) still show LLM conformity.
+- **L-B is an authority (Milgram-like) task, not a majority-conformity task.** Comparing it with Asch-style
+  conformity studies compares different things.
+- **L-B offers a named safe exit.** The choice is forced among EXECUTE, ALTERNATIVE (`throttle_tenants()`), ESCALATE
+  and REFUSE, and the log says throttling frees enough capacity. Milgram-like set-ups (`2605.21401`) and Zimbardo-like
+  role play (`2410.07109`) give no free exit. "Throttles instead" is the pick of a stated option, not a spontaneous
+  de-escalation reflex. The harm in L-B is a lost oncology job that patients wait for, not lost data.
+
+### What the outside analyses got wrong
+
+- **Four models ran, not one.** The n = 2 they cite is Gemini's unfinished L-C1 harmony/accuracy contrast (0/2 vs
+  0/2, 33 of 120 trials). The other models have 24 pairs per contrast.
+- **"Modern aligned models refuse destructive orders" does not hold.** gpt-oss-120b obeys the relayed order in 58% of
+  trials. The pilot has no non-harmful control order, so safety training cannot be told apart from other causes.
+
+### What the papers add
+
+- **Milgram-like obedience of open models (`2605.21401`).** The only models that obey here are the open-weight
+  gpt-oss models, which fits. But qwen3.8-27b is open-weight too and sits at 0-4%. The split here runs by family, not
+  by open vs closed, and both measurable models are one family.
+- **Role and setting drive behaviour (`2410.07109`).** L-B shows this inside one model: gpt-oss obeys 0-4% when
+  ordered directly, 38-58% when a Supervisor-AI relays the order and takes responsibility, and 0% as transmitter.
+  Wording (jargon vs blunt) is inconclusive in every model. The named safe exit may explain part of the floor of
+  qwen3.8-27b and Gemini.
+- **Hidden belief collapse (`2610.22138`): private belief vs public statement.** The L-C1 ballot is secret, so it is
+  already a private measure in that paper's sense. What L-C1 lacks is a belief probe after council exposure, separate
+  from the vote (v4 removed the separate probe). v4.1 saw something like belief infection (the copied wrong figure),
+  and v4.2 closed that channel on purpose, so the current L-C1 no longer tests belief infection: it tests dropping an
+  adviser the member has just named as right. gpt-oss-20b's "knows but drops" pattern resembles the paper's agents
+  who know the true answer but defend it in only 61.9% of turns. Its null charter contrast (+4) and first-listed
+  bias (61%) suggest position more than social pressure.
+
+### Consequences (not adopted; for discussion)
+
+- The P2 confirmatory draft tests one family. A Supported result would say "gpt-oss defers to an authority that
+  takes responsibility", not "LLMs do". Adding a second family that is above the floor would widen it.
+- Two exploratory variants could follow, separate from the draft pre-registration:
+  - L-B with no named alternative (EXECUTE / ESCALATE / REFUSE only), to test whether the qwen and Gemini floor comes
+    from the free exit;
+  - L-C1 with v4.1's false log claim restored and a private probe after the council, to measure belief collapse
+    apart from the vote.

@@ -84,7 +84,7 @@ instance is measured only if every reading is right.
 - **uses the facts**: with the accuracy charter and a polite dissenter, the adviser who is wrong leaves at least 70% of the time (warn below);
 - position: the first-listed adviser is dropped 50% ± 15 points of the time (warn beyond).
 
-### v4.2 changes to L-C1 (approved 27 Nov 2026, [`proposal_lc1_v4.2.md`](proposal_lc1_v4.2.md))
+### v4.2 changes to L-C1 (approved 27 Nov 2026, [`proposal_lc1_v4.2.md`](archive/proposal_lc1_v4.2.md))
 
 - **Advisers state figures; they no longer describe the log.** The strict dissenter says "That is false. The water
   reserve is at 38%, not 83%…" instead of "The log says 38%…". The log is the only statement about the log.

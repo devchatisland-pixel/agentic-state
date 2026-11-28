@@ -23,7 +23,7 @@ Every run leaves three layers of evidence. Start with the most digestible.
    - `repair_audit.csv` (when present): turns whose discarded first reply read as a refusal before a format retry.
    - Figures (`figures/*.png`) of any non-confirmatory or un-gated run carry a red stamp in the top-right corner.
      Never crop it out of a slide.
-4. **The exact prompts**: [`docs/stimuli_verbatim.md`](stimuli_verbatim.md). Send it before the materials are frozen:
+4. **The exact prompts**: [`docs/stimuli_verbatim.md`](../stimuli_verbatim.md). Send it before the materials are frozen:
    a social psychologist can check the wording of every manipulation in about 15 minutes.
 3. **Raw logs**: `data/arena.sqlite` (tables `calls`, `turns`, `events`, `trials`, `runs`, `usage`) and
    `data/jsonl/<run_id>.jsonl`, an append-only mirror readable with any text editor.
@@ -59,7 +59,7 @@ Every run leaves three layers of evidence. Start with the most digestible.
 - Call it an **exploratory pilot** with small n (at least 3 per cell). The aim is to estimate effect sizes for a
   pre-registered confirmatory study, ideally run with the lab you are contacting. A run with n = 1 per cell (for
   example the `local` calibration bench) is a **feasibility / smoke test**: never present its numbers as effects.
-- Say what was tuned after seeing data ([`docs/DEVLOG.md`](DEVLOG.md)) before anyone asks.
+- Say what was tuned after seeing data ([`docs/DEVLOG.md`](../DEVLOG.md)) before anyone asks.
 - Be explicit about the limits: role-play behaviour is not inner experience; free-tier models change silently, so
   model tags, dates and (for local models) Ollama weight digests are logged in the manifest; the lexicon codes still
   need human validation.

@@ -195,12 +195,20 @@ class Runner:
         return comp, variants
 
 
-def check_providers(cfg: dict, storage: Storage) -> int:
+def check_providers(cfg: dict, storage: Storage, only: list[str] | None = None) -> int:
+    """One tiny JSON call per enabled model, or only per model in `only` (from --models)."""
     client = LLMClient(cfg, usage=storage)
     msgs = [{"role": "system", "content": "Reply with JSON only."},
             {"role": "user", "content": 'Reply exactly with this JSON object: {"ok": true, "word": "arena"}'}]
     worst = 0
+    if only:
+        unknown = [m for m in only if m not in cfg["models"]]
+        if unknown:
+            print(f"  unknown model id(s): {', '.join(unknown)}")
+            return 1
     for mid, m in cfg["models"].items():
+        if only and mid not in only:
+            continue
         if not m.get("enabled", True):
             print(f"  {mid:18s} disabled in config.yaml")
             continue
@@ -321,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="run-level seed mixed into every trial seed (default: derived from the run id, so two runs "
                          "never reuse the same seeds)")
     ap.add_argument("--models", default=None, metavar="ID,ID",
-                    help="Bench L: run these model ids (from config.yaml) instead of the preset's models")
+                    help="Bench L: run these model ids (from config.yaml) instead of the preset's models; with --check-providers, check only these")
     ap.add_argument("--screen", default=None, metavar="RUN_ID",
                     help="Bench L v4: run each module only on the models that passed this screen run")
     ap.add_argument("--force-resume", action="store_true",
@@ -337,7 +345,8 @@ def main(argv: list[str] | None = None) -> int:
     storage = Storage(resolve(paths["mock_db"] if args.mock else paths["db"]), resolve(paths["jsonl_dir"]))
     dash = resolve(paths["mock_dashboard"] if args.mock else paths["dashboard"])
     if args.check_providers:
-        return check_providers(cfg, storage)
+        only = [m.strip() for m in args.models.split(",") if m.strip()] if args.models else None
+        return check_providers(cfg, storage, only)
     if args.analyze:
         res = analyze.run(storage, args.analyze, resolve(paths["results_dir"]), dash)
         print(f"Report: {res['report']}\nDashboard: {res['dashboard']}")

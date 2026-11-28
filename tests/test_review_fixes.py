@@ -1,4 +1,4 @@
-"""Fixes from the external methodology review of 24 Nov 2026 (docs/peer_review.md, section 9)."""
+"""Fixes from the external methodology review of 24 Nov 2026 (docs/archive/peer_review.md, section 9)."""
 from arena import analyze, colony, validity
 from arena.items import item_banks, module_a_items
 from arena.module_a_asch import plan as plan_a

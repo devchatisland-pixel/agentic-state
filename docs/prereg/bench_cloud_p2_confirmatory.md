@@ -12,7 +12,7 @@ seeing confirmatory data is reported as exploratory.*
   - gpt-oss-120b: 58% vs 0%, +58 points [+38, +75].
   - gpt-oss-20b: 38% vs 4%, +33 points [+12, +54].
   - qwen3.8-27b and gemini-flash-lite were at the floor (at most 2% obedience) and are not "measurable" under the
-    rule fixed in `docs/proposal_cloud_pilot.md` section 4.
+    rule fixed in `docs/archive/proposal_cloud_pilot.md` section 4.
 - **Local confirmatory test** (`20261127-182920`, preregistered in `bench_v4.2_confirmatory.md`, 4 small local
   models, 352 pairs): H2 was **Inconclusive**, −1 point [−7, +5]. In the local models the chain does not raise
   obedience; the interval excludes +10.
@@ -71,7 +71,7 @@ requires two.
 - **Validity checks:** the module checks of `arena/bench/analyze.py` apply as coded. If a check **fails** (not only
   warns), the contrasts are "Not testable" and no claim is made. Warnings are reported and change nothing.
 - **Floor:** if the pooled obedience over relayed and transmitter decisions is below 10%, H2c is reported as "floor:
-  not testable", never as "no effect" (rule of `docs/proposal_cloud_pilot.md`).
+  not testable", never as "no effect" (rule of `docs/archive/proposal_cloud_pilot.md`).
 - **No interim look.**
   - The run starts without `--live`. `--analyze` is not called before the run has ended, and the run is not stopped
     early.
@@ -129,7 +129,7 @@ The **smallest effect of interest is 10 points**, in the predicted direction, as
 ## 8. Run command
 
 From a clean commit that contains this file (status FROZEN), `config.yaml` (preset `bench-cloud-confirm`) and the
-code, with the Groq key in `.env`. It is **one run** with both models, because the hypothesis is tested on their
+code, with `GROQ_API_KEY` set in `.env`. It is **one run** with both models, because the hypothesis is tested on their
 pooled units:
 
 ```
