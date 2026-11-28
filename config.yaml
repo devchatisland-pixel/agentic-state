@@ -280,8 +280,11 @@ presets:
     run_type: pilot
     temperatures: [0.7]
     gate: {repeats: 1, enforce: false}
+    # 4096 context, every layer on the GPU: all four models fit on the 4 GB GTX 1650 (tested 28 Nov 2026: 3.6 s for a
+    # 2,300-token prompt; with 6144, llama3.2:3b ran 25% on the CPU and took 40 s per discussion reply). The largest
+    # prompt of this preset is ~3,300 tokens (end of the R-P discussion); the health table flags any cut prompt.
     providers:
-      ollama: {kind: ollama_native, options: {num_ctx: 6144, num_batch: 128}}
+      ollama: {kind: ollama_native, options: {num_ctx: 4096, num_batch: 128, num_gpu: 99}}
     bench:
       max_minutes: 60
       models: [qwen2.5-3b, llama3.2-3b, gemma3-4b]
